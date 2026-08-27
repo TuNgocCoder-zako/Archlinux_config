@@ -1,99 +1,100 @@
-/* ╔══════════════════════════════════════╗ */
-/* ║   swaync — Catppuccin Mocha Anime   ║ */
-/* ╚══════════════════════════════════════╝ */
+@define-color base       #1e1e2e;
+@define-color mantle     #181825;
+@define-color crust      #11111b;
+@define-color text       #cdd6f4;
+@define-color subtext0   #a6adc8;
+@define-color subtext1   #bac2de;
+@define-color pink       #f5c2e7;
+@define-color mauve      #cba6f7;
+@define-color red        #f38ba8;
+@define-color surface0   #313244;
+@define-color surface1   #45475a;
+
+* {
+    font-family: "JetBrainsMono Nerd Font", sans-serif;
+}
 
 /* ── Control Center ── */
 .control-center {
-    background: alpha(#1e1e2e, 0.90);
-    border: 2px solid alpha(#cba6f7, 0.45);
+    background-color: rgba(30, 30, 46, 0.95);
+    border: 2px solid @mauve;
     border-radius: 16px;
-    padding: 12px;
-    color: #cdd6f4;
-    font-family: "JetBrainsMono Nerd Font";
+    padding: 14px;
+    color: @text;
 }
 
 /* ── Title ── */
 .widget-title {
-    color: #f5c2e7;
+    color: @pink;
     font-size: 16px;
     font-weight: bold;
     margin: 8px 0;
 }
 
 .widget-title > button {
-    background: alpha(#313244, 0.7);
-    color: #f38ba8;
-    border: 1px solid alpha(#f38ba8, 0.3);
+    background-color: @surface0;
+    color: @red;
+    border: 1px solid @red;
     border-radius: 8px;
     padding: 4px 12px;
     font-size: 12px;
 }
 
 .widget-title > button:hover {
-    background: alpha(#f38ba8, 0.2);
+    background-color: rgba(243, 139, 168, 0.2);
 }
 
 /* ── DND Toggle ── */
 .widget-dnd {
-    background: alpha(#313244, 0.5);
+    background-color: @surface0;
     border-radius: 10px;
-    padding: 6px 12px;
-    margin: 4px 0;
-    color: #cdd6f4;
+    padding: 8px 12px;
+    margin: 6px 0;
+    color: @text;
     font-size: 13px;
 }
 
 .widget-dnd > switch {
-    background: #45475a;
+    background-color: @surface1;
     border-radius: 20px;
 }
 
 .widget-dnd > switch:checked {
-    background: #cba6f7;
-}
-
-.widget-dnd > switch slider {
-    background: #cdd6f4;
-    border-radius: 50%;
+    background-color: @mauve;
 }
 
 /* ── Notification Cards ── */
 .notification {
-    background: alpha(#313244, 0.7);
-    border: 1px solid alpha(#cba6f7, 0.2);
+    background-color: @surface0;
+    border: 1px solid @mauve;
     border-radius: 12px;
     padding: 10px;
-    margin: 4px 0;
-    transition: all 200ms ease;
-}
-
-.notification:hover {
-    border-color: alpha(#f5c2e7, 0.5);
+    margin: 6px 0;
 }
 
 .notification-content {
-    color: #cdd6f4;
+    color: @text;
 }
 
 .summary {
-    color: #f5c2e7;
+    color: @pink;
     font-weight: bold;
     font-size: 14px;
 }
 
 .body {
-    color: #bac2de;
+    color: @subtext1;
     font-size: 12px;
 }
 
 .time {
-    color: #6c7086;
+    color: @subtext0;
     font-size: 11px;
 }
 
 .close-button {
-    background: alpha(#f38ba8, 0.2);
-    color: #f38ba8;
+    background-color: rgba(243, 139, 168, 0.2);
+    color: @red;
     border-radius: 50%;
     padding: 2px;
     min-width: 20px;
@@ -101,31 +102,13 @@
 }
 
 .close-button:hover {
-    background: alpha(#f38ba8, 0.4);
-}
-
-/* ── Notification Actions ── */
-.notification-action {
-    background: alpha(#45475a, 0.6);
-    color: #cdd6f4;
-    border: 1px solid alpha(#cba6f7, 0.2);
-    border-radius: 8px;
-    padding: 4px 12px;
-    margin: 2px;
-}
-
-.notification-action:hover {
-    background: alpha(#cba6f7, 0.3);
-    color: #cdd6f4;
+    background-color: @red;
+    color: @base;
 }
 
 /* ── Floating notifications ── */
-.floating-notifications {
-    background: transparent;
-}
-
 .floating-notifications .notification {
-    background: alpha(#1e1e2e, 0.92);
-    border: 1px solid alpha(#cba6f7, 0.4);
-    box-shadow: 0 4px 16px alpha(#11111b, 0.5);
+    background-color: rgba(30, 30, 46, 0.95);
+    border: 2px solid @mauve;
+    box-shadow: 0 4px 16px rgba(17, 17, 27, 0.6);
 }
