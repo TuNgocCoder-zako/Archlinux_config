@@ -104,8 +104,7 @@ fi
 print_step "Step 3/8: Installing VMware tools + GPU drivers"
 sudo pacman -S --needed --noconfirm \
     open-vm-tools \
-    mesa \
-    xf86-video-vmware
+    mesa
 
 sudo systemctl enable --now vmtoolsd.service
 sudo systemctl enable --now vmware-vmblock-fuse.service 2>/dev/null || true
