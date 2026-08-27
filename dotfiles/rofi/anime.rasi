@@ -1,0 +1,143 @@
+/* ╔══════════════════════════════════════╗ */
+/* ║    Rofi — Anime Catppuccin Mocha    ║ */
+/* ╚══════════════════════════════════════╝ */
+
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    display-drun: " Apps";
+    display-run: " Run";
+    display-window: " Windows";
+    drun-display-format: "{name}";
+    font: "JetBrainsMono Nerd Font 12";
+    click-to-exit: true;
+}
+
+@theme "/dev/null"
+
+* {
+    bg:             #1e1e2eE6;
+    bg-alt:         #313244CC;
+    bg-selected:    #45475aCC;
+    fg:             #cdd6f4;
+    fg-alt:         #a6adc8;
+    accent:         #cba6f7;
+    pink:           #f5c2e7;
+    red:            #f38ba8;
+    green:          #a6e3a1;
+    border-colour:  #cba6f780;
+    separator:      #6c708640;
+}
+
+window {
+    width: 620px;
+    transparency: "real";
+    background-color: @bg;
+    border: 2px solid;
+    border-color: @border-colour;
+    border-radius: 18px;
+    padding: 24px;
+}
+
+mainbox {
+    background-color: transparent;
+    spacing: 14px;
+    children: [inputbar, message, listview];
+}
+
+/* ── Search Bar ── */
+inputbar {
+    background-color: @bg-alt;
+    border-radius: 12px;
+    padding: 12px 18px;
+    children: [prompt, textbox-prompt-colon, entry];
+    spacing: 8px;
+}
+
+prompt {
+    background-color: transparent;
+    text-color: @accent;
+    font: "JetBrainsMono Nerd Font Bold 14";
+}
+
+textbox-prompt-colon {
+    expand: false;
+    str: "✿";
+    background-color: transparent;
+    text-color: @pink;
+    font: "JetBrainsMono Nerd Font 14";
+}
+
+entry {
+    background-color: transparent;
+    text-color: @fg;
+    placeholder: "Search...";
+    placeholder-color: #6c7086;
+}
+
+/* ── List ── */
+listview {
+    background-color: transparent;
+    lines: 8;
+    columns: 1;
+    spacing: 5px;
+    fixed-height: true;
+    scrollbar: false;
+}
+
+element {
+    background-color: transparent;
+    text-color: @fg;
+    padding: 10px 14px;
+    border-radius: 10px;
+    orientation: horizontal;
+    spacing: 10px;
+}
+
+element normal.normal {
+    background-color: transparent;
+}
+
+element selected.normal {
+    background-color: @bg-selected;
+    text-color: @pink;
+    border: 1px solid;
+    border-color: @accent;
+}
+
+element alternate.normal {
+    background-color: transparent;
+}
+
+element-text {
+    background-color: transparent;
+    text-color: inherit;
+    vertical-align: 0.5;
+    highlight: bold;
+}
+
+element-icon {
+    background-color: transparent;
+    size: 26px;
+    margin: 0 8px 0 0;
+}
+
+/* ── Scrollbar ── */
+scrollbar {
+    width: 4px;
+    handle-width: 4px;
+    handle-color: @accent;
+    border-radius: 4px;
+}
+
+/* ── Message ── */
+message {
+    background-color: transparent;
+}
+
+textbox {
+    background-color: @bg-alt;
+    text-color: @fg-alt;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
