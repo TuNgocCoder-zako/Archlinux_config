@@ -356,15 +356,18 @@ class AnimeControlCenter(Gtk.Window):
         return True
 
     def load_css(self):
-        css_provider = Gtk.CssProvider()
-        css_file = os.path.expanduser("~/.config/hypr/control-center.css")
-        if os.path.exists(css_file):
-            css_provider.load_from_path(css_file)
-            Gtk.StyleContext.add_provider_for_screen(
-                Gdk.Screen.get_default(),
-                css_provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            )
+        try:
+            css_provider = Gtk.CssProvider()
+            css_file = os.path.expanduser("~/.config/hypr/control-center.css")
+            if os.path.exists(css_file):
+                css_provider.load_from_path(css_file)
+                Gtk.StyleContext.add_provider_for_screen(
+                    Gdk.Screen.get_default(),
+                    css_provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                )
+        except Exception as e:
+            print(f"CSS Notice: {e}")
 
 def main():
     # Toggle behavior: if already running, kill it and exit

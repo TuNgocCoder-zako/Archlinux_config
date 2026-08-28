@@ -1,21 +1,18 @@
-/* 🌸 Catppuccin Mocha Anime Control Center Stylesheet */
+/* 🌸 Catppuccin Mocha Anime Control Center Stylesheet (GTK3 Compliant) */
 
 @define-color base #1e1e2e;
 @define-color mantle #181825;
 @define-color surface0 #313244;
 @define-color surface1 #45475a;
-@define-color surface2 #585b70;
 @define-color text #cdd6f4;
 @define-color mauve #cba6f7;
 @define-color pink #f5c2e7;
 @define-color lavender #b4befe;
 @define-color red #f38ba8;
-@define-color green #a6e3a1;
 
 * {
     font-family: "JetBrainsMono Nerd Font", sans-serif;
     font-size: 13px;
-    all: unset;
 }
 
 #control-center-window {
@@ -23,131 +20,133 @@
 }
 
 #main-container {
-    background-color: rgba(30, 30, 46, 0.94);
-    border: 2px solid @mauve;
+    background-color: #1e1e2e;
+    border: 2px solid #cba6f7;
     border-radius: 20px;
     padding: 16px;
-    color: @text;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    color: #cdd6f4;
 }
 
 /* ── Header ── */
 #header-user {
     font-size: 15px;
     font-weight: bold;
-    color: @pink;
+    color: #f5c2e7;
 }
 
 #btn-close {
-    background-color: @surface0;
-    color: @red;
+    background-color: #313244;
+    color: #f38ba8;
     border-radius: 12px;
     padding: 4px 10px;
-    font-size: 12px;
     font-weight: bold;
+    border: none;
 }
 #btn-close:hover {
-    background-color: @red;
-    color: @base;
+    background-color: #f38ba8;
+    color: #1e1e2e;
 }
 
 /* ── Media Player ── */
 #media-card {
-    background-color: @mantle;
-    border: 1px solid @surface1;
+    background-color: #181825;
+    border: 1px solid #45475a;
     border-radius: 16px;
     padding: 12px;
 }
 
 #media-art {
     border-radius: 12px;
-    background-color: @surface0;
+    background-color: #313244;
 }
 
 #media-title {
     font-size: 14px;
     font-weight: bold;
-    color: @mauve;
+    color: #cba6f7;
 }
 
 #media-artist {
     font-size: 12px;
-    color: @lavender;
+    color: #b4befe;
 }
 
 #media-btn {
-    background-color: @surface0;
-    color: @text;
-    border-radius: 50%;
-    padding: 8px 12px;
+    background-color: #313244;
+    color: #cdd6f4;
+    border-radius: 20px;
+    padding: 6px 14px;
     font-size: 16px;
+    border: none;
 }
 #media-btn:hover {
-    background-color: @surface1;
-    color: @pink;
+    background-color: #45475a;
+    color: #f5c2e7;
 }
 
 #media-btn-play {
-    background-color: @mauve;
-    color: @base;
-    border-radius: 50%;
-    padding: 10px 14px;
+    background-color: #cba6f7;
+    color: #1e1e2e;
+    border-radius: 20px;
+    padding: 8px 16px;
     font-size: 18px;
     font-weight: bold;
+    border: none;
 }
 #media-btn-play:hover {
-    background-color: @pink;
+    background-color: #f5c2e7;
 }
 
 /* ── Quick Toggles ── */
 #toggle-btn {
-    background-color: @surface0;
-    color: @text;
+    background-color: #313244;
+    color: #cdd6f4;
     border-radius: 14px;
-    padding: 12px 6px;
+    padding: 10px 4px;
     font-weight: bold;
     font-size: 12px;
-    border: 1px solid transparent;
+    border: 1px solid #45475a;
 }
 #toggle-btn:hover {
-    background-color: @surface1;
-    border-color: @mauve;
+    background-color: #45475a;
+    border-color: #cba6f7;
 }
 
 .toggle-active {
-    background-color: @mauve !important;
-    color: @base !important;
+    background-color: #cba6f7;
+    color: #1e1e2e;
     font-weight: bold;
+    border-color: #f5c2e7;
 }
 
 /* ── Sliders ── */
 #sliders-card {
-    background-color: @mantle;
+    background-color: #181825;
     border-radius: 16px;
     padding: 14px;
-    border: 1px solid @surface0;
+    border: 1px solid #313244;
 }
 
 #slider-icon {
     font-size: 16px;
-    color: @pink;
+    color: #f5c2e7;
     min-width: 24px;
 }
 
 scale trough {
-    background-color: @surface1;
+    background-color: #45475a;
     border-radius: 8px;
     min-height: 8px;
 }
 
 scale highlight {
-    background-color: @mauve;
+    background-color: #cba6f7;
     border-radius: 8px;
 }
 
 scale slider {
-    background-color: @pink;
-    border-radius: 50%;
+    background-color: #f5c2e7;
+    border-radius: 10px;
     min-width: 16px;
     min-height: 16px;
     margin: -4px;
@@ -155,14 +154,15 @@ scale slider {
 
 /* ── Footer ── */
 #footer-btn {
-    background-color: @surface0;
-    color: @text;
+    background-color: #313244;
+    color: #cdd6f4;
     border-radius: 12px;
-    padding: 10px;
+    padding: 8px;
     font-size: 12px;
     font-weight: bold;
+    border: none;
 }
 #footer-btn:hover {
-    background-color: @surface1;
-    color: @pink;
+    background-color: #45475a;
+    color: #f5c2e7;
 }
