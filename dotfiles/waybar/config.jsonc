@@ -9,7 +9,7 @@
 
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["tray", "custom/cava", "pulseaudio", "network", "cpu", "memory", "custom/notification"],
+    "modules-right": ["tray", "custom/cava", "pulseaudio", "network", "cpu", "memory"],
 
     "hyprland/workspaces": {
         "format": "{icon}",
