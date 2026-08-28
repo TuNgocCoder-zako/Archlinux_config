@@ -1,0 +1,168 @@
+/* 🌸 Catppuccin Mocha Anime Control Center Stylesheet */
+
+@define-color base #1e1e2e;
+@define-color mantle #181825;
+@define-color surface0 #313244;
+@define-color surface1 #45475a;
+@define-color surface2 #585b70;
+@define-color text #cdd6f4;
+@define-color mauve #cba6f7;
+@define-color pink #f5c2e7;
+@define-color lavender #b4befe;
+@define-color red #f38ba8;
+@define-color green #a6e3a1;
+
+* {
+    font-family: "JetBrainsMono Nerd Font", sans-serif;
+    font-size: 13px;
+    all: unset;
+}
+
+#control-center-window {
+    background-color: transparent;
+}
+
+#main-container {
+    background-color: rgba(30, 30, 46, 0.94);
+    border: 2px solid @mauve;
+    border-radius: 20px;
+    padding: 16px;
+    color: @text;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Header ── */
+#header-user {
+    font-size: 15px;
+    font-weight: bold;
+    color: @pink;
+}
+
+#btn-close {
+    background-color: @surface0;
+    color: @red;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: bold;
+}
+#btn-close:hover {
+    background-color: @red;
+    color: @base;
+}
+
+/* ── Media Player ── */
+#media-card {
+    background-color: @mantle;
+    border: 1px solid @surface1;
+    border-radius: 16px;
+    padding: 12px;
+}
+
+#media-art {
+    border-radius: 12px;
+    background-color: @surface0;
+}
+
+#media-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: @mauve;
+}
+
+#media-artist {
+    font-size: 12px;
+    color: @lavender;
+}
+
+#media-btn {
+    background-color: @surface0;
+    color: @text;
+    border-radius: 50%;
+    padding: 8px 12px;
+    font-size: 16px;
+}
+#media-btn:hover {
+    background-color: @surface1;
+    color: @pink;
+}
+
+#media-btn-play {
+    background-color: @mauve;
+    color: @base;
+    border-radius: 50%;
+    padding: 10px 14px;
+    font-size: 18px;
+    font-weight: bold;
+}
+#media-btn-play:hover {
+    background-color: @pink;
+}
+
+/* ── Quick Toggles ── */
+#toggle-btn {
+    background-color: @surface0;
+    color: @text;
+    border-radius: 14px;
+    padding: 12px 6px;
+    font-weight: bold;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+#toggle-btn:hover {
+    background-color: @surface1;
+    border-color: @mauve;
+}
+
+.toggle-active {
+    background-color: @mauve !important;
+    color: @base !important;
+    font-weight: bold;
+}
+
+/* ── Sliders ── */
+#sliders-card {
+    background-color: @mantle;
+    border-radius: 16px;
+    padding: 14px;
+    border: 1px solid @surface0;
+}
+
+#slider-icon {
+    font-size: 16px;
+    color: @pink;
+    min-width: 24px;
+}
+
+scale trough {
+    background-color: @surface1;
+    border-radius: 8px;
+    min-height: 8px;
+}
+
+scale highlight {
+    background-color: @mauve;
+    border-radius: 8px;
+}
+
+scale slider {
+    background-color: @pink;
+    border-radius: 50%;
+    min-width: 16px;
+    min-height: 16px;
+    margin: -4px;
+}
+
+/* ── Footer ── */
+#footer-btn {
+    background-color: @surface0;
+    color: @text;
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: bold;
+}
+#footer-btn:hover {
+    background-color: @surface1;
+    color: @pink;
+}

@@ -9,7 +9,7 @@
 
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["tray", "custom/cava", "pulseaudio", "network", "cpu", "memory"],
+    "modules-right": ["tray", "pulseaudio", "network", "cpu", "memory", "custom/control-center"],
 
     "hyprland/workspaces": {
         "format": "{icon}",
@@ -95,6 +95,12 @@
     "tray": {
         "icon-size": 16,
         "spacing": 8
+    },
+
+    "custom/control-center": {
+        "format": "🌸",
+        "on-click": "python3 /home/tu/.config/hypr/control-center.py",
+        "tooltip-format": "Trung tâm điều khiển (Super + N)"
     },
 
     "custom/cava": {
