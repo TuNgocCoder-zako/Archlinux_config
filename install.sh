@@ -1,19 +1,8 @@
 #!/bin/bash
-# ╔══════════════════════════════════════════════════╗
-# ║  Arch Linux + Hyprland Anime Rice Installer      ║
-# ║  Catppuccin Mocha Theme — VMware Optimized       ║
-# ╚══════════════════════════════════════════════════╝
-#
-# Usage:
-#   chmod +x install.sh
-#   ./install.sh
-#
-# This script will:
-#   1. Install yay (AUR helper)
-#   2. Install all required packages
-#   3. Copy dotfiles to ~/.config/
-#   4. Enable required services
-#   5. Set up zsh as default shell
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Arch Linux + Hyprland + Caelestia Shell Installer       ║
+# ║  Material You Dynamic Theming — Bare Metal Ready         ║
+# ╚══════════════════════════════════════════════════════════╝
 
 set -e
 
@@ -24,16 +13,16 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 PINK='\033[1;35m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 print_banner() {
     echo -e "${PINK}"
-    echo "  ╔═══════════════════════════════════════════╗"
-    echo "  ║                                           ║"
-    echo "  ║   🌸 Anime Hyprland Rice Installer 🌸    ║"
-    echo "  ║   Catppuccin Mocha — VMware Edition       ║"
-    echo "  ║                                           ║"
-    echo "  ╚═══════════════════════════════════════════╝"
+    echo "  ╔═══════════════════════════════════════════════╗"
+    echo "  ║                                               ║"
+    echo "  ║   🌸 Caelestia Shell Installer 🌸             ║"
+    echo "  ║   Arch Linux + Hyprland + Material You         ║"
+    echo "  ║                                               ║"
+    echo "  ╚═══════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
 
@@ -43,33 +32,25 @@ print_step() {
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 }
 
-print_success() {
-    echo -e "${GREEN}  ✔ $1${NC}"
-}
+print_success() { echo -e "${GREEN}  ✔ $1${NC}"; }
+print_warning() { echo -e "${RED}  ⚠ $1${NC}"; }
+print_info() { echo -e "${BLUE}  ℹ $1${NC}"; }
 
-print_warning() {
-    echo -e "${RED}  ⚠ $1${NC}"
-}
-
-print_info() {
-    echo -e "${BLUE}  ℹ $1${NC}"
-}
-
-# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_DIR="$SCRIPT_DIR/dotfiles"
+SCRIPTS_DIR="$SCRIPT_DIR/scripts"
+USER_HOME="$HOME"
 
 print_banner
 
-# === Check if running as root ===
+# === Safety checks ===
 if [ "$EUID" -eq 0 ]; then
-    print_warning "Do NOT run this script as root! Run as your normal user."
+    print_warning "Do NOT run as root! Run as your normal user."
     exit 1
 fi
 
-# === Confirm ===
-echo -e "${PINK}This script will install Hyprland + anime rice on Arch Linux.${NC}"
-echo -e "${PINK}Designed for VMware Workstation VMs.${NC}"
+echo -e "${PINK}This will install Arch Linux + Hyprland + Caelestia Shell.${NC}"
+echo -e "${PINK}Designed for bare metal machines (also works on VMware).${NC}"
 echo ""
 read -p "Continue? (y/N): " confirm
 if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
@@ -80,14 +61,14 @@ fi
 # ────────────────────────────────────────────
 # Step 1: System Update
 # ────────────────────────────────────────────
-print_step "Step 1/8: Updating system"
+print_step "Step 1/9: Updating system"
 sudo pacman -Syu --noconfirm
 print_success "System updated"
 
 # ────────────────────────────────────────────
 # Step 2: Install yay (AUR helper)
 # ────────────────────────────────────────────
-print_step "Step 2/8: Installing yay (AUR helper)"
+print_step "Step 2/9: Installing yay (AUR helper)"
 if command -v yay &> /dev/null; then
     print_info "yay is already installed, skipping"
 else
@@ -99,73 +80,70 @@ else
 fi
 
 # ────────────────────────────────────────────
-# Step 3: Install VMware tools
+# Step 3: Install base packages
 # ────────────────────────────────────────────
-print_step "Step 3/8: Installing VMware tools + GPU drivers"
-sudo pacman -S --needed --noconfirm \
-    open-vm-tools \
-    mesa
-
-sudo systemctl enable --now vmtoolsd.service
-sudo systemctl enable --now vmware-vmblock-fuse.service 2>/dev/null || true
-print_success "VMware tools installed and enabled"
-
-# ────────────────────────────────────────────
-# Step 4: Install all packages from pacman
-# ────────────────────────────────────────────
-print_step "Step 4/8: Installing packages from pacman"
+print_step "Step 3/9: Installing base packages"
 
 PACMAN_PKGS=(
-    # Compositor + seat
+    # Compositor
     hyprland
-    seatd
     polkit-gnome
+    xdg-desktop-portal-hyprland
+    xdg-desktop-portal-gtk
+    xdg-utils
+    xdg-user-dirs
 
-    # Bar + terminal + launcher
-    waybar
+    # Terminal & Shell
     foot
-    rofi-wayland
+    fish
+    starship
 
-    # Notification
-    swaync
+    # Launcher & Notifications
+    fuzzel
+    mako
+    libnotify
 
-    # Wallpaper
-    swww
+    # File Manager
+    thunar
+    thunar-archive-plugin
+    gvfs
+    tumbler
+    shared-mime-info
 
-    # Lock + idle
-    hyprlock
-    hypridle
+    # Image Viewer
+    viewnior
 
     # Audio
     pipewire
     wireplumber
     pipewire-pulse
     pipewire-alsa
+    pipewire-jack
+    pavucontrol
+    playerctl
 
-    # Network + Bluetooth
+    # Network & Bluetooth
     networkmanager
     network-manager-applet
+    bluez
+    bluez-utils
     blueman
 
-    # Screenshot + clipboard
+    # Screenshot & Clipboard
     grim
     slurp
     wl-clipboard
     cliphist
+    swappy
 
-    # Utils
+    # Lock & Idle
+    hyprlock
+    hypridle
+
+    # Brightness
     brightnessctl
-    playerctl
-    xdg-desktop-portal-hyprland
-    xdg-desktop-portal-gtk
-    xdg-utils
-    xdg-user-dirs
 
-    # File manager
-    thunar
-    thunar-archive-plugin
-
-    # Theming tools
+    # Theming
     nwg-look
     qt5ct
     qt6ct
@@ -178,129 +156,163 @@ PACMAN_PKGS=(
     noto-fonts-cjk
     noto-fonts-emoji
 
-    # Shell + prompt
-    starship
-    zsh
-
-    # System info
+    # System Info & Visualizer
     fastfetch
+    cava
 
-    # Audio GUI
-    pavucontrol
+    # Browser
+    firefox
 
-    # Dependencies
-    unzip
-    wget
-    curl
-    jq
+    # Power management
+    power-profiles-daemon
+    upower
+
+    # Utilities
+    unzip wget curl jq git ripgrep bat eza
+    python python-pillow pybind11
+    rust cargo
+    ethtool
 )
 
 sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
-print_success "Pacman packages installed"
+print_success "Base packages installed"
 
 # ────────────────────────────────────────────
-# Step 5: Install AUR packages
+# Step 4: Install Caelestia Shell via AUR
 # ────────────────────────────────────────────
-print_step "Step 5/8: Installing AUR packages"
+print_step "Step 4/9: Installing Caelestia Shell (AUR)"
 
 AUR_PKGS=(
+    caelestia-cli
+    papirus-icon-theme
     catppuccin-gtk-theme-mocha
     bibata-cursor-theme-bin
-    papirus-icon-theme-git
-    cava
-    waypaper
 )
 
 for pkg in "${AUR_PKGS[@]}"; do
     if pacman -Qi "$pkg" &> /dev/null; then
         print_info "$pkg already installed, skipping"
     else
-        yay -S --noconfirm "$pkg" || print_warning "Failed to install $pkg — you can install it manually later"
+        yay -S --noconfirm "$pkg" || print_warning "Failed to install $pkg"
     fi
 done
 print_success "AUR packages installed"
 
 # ────────────────────────────────────────────
-# Step 6: Enable services
+# Step 5: Run Caelestia installer
 # ────────────────────────────────────────────
-print_step "Step 6/8: Enabling system services"
-
-sudo systemctl enable --now seatd
-sudo usermod -a -G seat "$USER" 2>/dev/null || true
-sudo systemctl enable --now NetworkManager
-sudo systemctl enable --now bluetooth 2>/dev/null || true
-
-print_success "Services enabled"
-print_info "User '$USER' added to 'seat' group"
+print_step "Step 5/9: Running Caelestia installer"
+print_info "This will install Quickshell, Caelestia Shell, and all widgets."
+print_info "When prompted for components, select what you need."
+print_info "Recommended: uwsm (8) for basic setup."
+echo ""
+caelestia install
+print_success "Caelestia Shell installed"
 
 # ────────────────────────────────────────────
-# Step 7: Copy dotfiles
+# Step 6: Copy custom dotfiles
 # ────────────────────────────────────────────
-print_step "Step 7/8: Copying dotfiles to ~/.config/"
+print_step "Step 6/9: Copying custom dotfiles"
 
 # Create directories
-mkdir -p ~/.config/{hypr,waybar,foot,rofi,swaync,gtk-3.0,gtk-4.0,fastfetch,cava,starship}
+mkdir -p ~/.config/{caelestia,hypr,foot,fuzzel,mako,gtk-3.0,fastfetch,cava,fish,Thunar}
+mkdir -p ~/.local/bin
 mkdir -p ~/Pictures/Wallpapers
 
-# Copy dotfiles
-if [ -d "$DOTFILES_DIR" ]; then
-    # Hyprland
-    cp -v "$DOTFILES_DIR/hypr/hyprland.conf" ~/.config/hypr/
-    cp -v "$DOTFILES_DIR/hypr/env.conf" ~/.config/hypr/
-    cp -v "$DOTFILES_DIR/hypr/keybinds.conf" ~/.config/hypr/
-    cp -v "$DOTFILES_DIR/hypr/hyprlock.conf" ~/.config/hypr/
-    cp -v "$DOTFILES_DIR/hypr/hypridle.conf" ~/.config/hypr/
+# Caelestia overrides
+[ -f "$DOTFILES_DIR/caelestia/hypr-vars.lua" ] && cp -v "$DOTFILES_DIR/caelestia/hypr-vars.lua" ~/.config/caelestia/
+[ -f "$DOTFILES_DIR/caelestia/hypr-user.conf" ] && cp -v "$DOTFILES_DIR/caelestia/hypr-user.conf" ~/.config/caelestia/
 
-    # Waybar
-    cp -v "$DOTFILES_DIR/waybar/config.jsonc" ~/.config/waybar/
-    cp -v "$DOTFILES_DIR/waybar/style.css" ~/.config/waybar/
+# Hyprland configs (lock screen, idle, env)
+[ -f "$DOTFILES_DIR/hypr/env.conf" ] && cp -v "$DOTFILES_DIR/hypr/env.conf" ~/.config/hypr/
+[ -f "$DOTFILES_DIR/hypr/hyprlock.conf" ] && cp -v "$DOTFILES_DIR/hypr/hyprlock.conf" ~/.config/hypr/
+[ -f "$DOTFILES_DIR/hypr/hypridle.conf" ] && cp -v "$DOTFILES_DIR/hypr/hypridle.conf" ~/.config/hypr/
 
-    # Foot
-    cp -v "$DOTFILES_DIR/foot/foot.ini" ~/.config/foot/
+# Terminal
+[ -f "$DOTFILES_DIR/foot/foot.ini" ] && cp -v "$DOTFILES_DIR/foot/foot.ini" ~/.config/foot/
 
-    # Rofi
-    cp -v "$DOTFILES_DIR/rofi/anime.rasi" ~/.config/rofi/
+# Launcher
+[ -f "$DOTFILES_DIR/fuzzel/fuzzel.ini" ] && cp -v "$DOTFILES_DIR/fuzzel/fuzzel.ini" ~/.config/fuzzel/
 
-    # swaync
-    cp -v "$DOTFILES_DIR/swaync/config.json" ~/.config/swaync/
-    cp -v "$DOTFILES_DIR/swaync/style.css" ~/.config/swaync/
+# Notifications (fallback)
+[ -f "$DOTFILES_DIR/mako/config" ] && cp -v "$DOTFILES_DIR/mako/config" ~/.config/mako/
 
-    # GTK
-    cp -v "$DOTFILES_DIR/gtk-3.0/settings.ini" ~/.config/gtk-3.0/
+# GTK
+[ -f "$DOTFILES_DIR/gtk-3.0/settings.ini" ] && cp -v "$DOTFILES_DIR/gtk-3.0/settings.ini" ~/.config/gtk-3.0/
 
-    # Starship
-    cp -v "$DOTFILES_DIR/starship.toml" ~/.config/starship.toml
+# Fastfetch
+[ -f "$DOTFILES_DIR/fastfetch/config.jsonc" ] && cp -v "$DOTFILES_DIR/fastfetch/config.jsonc" ~/.config/fastfetch/
 
-    # Fastfetch
-    cp -v "$DOTFILES_DIR/fastfetch/config.jsonc" ~/.config/fastfetch/
+# Cava
+[ -f "$DOTFILES_DIR/cava/config" ] && cp -v "$DOTFILES_DIR/cava/config" ~/.config/cava/
 
-    # Cava
-    cp -v "$DOTFILES_DIR/cava/config" ~/.config/cava/
+# Fish shell
+[ -f "$DOTFILES_DIR/fish/config.fish" ] && cp -v "$DOTFILES_DIR/fish/config.fish" ~/.config/fish/
 
-    # Zsh
-    cp -v "$DOTFILES_DIR/.zshrc" ~/
+# Thunar custom actions
+[ -f "$DOTFILES_DIR/Thunar/uca.xml" ] && cp -v "$DOTFILES_DIR/Thunar/uca.xml" ~/.config/Thunar/
 
-    print_success "Dotfiles copied"
+# Scripts
+if [ -d "$SCRIPTS_DIR" ]; then
+    cp -v "$SCRIPTS_DIR/"* ~/.local/bin/ 2>/dev/null
+    chmod +x ~/.local/bin/*
+fi
+
+print_success "Dotfiles copied"
+
+# ────────────────────────────────────────────
+# Step 7: Install bonus tools
+# ────────────────────────────────────────────
+print_step "Step 7/9: Installing bonus tools (Momoisay)"
+
+if command -v cargo &> /dev/null; then
+    cargo install momoisay 2>/dev/null && \
+        sudo ln -sf ~/.cargo/bin/momoisay /usr/local/bin/momoisay && \
+        print_success "momoisay installed" || \
+        print_warning "momoisay installation failed (optional)"
 else
-    print_warning "Dotfiles directory not found at $DOTFILES_DIR"
-    print_warning "Make sure the 'dotfiles' folder is next to this script"
+    print_warning "Rust/Cargo not found, skipping momoisay"
 fi
 
 # ────────────────────────────────────────────
-# Step 8: Set zsh as default shell
+# Step 8: Download wallpapers
 # ────────────────────────────────────────────
-print_step "Step 8/8: Setting zsh as default shell"
+print_step "Step 8/9: Downloading anime wallpapers"
 
-if [ "$SHELL" != "$(which zsh)" ]; then
-    chsh -s "$(which zsh)"
-    print_success "Default shell changed to zsh"
-    print_info "Log out and back in for the change to take effect"
-else
-    print_info "zsh is already the default shell"
+mkdir -p ~/Pictures/Wallpapers
+curl -L -o ~/Pictures/Wallpapers/emilia_dark.png \
+    "https://raw.githubusercontent.com/doki-theme/doki-theme-assets/master/backgrounds/wallpapers/emilia_dark.png" 2>/dev/null && \
+    print_success "Downloaded: emilia_dark.png" || print_warning "Failed to download emilia_dark.png"
+
+curl -L -o ~/Pictures/Wallpapers/emilia_light.png \
+    "https://raw.githubusercontent.com/doki-theme/doki-theme-assets/master/backgrounds/wallpapers/emilia_light.png" 2>/dev/null && \
+    print_success "Downloaded: emilia_light.png" || print_warning "Failed to download emilia_light.png"
+
+curl -L -o ~/Pictures/Wallpapers/beatrice.png \
+    "https://raw.githubusercontent.com/doki-theme/doki-theme-assets/master/backgrounds/wallpapers/beatrice.png" 2>/dev/null && \
+    print_success "Downloaded: beatrice.png" || print_warning "Failed to download beatrice.png"
+
+print_success "Wallpapers downloaded"
+
+# ────────────────────────────────────────────
+# Step 9: Enable services
+# ────────────────────────────────────────────
+print_step "Step 9/9: Enabling system services"
+
+sudo systemctl enable --now NetworkManager 2>/dev/null || true
+sudo systemctl enable --now bluetooth 2>/dev/null || true
+sudo systemctl enable --now power-profiles-daemon 2>/dev/null || true
+
+# Set Fish as default shell
+if [ "$SHELL" != "$(which fish)" ]; then
+    chsh -s "$(which fish)"
+    print_success "Default shell changed to Fish"
 fi
 
 # Create user directories
 xdg-user-dirs-update 2>/dev/null || true
+
+print_success "Services enabled"
 
 # ────────────────────────────────────────────
 # Done!
@@ -308,27 +320,25 @@ xdg-user-dirs-update 2>/dev/null || true
 echo ""
 echo -e "${PINK}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${PINK}"
-echo "  ╔═══════════════════════════════════════════╗"
-echo "  ║                                           ║"
-echo "  ║   🌸 Installation Complete! 🌸            ║"
-echo "  ║                                           ║"
-echo "  ╚═══════════════════════════════════════════╝"
+echo "  ╔═══════════════════════════════════════════════╗"
+echo "  ║                                               ║"
+echo "  ║   🌸 Installation Complete! 🌸               ║"
+echo "  ║                                               ║"
+echo "  ╚═══════════════════════════════════════════════╝"
 echo -e "${NC}"
 echo -e "${CYAN}  Next steps:${NC}"
-echo -e "${GREEN}  1. Download anime wallpapers to ~/Pictures/Wallpapers/${NC}"
-echo -e "${GREEN}  2. Log out and log back in (for seat group + zsh)${NC}"
-echo -e "${GREEN}  3. From TTY, run: ${PINK}Hyprland${NC}"
+echo -e "${GREEN}  1. Log out and log back in${NC}"
+echo -e "${GREEN}  2. From TTY, run: ${PINK}start-hyprland${GREEN} (or Hyprland)${NC}"
+echo -e "${GREEN}  3. Set wallpaper: ${PINK}caelestia wallpaper -f ~/Pictures/Wallpapers/emilia_dark.png${NC}"
 echo ""
-echo -e "${CYAN}  Key bindings:${NC}"
-echo -e "${GREEN}  Super + Enter    →  Terminal (foot)${NC}"
-echo -e "${GREEN}  Super + D        →  App launcher (rofi)${NC}"
-echo -e "${GREEN}  Super + Q        →  Close window${NC}"
-echo -e "${GREEN}  Super + E        →  File manager${NC}"
-echo -e "${GREEN}  Super + W        →  Wallpaper picker${NC}"
-echo -e "${GREEN}  Super + Shift+Q  →  Exit Hyprland${NC}"
+echo -e "${CYAN}  Caelestia key bindings:${NC}"
+echo -e "${GREEN}  Super + T          →  Terminal (Foot)${NC}"
+echo -e "${GREEN}  Super (tap)        →  App Launcher${NC}"
+echo -e "${GREEN}  Super + N          →  Sidebar / Control Center${NC}"
+echo -e "${GREEN}  Super + Q          →  Close window${NC}"
+echo -e "${GREEN}  Super + E          →  File manager (Thunar)${NC}"
+echo -e "${GREEN}  Super + L          →  Lock screen${NC}"
+echo -e "${GREEN}  Super + Shift + Q  →  Exit Hyprland${NC}"
 echo ""
-echo -e "${PURPLE}  Optional: Install SDDM login manager:${NC}"
-echo -e "${BLUE}  sudo pacman -S sddm${NC}"
-echo -e "${BLUE}  yay -S sddm-theme-catppuccin${NC}"
-echo -e "${BLUE}  sudo systemctl enable sddm${NC}"
+echo -e "${PURPLE}  Enjoy your Caelestia Shell rice! 🌸✨${NC}"
 echo -e "${PINK}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

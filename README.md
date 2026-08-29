@@ -1,89 +1,153 @@
-# Hyprland Anime Rice — Dotfiles
-# Catppuccin Mocha + VMware Optimized
+# 🌸 Arch Linux + Hyprland + Caelestia Shell — Dotfiles
 
 ```
-  ╔═══════════════════════════════════════════╗
-  ║                                           ║
-  ║   🌸 Anime Hyprland Rice 🌸              ║
-  ║   Arch Linux + Catppuccin Mocha           ║
-  ║   VMware Workstation Edition              ║
-  ║                                           ║
-  ╚═══════════════════════════════════════════╝
+  ╔═══════════════════════════════════════════════╗
+  ║                                               ║
+  ║   🌸 Arch Linux Rice — Caelestia Shell 🌸     ║
+  ║   Hyprland + Material You Dynamic Theming     ║
+  ║   Anime Aesthetic • Bare Metal Ready           ║
+  ║                                               ║
+  ╚═══════════════════════════════════════════════╝
 ```
 
-## Structure
+## ✨ Features
+
+- **Caelestia Shell** — Modern Material You desktop shell (Quickshell/QML)
+- **Dynamic Theming** — Wallpaper-based color extraction (Material You)
+- **Hyprland WM** — Wayland tiling compositor with smooth animations
+- **Anime Aesthetic** — Catppuccin Mocha fallback palette, anime wallpapers
+- **All-in-One Control Center** — Quick toggles, media player, sliders
+- **Side Dock** — Clock, calendar, workspace indicator, power menu
+- **Foot Terminal** — Lightweight Wayland-native terminal
+- **Fuzzel Launcher** — Fast, Material You-styled app launcher
+- **Cava Visualizer** — Audio visualizer integrated with media player
+- **Momoisay** — Anime ASCII art greeting in terminal (Blue Archive)
+- **Thunar** — File manager with right-click "Set as Wallpaper" action
+
+## 📁 Structure
 
 ```
 .
-├── install.sh              # Automated installer
+├── install.sh                    # Automated installer
 ├── dotfiles/
+│   ├── caelestia/
+│   │   ├── hypr-vars.lua         # Caelestia variables & keybinds
+│   │   └── hypr-user.conf        # Hyprland user overrides
 │   ├── hypr/
-│   │   ├── hyprland.conf   # Main Hyprland config
-│   │   ├── env.conf        # Environment variables (VMware)
-│   │   ├── keybinds.conf   # All keybindings
-│   │   ├── hyprlock.conf   # Lock screen (anime style)
-│   │   └── hypridle.conf   # Auto-lock / screen off
-│   ├── waybar/
-│   │   ├── config.jsonc    # Waybar modules (Kanji workspaces)
-│   │   └── style.css       # Waybar style (Catppuccin)
+│   │   ├── env.conf              # Environment variables
+│   │   ├── hyprlock.conf         # Anime lock screen
+│   │   └── hypridle.conf         # Auto-lock & screen off
 │   ├── foot/
-│   │   └── foot.ini        # Terminal config
-│   ├── rofi/
-│   │   └── anime.rasi      # App launcher theme
-│   ├── swaync/
-│   │   ├── config.json     # Notification center
-│   │   └── style.css       # Notification style
+│   │   └── foot.ini              # Terminal (Catppuccin Mocha)
+│   ├── fuzzel/
+│   │   └── fuzzel.ini            # App launcher
+│   ├── mako/
+│   │   └── config                # Notification daemon (fallback)
 │   ├── gtk-3.0/
-│   │   └── settings.ini    # GTK theme settings
+│   │   └── settings.ini          # GTK theme settings
 │   ├── fastfetch/
-│   │   └── config.jsonc    # System info display
+│   │   └── config.jsonc          # System info display
 │   ├── cava/
-│   │   └── config          # Audio visualizer
-│   ├── starship.toml       # Shell prompt
-│   └── .zshrc              # Zsh configuration
+│   │   └── config                # Audio visualizer
+│   ├── fish/
+│   │   └── config.fish           # Fish shell config
+│   └── Thunar/
+│       └── uca.xml               # Set wallpaper custom action
+├── scripts/
+│   ├── set-wallpaper             # Wallpaper setter (Caelestia)
+│   └── fix-vmware-net.sh         # VMware network fix (optional)
 └── README.md
 ```
 
-## Quick Install
+## 🚀 Quick Install
 
-1. Install Arch Linux via `archinstall` (Minimal profile, UEFI, PipeWire, NetworkManager)
-2. Copy this folder to the Arch VM
-3. Run the installer:
+### Prerequisites
+- Arch Linux installed via `archinstall` (Minimal profile, UEFI, PipeWire, NetworkManager)
+- Internet connection
+- Non-root user with sudo access
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/TuNgocCoder-zako/Archlinux_config.git
+cd Archlinux_config
+
+# Run the installer
 chmod +x install.sh
 ./install.sh
 ```
 
-4. Download anime wallpapers to `~/Pictures/Wallpapers/`
-5. Log out, log back in, and run `Hyprland` from TTY
+The installer will:
+1. Update system & install `yay` (AUR helper)
+2. Install Hyprland, Foot, Thunar, PipeWire, and all dependencies
+3. Install `caelestia-cli` and run `caelestia install`
+4. Copy custom dotfiles (keybinds, terminal theme, wallpaper actions)
+5. Install bonus tools (Cava, Momoisay, Fastfetch)
+6. Download anime wallpapers
+7. Enable system services
 
-## Key Bindings
+## ⌨️ Key Bindings (Caelestia Defaults)
 
 | Key | Action |
 |-----|--------|
-| `Super + Enter` | Terminal (foot) |
-| `Super + D` | App launcher (rofi) |
+| `Super + T` | Open Terminal (Foot) |
+| `Super + Super_L` | App Launcher |
+| `Super + N` | Toggle Sidebar / Control Center |
+| `Super + K` | Show Panels |
 | `Super + Q` | Close window |
-| `Super + E` | File manager (thunar) |
-| `Super + W` | Wallpaper picker |
-| `Super + V` | Toggle floating |
-| `Super + F` | Fullscreen |
+| `Super + E` | File manager (Thunar) |
+| `Super + W` | Open Browser (Firefox) |
 | `Super + L` | Lock screen |
-| `Super + N` | Notifications |
-| `Super + Shift+V` | Clipboard history |
-| `Print` | Screenshot (region) |
+| `Super + F` | Fullscreen |
+| `Alt + Space` | Toggle floating |
 | `Super + 1-9` | Switch workspace |
-| `Super + Shift+Q` | Exit Hyprland |
+| `Super + Shift + Q` | Exit Hyprland |
+| `Print` | Screenshot |
+| `Super + Shift + S` | Screenshot (region) |
+| `Super + V` | Clipboard history |
 
-## Theme: Catppuccin Mocha
+### Custom Additions
 
-All configs use the Catppuccin Mocha color palette for a consistent, anime-aesthetic look.
+| Key | Action |
+|-----|--------|
+| `Super + Enter` | Open Terminal (added) |
+| `Super + D` | Fuzzel launcher (added) |
+| `Alt + S` | Screenshot region to clipboard |
 
-## VMware Notes
+## 🎨 Wallpaper & Dynamic Theming
 
-- Blur is disabled (too heavy for VMware)
-- Animations are lightweight
-- `WLR_RENDERER_ALLOW_SOFTWARE=1` enables software rendering
-- `WLR_NO_HARDWARE_CURSORS=1` fixes invisible cursor
-- Use `foot` instead of `kitty` (kitty crashes on VMware)
+Caelestia Shell automatically extracts colors from your wallpaper and applies them system-wide (bar, control center, terminal, launcher).
+
+```bash
+# Set wallpaper via CLI
+caelestia wallpaper -f ~/Pictures/Wallpapers/your-image.png
+
+# Random wallpaper from directory
+caelestia wallpaper -r ~/Pictures/Wallpapers/
+```
+
+Or right-click any image in Thunar → "🌸 Set as Caelestia Wallpaper"
+
+## 🖥️ VMware Notes
+
+If running on VMware Workstation, add these to `~/.config/caelestia/hypr-user.conf`:
+
+```ini
+env = LIBGL_ALWAYS_SOFTWARE,1
+env = WLR_NO_HARDWARE_CURSORS,1
+env = WLR_RENDERER_ALLOW_SOFTWARE,1
+```
+
+And start Caelestia Shell with:
+```bash
+export LIBGL_ALWAYS_SOFTWARE=1
+caelestia shell
+```
+
+## 🙏 Credits
+
+- [Caelestia Shell](https://github.com/caelestia-dots) — Material You desktop shell for Hyprland
+- [Catppuccin](https://github.com/catppuccin) — Soothing pastel theme
+- [Hyprland](https://hyprland.org/) — Dynamic tiling Wayland compositor
+- [Doki Theme](https://github.com/doki-theme) — Anime wallpapers & stickers

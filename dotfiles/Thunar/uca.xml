@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+<action>
+	<icon>preferences-desktop-wallpaper</icon>
+	<name>Set as Caelestia Wallpaper</name>
+	<submenu></submenu>
+	<unique-id>caelestia-set-wallpaper</unique-id>
+	<command>$HOME/.local/bin/set-wallpaper %f</command>
+	<description>Set image as wallpaper and apply Material You theming</description>
+	<range></range>
+	<patterns>*</patterns>
+	<image-files/>
+</action>
+</actions>

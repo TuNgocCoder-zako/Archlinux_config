@@ -1,0 +1,14 @@
+#!/bin/bash
+# Set wallpaper via Caelestia (Material You dynamic theming)
+
+IMG="$1"
+if [ -z "$IMG" ] || [ ! -f "$IMG" ]; then
+    notify-send "Error" "No valid image file provided"
+    exit 1
+fi
+
+export WAYLAND_DISPLAY=wayland-1
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+
+caelestia wallpaper -f "$IMG"
+notify-send -i "$IMG" "Caelestia" "Wallpaper set & Material You theme applied!"

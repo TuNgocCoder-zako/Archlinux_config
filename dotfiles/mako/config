@@ -1,0 +1,21 @@
+# Mako Notification Daemon — Catppuccin Mocha (Fallback)
+
+font=JetBrainsMono Nerd Font 11
+background-color=#1e1e2edd
+text-color=#cdd6f4
+border-color=#cba6f7
+border-size=2
+border-radius=12
+padding=14
+margin=10
+default-timeout=5000
+max-visible=3
+layer=overlay
+anchor=top-right
+width=350
+icon-path=/usr/share/icons/Papirus-Dark
+max-icon-size=48
+
+[urgency=high]
+border-color=#f38ba8
+default-timeout=0

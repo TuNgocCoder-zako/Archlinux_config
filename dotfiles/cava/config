@@ -1,19 +1,18 @@
 # Cava — Audio Visualizer
-# Catppuccin Mocha theme
 
 [general]
 framerate = 60
-bars = 12
-bar_width = 2
+bars = 32
+bar_width = 3
 bar_spacing = 1
+sensitivity = 100
 
 [input]
 method = pipewire
 source = auto
 
 [output]
-method = noncurses
-channels = stereo
+method = ncurses
 
 [color]
 gradient = 1
@@ -26,4 +25,3 @@ gradient_color_4 = '#f38ba8'
 [smoothing]
 monstercat = 1
 waves = 1
-gravity = 100
