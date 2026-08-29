@@ -87,47 +87,39 @@ The installer will:
 6. Download anime wallpapers
 7. Enable system services
 
-## ⌨️ Key Bindings (Caelestia Defaults)
+## ⌨️ Key Bindings (Đầy đủ phím tắt)
 
-| Key | Action |
-|-----|--------|
-| `Super + T` | Open Terminal (Foot) |
-| `Super + Super_L` | App Launcher |
-| `Super + N` | Toggle Sidebar / Control Center |
-| `Super + K` | Show Panels |
-| `Super + Q` | Close window |
-| `Super + E` | File manager (Thunar) |
-| `Super + W` | Open Browser (Firefox) |
-| `Super + L` | Lock screen |
-| `Super + F` | Fullscreen |
-| `Alt + Space` | Toggle floating |
-| `Super + 1-9` | Switch workspace |
-| `Super + Shift + Q` | Exit Hyprland |
-| `Print` | Screenshot |
-| `Super + Shift + S` | Screenshot (region) |
-| `Super + V` | Clipboard history |
+| Phím tắt | Chức năng | Ghi chú |
+|----------|-----------|---------|
+| `Super + Return` / `Super + T` | Mở Terminal (Foot) | Anime Momoisay Greeting |
+| `Super + D` / `Alt + D` | Menu ứng dụng (Fuzzel / Caelestia Launcher) | Tìm kiếm app & gõ lệnh `>` |
+| `Super + V` / `Alt + V` | Lịch sử Clipboard (Cliphist) | Chọn lại text/ảnh đã copy |
+| `Super + C` / `Alt + C` | Sóng âm thanh (Cava Audio Visualizer) | 6 dải màu Anime Gradient |
+| `Super + I` / `Alt + I` | Cửa sổ thông tin hệ thống (Fastfetch) | Cửa sổ nổi bo tròn |
+| `Super + N` | Bật/Tắt Bảng điều khiển (Sidebar / Control Center) | Toggles, Sliders, Music |
+| `Super + E` | Quản lý tệp tin (Thunar File Manager) | Chuột phải đổi hình nền |
+| `Super + W` | Trình duyệt Web (Firefox) | |
+| `Super + L` | Khóa màn hình (Caelestia Lock Screen) | Nhạc, thời tiết, avatar |
+| `Super + Q` / `Alt + Q` | Đóng cửa sổ hiện tại | |
+| `Super + F` | Phóng to toàn màn hình (Fullscreen) | |
+| `Alt + Space` / `Super + V` | Chuyển đổi cửa sổ dạng nổi (Toggle Floating) | |
+| `Alt + S` | Chụp ảnh màn hình (Lưu vào Clipboard) | Có thông báo |
+| `Super + Shift + S` | Chụp ảnh màn hình + Mở công cụ vẽ ghi chú (Swappy) | Vẽ mũi tên, che mờ |
+| `Super + 1-9` | Chuyển đổi Workspace 1 - 9 | |
+| `Super + Shift + Q` | Đăng xuất / Thoát Hyprland | |
 
-### Custom Additions
+## 🎨 Wallpaper & Material You Dynamic Theming
 
-| Key | Action |
-|-----|--------|
-| `Super + Enter` | Open Terminal (added) |
-| `Super + D` | Fuzzel launcher (added) |
-| `Alt + S` | Screenshot region to clipboard |
-
-## 🎨 Wallpaper & Dynamic Theming
-
-Caelestia Shell automatically extracts colors from your wallpaper and applies them system-wide (bar, control center, terminal, launcher).
+Caelestia Shell tự động trích xuất bảng màu chủ đạo từ hình nền Anime của bạn và áp dụng đồng bộ toàn hệ thống:
 
 ```bash
-# Set wallpaper via CLI
-caelestia wallpaper -f ~/Pictures/Wallpapers/your-image.png
+# Đổi hình nền bằng lệnh
+wall ~/Pictures/Wallpapers/emilia_dark.png
 
-# Random wallpaper from directory
-caelestia wallpaper -r ~/Pictures/Wallpapers/
+# Đổi ngẫu nhiên một hình nền trong thư mục
+wallr
 ```
-
-Or right-click any image in Thunar → "🌸 Set as Caelestia Wallpaper"
+*(Hoặc click chuột phải vào bất kỳ ảnh nào trong Thunar $\rightarrow$ chọn **"Set as Caelestia Wallpaper"**)*.
 
 ## 🖥️ VMware Notes
 

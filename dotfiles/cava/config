@@ -1,11 +1,14 @@
-# Cava — Audio Visualizer
+# ╔══════════════════════════════════════════════════╗
+# ║  Cava — Audio Visualizer Config                  ║
+# ║  Theme: Catppuccin Mocha / Anime 6-Gradient      ║
+# ╚══════════════════════════════════════════════════╝
 
 [general]
 framerate = 60
-bars = 32
-bar_width = 3
+autosens = 1
+bars = 0
+bar_width = 2
 bar_spacing = 1
-sensitivity = 100
 
 [input]
 method = pipewire
@@ -16,11 +19,13 @@ method = ncurses
 
 [color]
 gradient = 1
-gradient_count = 4
-gradient_color_1 = '#89b4fa'
-gradient_color_2 = '#cba6f7'
-gradient_color_3 = '#f5c2e7'
-gradient_color_4 = '#f38ba8'
+gradient_count = 6
+gradient_color_1 = "#89b4fa"
+gradient_color_2 = "#74c7ec"
+gradient_color_3 = "#94e2d5"
+gradient_color_4 = "#cba6f7"
+gradient_color_5 = "#f5c2e7"
+gradient_color_6 = "#f38ba8"
 
 [smoothing]
 monstercat = 1
