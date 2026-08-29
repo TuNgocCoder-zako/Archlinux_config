@@ -295,13 +295,35 @@ curl -L -o ~/Pictures/Wallpapers/beatrice.png \
 print_success "Wallpapers downloaded"
 
 # ────────────────────────────────────────────
-# Step 9: Enable services
+# Step 9: Configure SDDM Login Theme
 # ────────────────────────────────────────────
-print_step "Step 9/9: Enabling system services"
+print_step "Step 9/10: Setting up SDDM Catppuccin Theme"
+
+sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 qt5-svg qt6-svg qt6-declarative 2>/dev/null || true
+
+curl -L -o /tmp/catppuccin-mocha.zip "https://github.com/catppuccin/sddm/releases/download/v1.1.2/catppuccin-mocha-mauve-sddm.zip" 2>/dev/null && \
+    sudo unzip -o /tmp/catppuccin-mocha.zip -d /usr/share/sddm/themes/ && \
+    rm -f /tmp/catppuccin-mocha.zip && \
+    sudo rm -rf /usr/share/sddm/themes/catppuccin-mocha && \
+    sudo mv /usr/share/sddm/themes/catppuccin-mocha-mauve /usr/share/sddm/themes/catppuccin-mocha && \
+    sudo cp ~/Pictures/Wallpapers/emilia_dark.png /usr/share/sddm/themes/catppuccin-mocha/backgrounds/emilia.png 2>/dev/null && \
+    sudo sed -i 's/Background=.*/Background="backgrounds\/emilia.png"/' /usr/share/sddm/themes/catppuccin-mocha/theme.conf && \
+    sudo mkdir -p /etc/sddm.conf.d && \
+    sudo bash -c 'cat << "EOF" > /etc/sddm.conf.d/theme.conf
+[Theme]
+Current=catppuccin-mocha
+EOF' && \
+    print_success "SDDM Catppuccin theme configured" || print_warning "SDDM theme setup skipped"
+
+# ────────────────────────────────────────────
+# Step 10: Enable services
+# ────────────────────────────────────────────
+print_step "Step 10/10: Enabling system services"
 
 sudo systemctl enable --now NetworkManager 2>/dev/null || true
 sudo systemctl enable --now bluetooth 2>/dev/null || true
 sudo systemctl enable --now power-profiles-daemon 2>/dev/null || true
+sudo systemctl enable sddm 2>/dev/null || true
 
 # Set Fish as default shell
 if [ "$SHELL" != "$(which fish)" ]; then
