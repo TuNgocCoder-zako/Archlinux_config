@@ -35,7 +35,6 @@
 │   │   └── hypr-user.conf        # Hyprland user overrides
 │   ├── hypr/
 │   │   ├── env.conf              # Environment variables
-│   │   ├── hyprlock.conf         # Anime lock screen
 │   │   └── hypridle.conf         # Auto-lock & screen off
 │   ├── foot/
 │   │   └── foot.ini              # Terminal (Catppuccin Mocha)

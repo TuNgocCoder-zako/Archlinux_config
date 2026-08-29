@@ -223,9 +223,8 @@ mkdir -p ~/Pictures/Wallpapers
 [ -f "$DOTFILES_DIR/caelestia/hypr-vars.lua" ] && cp -v "$DOTFILES_DIR/caelestia/hypr-vars.lua" ~/.config/caelestia/
 [ -f "$DOTFILES_DIR/caelestia/hypr-user.conf" ] && cp -v "$DOTFILES_DIR/caelestia/hypr-user.conf" ~/.config/caelestia/
 
-# Hyprland configs (lock screen, idle, env)
+# Hyprland configs (idle, env)
 [ -f "$DOTFILES_DIR/hypr/env.conf" ] && cp -v "$DOTFILES_DIR/hypr/env.conf" ~/.config/hypr/
-[ -f "$DOTFILES_DIR/hypr/hyprlock.conf" ] && cp -v "$DOTFILES_DIR/hypr/hyprlock.conf" ~/.config/hypr/
 [ -f "$DOTFILES_DIR/hypr/hypridle.conf" ] && cp -v "$DOTFILES_DIR/hypr/hypridle.conf" ~/.config/hypr/
 
 # Terminal
