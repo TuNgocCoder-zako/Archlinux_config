@@ -178,9 +178,48 @@ sudo pacman -S --needed --noconfirm "${PACMAN_PKGS[@]}"
 print_success "Base packages installed"
 
 # ────────────────────────────────────────────
-# Step 4: Install Caelestia Shell via AUR
+# Step 4: GPU Drivers Auto-Detection & Installation
 # ────────────────────────────────────────────
-print_step "Step 4/9: Installing Caelestia Shell (AUR)"
+print_step "Step 4/10: Detecting GPU & Installing Drivers"
+
+if lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
+    print_info "NVIDIA GPU detected (RTX / GTX) — Installing NVIDIA drivers..."
+    sudo pacman -S --needed --noconfirm \
+        nvidia-dkms \
+        nvidia-utils \
+        lib32-nvidia-utils \
+        libva-nvidia-driver \
+        egl-wayland \
+        nvidia-prime
+    
+    # Enable NVIDIA power management services for suspend/resume
+    sudo systemctl enable nvidia-suspend.service 2>/dev/null || true
+    sudo systemctl enable nvidia-hibernate.service 2>/dev/null || true
+    sudo systemctl enable nvidia-resume.service 2>/dev/null || true
+    print_success "NVIDIA drivers & Wayland support installed"
+elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'amd'; then
+    print_info "AMD GPU detected — Installing Mesa & Vulkan drivers..."
+    sudo pacman -S --needed --noconfirm \
+        xf86-video-amdgpu \
+        vulkan-radeon \
+        lib32-vulkan-radeon \
+        libva-mesa-driver
+    print_success "AMD drivers installed"
+elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'intel'; then
+    print_info "Intel GPU detected — Installing Intel Vulkan & Media drivers..."
+    sudo pacman -S --needed --noconfirm \
+        vulkan-intel \
+        lib32-vulkan-intel \
+        intel-media-driver
+    print_success "Intel drivers installed"
+else
+    print_info "VMware or Generic GPU detected — using default Mesa drivers"
+fi
+
+# ────────────────────────────────────────────
+# Step 5: Install Caelestia Shell via AUR
+# ────────────────────────────────────────────
+print_step "Step 5/10: Installing Caelestia Shell (AUR)"
 
 AUR_PKGS=(
     caelestia-cli
@@ -199,9 +238,9 @@ done
 print_success "AUR packages installed"
 
 # ────────────────────────────────────────────
-# Step 5: Run Caelestia installer
+# Step 6: Run Caelestia installer
 # ────────────────────────────────────────────
-print_step "Step 5/9: Running Caelestia installer"
+print_step "Step 6/10: Running Caelestia installer"
 print_info "This will install Quickshell, Caelestia Shell, and all widgets."
 print_info "When prompted for components, select what you need."
 print_info "Recommended: uwsm (8) for basic setup."
@@ -210,9 +249,9 @@ caelestia install
 print_success "Caelestia Shell installed"
 
 # ────────────────────────────────────────────
-# Step 6: Copy custom dotfiles
+# Step 7: Copy custom dotfiles
 # ────────────────────────────────────────────
-print_step "Step 6/9: Copying custom dotfiles"
+print_step "Step 7/10: Copying custom dotfiles"
 
 # Create directories
 mkdir -p ~/.config/{caelestia,hypr,foot,fuzzel,mako,gtk-3.0,fastfetch,cava,fish,Thunar}
@@ -260,9 +299,9 @@ fi
 print_success "Dotfiles copied"
 
 # ────────────────────────────────────────────
-# Step 7: Install bonus tools
+# Step 8: Install bonus tools (Momoisay)
 # ────────────────────────────────────────────
-print_step "Step 7/9: Installing bonus tools (Momoisay)"
+print_step "Step 8/10: Installing bonus tools (Momoisay)"
 
 if command -v cargo &> /dev/null; then
     cargo install momoisay 2>/dev/null && \
@@ -274,9 +313,9 @@ else
 fi
 
 # ────────────────────────────────────────────
-# Step 8: Download wallpapers
+# Step 9: Download wallpapers
 # ────────────────────────────────────────────
-print_step "Step 8/9: Downloading anime wallpapers"
+print_step "Step 9/10: Downloading anime wallpapers"
 
 mkdir -p ~/Pictures/Wallpapers
 curl -L -o ~/Pictures/Wallpapers/emilia_dark.png \
@@ -294,25 +333,23 @@ curl -L -o ~/Pictures/Wallpapers/beatrice.png \
 print_success "Wallpapers downloaded"
 
 # ────────────────────────────────────────────
-# Step 9: Configure SDDM Login Theme
+# Step 9: Configure SDDM Astronaut Anime Theme
 # ────────────────────────────────────────────
-print_step "Step 9/10: Setting up SDDM Catppuccin Theme"
+print_step "Step 9/10: Setting up SDDM Astronaut Theme"
 
 sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 qt5-svg qt6-svg qt6-declarative 2>/dev/null || true
 
-curl -L -o /tmp/catppuccin-mocha.zip "https://github.com/catppuccin/sddm/releases/download/v1.1.2/catppuccin-mocha-mauve-sddm.zip" 2>/dev/null && \
-    sudo unzip -o /tmp/catppuccin-mocha.zip -d /usr/share/sddm/themes/ && \
-    rm -f /tmp/catppuccin-mocha.zip && \
-    sudo rm -rf /usr/share/sddm/themes/catppuccin-mocha && \
-    sudo mv /usr/share/sddm/themes/catppuccin-mocha-mauve /usr/share/sddm/themes/catppuccin-mocha && \
-    sudo cp ~/Pictures/Wallpapers/emilia_dark.png /usr/share/sddm/themes/catppuccin-mocha/backgrounds/emilia.png 2>/dev/null && \
-    sudo sed -i 's/Background=.*/Background="backgrounds\/emilia.png"/' /usr/share/sddm/themes/catppuccin-mocha/theme.conf && \
+sudo rm -rf /usr/share/sddm/themes/sddm-astronaut-theme
+sudo git clone https://github.com/Keyitdev/sddm-astronaut-theme.git /usr/share/sddm/themes/sddm-astronaut-theme 2>/dev/null && \
+    sudo cp ~/Pictures/Wallpapers/emilia_dark.png /usr/share/sddm/themes/sddm-astronaut-theme/Backgrounds/emilia.png 2>/dev/null && \
+    sudo sed -i 's|^ConfigFile=.*|ConfigFile=Themes/pixel_sakura.conf|' /usr/share/sddm/themes/sddm-astronaut-theme/metadata.desktop 2>/dev/null && \
+    sudo sed -i 's/ScaleMode=.*/ScaleMode="Fill"/' /usr/share/sddm/themes/sddm-astronaut-theme/Themes/pixel_sakura.conf 2>/dev/null && \
     sudo mkdir -p /etc/sddm.conf.d && \
     sudo bash -c 'cat << "EOF" > /etc/sddm.conf.d/theme.conf
 [Theme]
-Current=catppuccin-mocha
+Current=sddm-astronaut-theme
 EOF' && \
-    print_success "SDDM Catppuccin theme configured" || print_warning "SDDM theme setup skipped"
+    print_success "SDDM Astronaut theme configured" || print_warning "SDDM setup skipped"
 
 # ────────────────────────────────────────────
 # Step 10: Enable services

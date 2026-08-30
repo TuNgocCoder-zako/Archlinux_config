@@ -120,25 +120,48 @@ wallr
 ```
 *(Hoặc click chuột phải vào bất kỳ ảnh nào trong Thunar $\rightarrow$ chọn **"Set as Caelestia Wallpaper"**)*.
 
-## 🖥️ VMware Notes
+## 🎮 NVIDIA GPU & AI Workloads Ready
 
-If running on VMware Workstation, add these to `~/.config/caelestia/hypr-user.conf`:
+Bộ cấu hình đã được tối ưu sẵn 100% cho card đồ họa **NVIDIA (RTX 3050 / 3060 / 4060...)**:
 
-```ini
-env = LIBGL_ALWAYS_SOFTWARE,1
-env = WLR_NO_HARDWARE_CURSORS,1
-env = WLR_RENDERER_ALLOW_SOFTWARE,1
+### 1. Driver & Hardware Acceleration
+- Tự động nhận diện và cài đặt `nvidia-dkms`, `nvidia-utils`, `libva-nvidia-driver`, `egl-wayland`.
+- Đầy đủ biến môi trường Wayland Explicit Sync trong `env.conf` (không giật lag, hỗ trợ màn hình 120Hz/144Hz).
+
+### 2. Chạy ứng dụng nặng trên GPU rời (NVIDIA Optimus Hybrid Laptop)
+```bash
+# Ép ứng dụng chạy trên card rời NVIDIA RTX
+prime-run <tên_ứng_dụng>
+# Ví dụ:
+prime-run blender
+prime-run steam
 ```
 
-And start Caelestia Shell with:
+### 3. Chạy AI Local (Ollama / PyTorch / CUDA)
 ```bash
-export LIBGL_ALWAYS_SOFTWARE=1
-caelestia shell
+# Cài đặt CUDA toolkit & Ollama tăng tốc phần cứng
+sudo pacman -S cuda cudnn
+yay -S ollama-cuda
+
+# Chạy model AI cục bộ tốc độ cao (Llama 3.2, Qwen 2.5, Phi-3)
+ollama run llama3.2
+```
+
+## 🖥️ VMware Notes
+
+If running on VMware Workstation VM, uncomment these in `dotfiles/hypr/env.conf`:
+
+```ini
+env = WLR_RENDERER_ALLOW_SOFTWARE,1
+env = WLR_NO_HARDWARE_CURSORS,1
+env = LIBGL_ALWAYS_SOFTWARE,1
+env = XWAYLAND_NO_GLAMOR,1
 ```
 
 ## 🙏 Credits
 
 - [Caelestia Shell](https://github.com/caelestia-dots) — Material You desktop shell for Hyprland
 - [Catppuccin](https://github.com/catppuccin) — Soothing pastel theme
+- [Keyitdev Astronaut](https://github.com/Keyitdev/sddm-astronaut-theme) — Modern Qt6 Glassmorphism SDDM theme
 - [Hyprland](https://hyprland.org/) — Dynamic tiling Wayland compositor
 - [Doki Theme](https://github.com/doki-theme) — Anime wallpapers & stickers
