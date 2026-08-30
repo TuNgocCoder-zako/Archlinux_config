@@ -19,8 +19,8 @@ alias cls="clear"
 alias fetch="fastfetch"
 alias momoi="momoisay freestyle"
 alias dance="momoisay animate"
-alias wall="caelestia wallpaper -f"
-alias wallr="caelestia wallpaper -r ~/Pictures/Wallpapers"
+alias wall="~/.local/bin/set-wallpaper"
+alias wallr='~/.local/bin/set-wallpaper (find ~/Pictures/Wallpapers/ -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) | shuf -n 1)'
 
 # Anime Momoisay Greeting
 if type -q momoisay

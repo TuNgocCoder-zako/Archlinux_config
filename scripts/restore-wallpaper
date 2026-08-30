@@ -1,0 +1,22 @@
+#!/bin/bash
+# ╔══════════════════════════════════════════════════╗
+# ║  Restore Last Wallpaper on Boot                  ║
+# ╚══════════════════════════════════════════════════╝
+
+CACHE_FILE="${HOME}/.cache/current_wallpaper"
+DEFAULT_WALL="${HOME}/Pictures/Wallpapers/emilia_dark.png"
+
+# Wait for Caelestia Shell to be ready
+sleep 1.5
+
+if [ -f "$CACHE_FILE" ] && [ -s "$CACHE_FILE" ]; then
+    SAVED_WALL="$(cat "$CACHE_FILE")"
+    if [ -f "$SAVED_WALL" ]; then
+        caelestia wallpaper -f "$SAVED_WALL"
+        exit 0
+    fi
+fi
+
+if [ -f "$DEFAULT_WALL" ]; then
+    caelestia wallpaper -f "$DEFAULT_WALL"
+fi

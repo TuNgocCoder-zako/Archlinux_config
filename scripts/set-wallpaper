@@ -1,5 +1,7 @@
 #!/bin/bash
-# Set wallpaper via Caelestia (Material You dynamic theming)
+# ╔══════════════════════════════════════════════════╗
+# ║  Set Wallpaper & Persist across Reboots          ║
+# ╚══════════════════════════════════════════════════╝
 
 IMG="$1"
 if [ -z "$IMG" ] || [ ! -f "$IMG" ]; then
@@ -7,8 +9,19 @@ if [ -z "$IMG" ] || [ ! -f "$IMG" ]; then
     exit 1
 fi
 
-export WAYLAND_DISPLAY=wayland-1
-export XDG_RUNTIME_DIR=/run/user/$(id -u)
+# Get absolute path
+IMG_PATH="$(realpath "$IMG")"
 
-caelestia wallpaper -f "$IMG"
-notify-send -i "$IMG" "Caelestia" "Wallpaper set & Material You theme applied!"
+# Ensure directories exist
+mkdir -p ~/.cache ~/.local/state/caelestia/wallpaper
+
+# Save persistent path
+echo "$IMG_PATH" > ~/.cache/current_wallpaper
+echo "$IMG_PATH" > ~/.local/state/caelestia/wallpaper/path.txt
+
+# Apply to Caelestia Shell
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+caelestia wallpaper -f "$IMG_PATH"
+notify-send -i "$IMG_PATH" "Caelestia" "Wallpaper set & saved for next boots!"
