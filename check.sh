@@ -1,18 +1,34 @@
 #!/bin/bash
 # ╔══════════════════════════════════════════════════════════╗
 # ║  System Health Check — Archlinux + Hyprland              ║
-# ║  Verifies all required components & configs              ║
+# ║  Verifies all required components & configs by profile   ║
+# ║                                                          ║
+# ║  Usage:                                                  ║
+# ║    ./check.sh            # Auto-detect installed profile ║
+# ║    ./check.sh --minimal  # Check minimal components only ║
+# ║    ./check.sh --rice     # Check core + rice components  ║
+# ║    ./check.sh --full     # Check all components          ║
 # ╚══════════════════════════════════════════════════════════╝
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
 ok=0
 warn=0
 fail=0
+
+# Profile detection / override
+CHECK_MODE="auto"
+case "${1:-}" in
+    --minimal) CHECK_MODE="minimal" ;;
+    --rice)    CHECK_MODE="rice" ;;
+    --dev)     CHECK_MODE="dev" ;;
+    --full)    CHECK_MODE="full" ;;
+esac
 
 check_cmd() {
     local name="$1"
@@ -68,17 +84,16 @@ echo -e "\n${CYAN}════════════════════�
 echo -e "${CYAN}  System Health Check — Archlinux + Hyprland${NC}"
 echo -e "${CYAN}══════════════════════════════════════════════${NC}\n"
 
-# ── Core Components ──
+# ── 1. Core Components (Always Required) ──
 echo -e "${CYAN}── Core Components ──${NC}"
 check_cmd "lspci (pciutils)"  "lspci"
 check_cmd "Hyprland"          "Hyprland"
 check_cmd "Foot terminal"     "foot"
 check_cmd "Fish shell"        "fish"
 check_cmd "Fuzzel launcher"   "fuzzel"
-check_cmd "Mako notifications" "mako" optional
 check_cmd "Thunar file manager" "thunar"
 
-# ── Wayland & Display ──
+# ── 2. Wayland & Display ──
 echo -e "\n${CYAN}── Wayland & Display ──${NC}"
 check_cmd "Hyprlock"          "hyprlock"
 check_cmd "Hypridle"          "hypridle"
@@ -86,31 +101,21 @@ check_cmd "grim (screenshot)" "grim"
 check_cmd "slurp (select)"    "slurp"
 check_cmd "wl-copy"           "wl-copy"
 check_cmd "cliphist"          "cliphist"
-check_cmd "swappy"            "swappy"            optional
 check_cmd "brightnessctl"     "brightnessctl"
 
-# ── Audio ──
+# ── 3. Audio ──
 echo -e "\n${CYAN}── Audio ──${NC}"
 check_pkg "PipeWire"          "pipewire"
 check_pkg "WirePlumber"       "wireplumber"
 check_cmd "pavucontrol"       "pavucontrol"
 check_cmd "playerctl"         "playerctl"
 
-# ── Networking ──
+# ── 4. Networking ──
 echo -e "\n${CYAN}── Networking ──${NC}"
 check_service "NetworkManager"    "NetworkManager"
 check_service "Bluetooth"         "bluetooth"
 
-# ── Rice & Theming (Optional / Rice Profile) ──
-echo -e "\n${CYAN}── Rice & Theming ──${NC}"
-check_cmd "Caelestia CLI"     "caelestia"         optional
-check_cmd "Fastfetch"         "fastfetch"         optional
-check_cmd "Cava visualizer"   "cava"              optional
-check_cmd "Waypaper"          "waypaper"           optional
-check_cmd "Viewnior"          "viewnior"           optional
-check_cmd "Starship prompt"   "starship"           optional
-
-# ── GPU & Driver Detection ──
+# ── 5. GPU & Driver Detection ──
 echo -e "\n${CYAN}── GPU & Driver Detection ──${NC}"
 if command -v lspci &>/dev/null && lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
     echo -e "  ${GREEN}[OK]${NC}   NVIDIA GPU detected"
@@ -144,13 +149,36 @@ else
     ((fail++))
 fi
 
-# ── Extras ──
-echo -e "\n${CYAN}── Extras ──${NC}"
+# ── 6. Rice & Theming (Profile-Aware) ──
+echo -e "\n${CYAN}── Rice & Theming Profile ──${NC}"
+HAS_RICE=false
+if [ "$CHECK_MODE" = "rice" ] || [ "$CHECK_MODE" = "full" ] || command -v caelestia &>/dev/null; then
+    HAS_RICE=true
+fi
+
+if [ "$HAS_RICE" = true ]; then
+    echo -e "  ${BLUE}[INFO]${NC} Rice profile detected / active"
+    check_cmd "Caelestia CLI"     "caelestia"
+    check_cmd "Fastfetch"         "fastfetch"         optional
+    check_cmd "Cava visualizer"   "cava"              optional
+    check_cmd "Waypaper"          "waypaper"           optional
+    check_cmd "Viewnior"          "viewnior"           optional
+    check_cmd "Mako notifications" "mako"              optional
+    check_cmd "swappy"            "swappy"            optional
+    check_cmd "Starship prompt"   "starship"           optional
+else
+    echo -e "  ${BLUE}[INFO]${NC} Minimal profile active (Caelestia Shell not required)"
+    check_cmd "Mako notifications" "mako"              optional
+    check_cmd "Starship prompt"   "starship"           optional
+fi
+
+# ── 7. Extras & Package Manager ──
+echo -e "\n${CYAN}── Extras & AUR ──${NC}"
+check_cmd "yay (AUR)"        "yay"
 check_cmd "momoisay"          "momoisay"           optional
 check_cmd "Firefox"           "firefox"            optional
-check_cmd "yay (AUR)"        "yay"
 
-# ── Config Files ──
+# ── 8. Config Files Verification ──
 echo -e "\n${CYAN}── Core Config Files ──${NC}"
 core_configs=(
     "$HOME/.config/hypr/env.conf"
@@ -171,7 +199,28 @@ for cfg in "${core_configs[@]}"; do
     fi
 done
 
-# ── Hyprland Runtime Syntax Check (if inside session) ──
+if [ "$HAS_RICE" = true ]; then
+    echo -e "\n${CYAN}── Rice Config Files ──${NC}"
+    rice_configs=(
+        "$HOME/.config/caelestia/hypr-vars.lua"
+        "$HOME/.config/caelestia/hypr-user.conf"
+        "$HOME/.config/cava/config"
+        "$HOME/.config/fastfetch/config.jsonc"
+        "$HOME/.config/waypaper/config.ini"
+    )
+    for cfg in "${rice_configs[@]}"; do
+        name="$(basename "$(dirname "$cfg")")/$(basename "$cfg")"
+        if [ -f "$cfg" ]; then
+            echo -e "  ${GREEN}[OK]${NC}   $name"
+            ((ok++))
+        else
+            echo -e "  ${YELLOW}[WARN]${NC} $name — not found"
+            ((warn++))
+        fi
+    done
+fi
+
+# ── 9. Hyprland Runtime Syntax Check (if inside session) ──
 if command -v hyprctl &>/dev/null && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
     echo -e "\n${CYAN}── Hyprland Runtime ──${NC}"
     config_errs="$(hyprctl configerrors 2>/dev/null || true)"
@@ -189,7 +238,7 @@ fi
 echo -e "\n${CYAN}══════════════════════════════════════════════${NC}"
 echo -e "  ${GREEN}OK: $ok${NC}  ${YELLOW}WARN: $warn${NC}  ${RED}FAIL: $fail${NC}"
 if [ "$fail" -eq 0 ]; then
-    echo -e "  ${GREEN}✔ System is ready!${NC}"
+    echo -e "  ${GREEN}✔ System health check passed!${NC}"
 else
     echo -e "  ${RED}⚠ Some components are missing. Run ./install.sh to fix.${NC}"
 fi
