@@ -235,7 +235,7 @@ print_success "Caelestia Shell installed"
 print_step "Step 6/8: Backing up & copying dotfiles"
 
 # Create directories
-mkdir -p ~/.config/{caelestia,hypr,foot,fuzzel,mako,gtk-3.0,fastfetch,cava,fish,Thunar}
+mkdir -p ~/.config/{caelestia,hypr,foot,fuzzel,mako,gtk-3.0,fastfetch,cava,fish,Thunar,waypaper}
 mkdir -p ~/.local/bin
 mkdir -p ~/Pictures/Wallpapers
 

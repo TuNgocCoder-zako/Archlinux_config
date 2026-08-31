@@ -13,7 +13,7 @@ return {
     -- Apps
     terminal            = "foot",
     browser             = "firefox",
-    editor              = "codium",
+    editor              = "nvim",
     fileExplorer        = "thunar",
     audioSettings       = "pavucontrol",
 

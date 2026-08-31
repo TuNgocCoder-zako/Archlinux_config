@@ -1,4 +1,5 @@
 # Dev — Development tools (optional)
+neovim
 python
 python-pillow
 pybind11
