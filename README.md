@@ -115,7 +115,7 @@ The installer **auto-detects** your GPU and installs appropriate drivers:
 
 | GPU | Driver | Env Profile |
 |-----|--------|-------------|
-| NVIDIA | `nvidia-dkms`, `nvidia-utils`, `egl-wayland` | `env-nvidia.conf` |
+| NVIDIA | `nvidia-dkms` / `nvidia-open-dkms`, `nvidia-utils`, `egl-wayland` | `env-nvidia.conf` |
 | AMD | `vulkan-radeon`, `libva-mesa-driver` | `env-amd.conf` |
 | Intel | `vulkan-intel`, `intel-media-driver` | `env-intel.conf` |
 | VMware / Generic | Mesa / VM Fallback | `env-vmware.conf` |
