@@ -1,6 +1,4 @@
-# Rice — Theming & aesthetic packages
+# Rice — Theming & aesthetic packages (Official Pacman repos)
 fastfetch
 cava
 viewnior
-swappy
-waypaper

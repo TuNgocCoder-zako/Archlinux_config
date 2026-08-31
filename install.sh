@@ -232,6 +232,8 @@ if [ "$INSTALL_RICE" = true ]; then
         papirus-icon-theme
         catppuccin-gtk-theme-mocha
         bibata-cursor-theme-bin
+        waypaper
+        swww
     )
 
     for pkg in "${AUR_PKGS[@]}"; do
