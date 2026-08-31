@@ -6,11 +6,7 @@
 set -g fish_greeting
 
 # Add paths
-fish_add_path ~/.cargo/bin /usr/local/bin
-
-# Wayland display detection for SSH
-set -gx WAYLAND_DISPLAY (ls /run/user/(id -u)/wayland-* 2>/dev/null | head -1 | xargs basename 2>/dev/null)
-set -gx XDG_RUNTIME_DIR /run/user/(id -u)
+fish_add_path ~/.cargo/bin ~/.local/bin /usr/local/bin
 
 # Aliases
 alias ll="eza -la --icons 2>/dev/null; or ls -la"

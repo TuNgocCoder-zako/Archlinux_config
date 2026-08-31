@@ -1,0 +1,6 @@
+# Rice — Theming & aesthetic packages
+fastfetch
+cava
+viewnior
+swappy
+waypaper

@@ -6,8 +6,15 @@
 CACHE_FILE="${HOME}/.cache/current_wallpaper"
 DEFAULT_WALL="${HOME}/Pictures/Wallpapers/emilia_dark.png"
 
-# Wait for Caelestia Shell to be ready
-sleep 1.5
+# Wait for Caelestia Shell to be ready (max 15 seconds)
+TIMEOUT=30
+while ! pgrep -x caelestia > /dev/null 2>&1; do
+    sleep 0.5
+    TIMEOUT=$((TIMEOUT - 1))
+    if [ "$TIMEOUT" -le 0 ]; then
+        exit 1
+    fi
+done
 
 if [ -f "$CACHE_FILE" ] && [ -s "$CACHE_FILE" ]; then
     SAVED_WALL="$(cat "$CACHE_FILE")"

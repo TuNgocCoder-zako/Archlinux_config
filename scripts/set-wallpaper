@@ -19,9 +19,6 @@ mkdir -p ~/.cache ~/.local/state/caelestia/wallpaper
 echo "$IMG_PATH" > ~/.cache/current_wallpaper
 echo "$IMG_PATH" > ~/.local/state/caelestia/wallpaper/path.txt
 
-# Apply to Caelestia Shell
-export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-
+# Apply to Caelestia Shell (let session provide WAYLAND_DISPLAY)
 caelestia wallpaper -f "$IMG_PATH"
 notify-send -i "$IMG_PATH" "Caelestia" "Wallpaper set & saved for next boots!"

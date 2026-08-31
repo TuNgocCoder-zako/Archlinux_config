@@ -1,0 +1,10 @@
+# Dev — Development tools (optional)
+python
+python-pillow
+pybind11
+rust
+cargo
+ripgrep
+bat
+eza
+ethtool

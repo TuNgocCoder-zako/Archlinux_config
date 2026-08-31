@@ -1,0 +1,20 @@
+# Logs & temp
+*.log
+*.bak
+*.backup
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Caches
+.cache/
+.local/
+
+# Secrets — NEVER commit these
+*.pem
+*.key
+*.token
+id_rsa*
