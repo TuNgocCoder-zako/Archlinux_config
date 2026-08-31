@@ -112,13 +112,6 @@ if lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
     echo -e "  ${GREEN}[OK]${NC}   NVIDIA GPU detected"
     check_pkg "nvidia-dkms"   "nvidia-dkms"
     check_pkg "nvidia-utils"  "nvidia-utils"
-    if [ -f ~/.config/hypr/env-nvidia.conf ]; then
-        echo -e "  ${GREEN}[OK]${NC}   NVIDIA env profile installed"
-        ((ok++))
-    else
-        echo -e "  ${RED}[FAIL]${NC} NVIDIA env profile missing (~/.config/hypr/env-nvidia.conf)"
-        ((fail++))
-    fi
 elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'amd'; then
     echo -e "  ${GREEN}[OK]${NC}   AMD GPU detected"
     check_pkg "vulkan-radeon" "vulkan-radeon"
@@ -126,7 +119,16 @@ elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'intel'; then
     echo -e "  ${GREEN}[OK]${NC}   Intel GPU detected"
     check_pkg "vulkan-intel"  "vulkan-intel"
 else
-    echo -e "  ${YELLOW}[WARN]${NC} VMware / Generic GPU — using software rendering"
+    echo -e "  ${YELLOW}[WARN]${NC} VMware / Generic GPU — using fallback profile"
+fi
+
+# Check unified GPU env profile (created by installer)
+if [ -f ~/.config/hypr/env-gpu.conf ]; then
+    echo -e "  ${GREEN}[OK]${NC}   GPU env profile installed (env-gpu.conf)"
+    ((ok++))
+else
+    echo -e "  ${RED}[FAIL]${NC} GPU env profile missing (~/.config/hypr/env-gpu.conf)"
+    ((fail++))
 fi
 
 # ── Extras ──

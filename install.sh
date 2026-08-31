@@ -200,7 +200,7 @@ elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'intel'; then
     print_success "Intel drivers installed"
 
 else
-    print_info "VMware or Generic GPU — using software rendering"
+    print_info "VMware or Generic GPU detected — using fallback profile"
     GPU_ENV_PROFILE="env-vmware.conf"
 fi
 

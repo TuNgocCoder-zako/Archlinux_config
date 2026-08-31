@@ -119,7 +119,7 @@ The installer **auto-detects** your GPU and installs appropriate drivers:
 | NVIDIA | `nvidia-dkms`, `nvidia-utils`, `egl-wayland` | `env-nvidia.conf` |
 | AMD | `vulkan-radeon`, `libva-mesa-driver` | `env-amd.conf` |
 | Intel | `vulkan-intel`, `intel-media-driver` | `env-intel.conf` |
-| VMware / Generic | Mesa (default) | `env-vmware.conf` |
+| VMware / Generic | Mesa / VM Fallback | `env-vmware.conf` |
 
 ### NVIDIA Optimus (Hybrid Laptop)
 
@@ -131,7 +131,7 @@ prime-run steam
 
 ## VMware Notes
 
-The installer automatically applies VMware-compatible settings when no discrete GPU is detected. If running manually, the `env-vmware.conf` profile enables software rendering.
+The installer automatically applies VMware-compatible settings when running in a VM or no discrete GPU is detected. Hardware 3D acceleration is preserved when enabled in VMware settings, with virtual cursor fixes applied (`WLR_NO_HARDWARE_CURSORS=1`). Software rendering fallback options are documented in `env-vmware.conf`.
 
 ## Wallpaper
 

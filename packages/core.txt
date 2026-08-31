@@ -52,3 +52,4 @@ wget
 curl
 jq
 git
+pciutils
