@@ -5,8 +5,8 @@
 # ║                                                          ║
 # ║  Usage:                                                  ║
 # ║    ./install.sh              # Interactive (default)     ║
-# ║    ./install.sh --minimal    # Core only                 ║
-# ║    ./install.sh --rice       # Core + Rice               ║
+# ║    ./install.sh --minimal    # Core only (no rice/sddm)  ║
+# ║    ./install.sh --rice       # Core + Caelestia Rice     ║
 # ║    ./install.sh --full       # Core + Rice + Opt + Dev   ║
 # ║    ./install.sh --dev        # Core + Dev tools          ║
 # ╚══════════════════════════════════════════════════════════╝
@@ -60,9 +60,9 @@ case "${1:-}" in
     --help|-h)
         echo "Usage: ./install.sh [--minimal|--rice|--full|--dev]"
         echo ""
-        echo "  --minimal   Core packages only (Hyprland, Foot, Fish, etc.)"
-        echo "  --rice      Core + theming/aesthetic packages"
-        echo "  --full      Core + Rice + Optional + Dev"
+        echo "  --minimal   Core only (Hyprland, Foot, Fish, PipeWire, GPU drivers)"
+        echo "  --rice      Core + Caelestia Shell + Material You Theming"
+        echo "  --full      Core + Rice + Optional (Firefox) + Dev tools"
         echo "  --dev       Core + development tools"
         echo "  (no flag)   Interactive mode — choose what to install"
         exit 0
@@ -114,10 +114,10 @@ if [ "$INSTALL_MODE" = "interactive" ]; then
     echo -e "${PINK}Designed for bare metal machines (also works on VMware).${NC}"
     echo ""
     echo -e "${CYAN}Select install profile:${NC}"
-    echo -e "  1) Minimal  — Core packages only"
-    echo -e "  2) Rice     — Core + theming"
+    echo -e "  1) Minimal  — Core packages only (No rice/theming)"
+    echo -e "  2) Rice     — Core + Caelestia Shell & theming"
     echo -e "  3) Full     — Core + Rice + Optional + Dev"
-    echo -e "  4) Dev      — Core + dev tools"
+    echo -e "  4) Dev      — Core + development tools"
     echo ""
     read -r -p "Choose [1-4] (default: 2): " choice
     case "$choice" in
@@ -191,9 +191,9 @@ print_step "Step 4/8: Detecting GPU & Installing Drivers"
 GPU_ENV_PROFILE=""
 
 if lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
-    print_info "NVIDIA GPU detected — Installing nvidia-open-dkms drivers..."
+    print_info "NVIDIA GPU detected — Installing nvidia-dkms drivers..."
     sudo pacman -S --needed --noconfirm \
-        nvidia-open-dkms nvidia-utils lib32-nvidia-utils \
+        nvidia-dkms nvidia-utils lib32-nvidia-utils \
         libva-nvidia-driver egl-wayland nvidia-prime
 
     sudo systemctl enable nvidia-suspend.service 2>/dev/null || true
@@ -247,7 +247,7 @@ if [ "$INSTALL_RICE" = true ]; then
     caelestia install || print_warning "Caelestia installer finished with notices"
     print_success "Caelestia Shell installed"
 else
-    print_info "Skipping Caelestia Shell & rice themes for $INSTALL_MODE profile"
+    print_info "Skipping Caelestia Shell & AUR rice themes for $INSTALL_MODE profile"
 fi
 
 # ═══════════════════════════════════════════════
@@ -304,14 +304,12 @@ fi
 print_success "Dotfiles copied (old configs backed up with .backup.* suffix)"
 
 # ═══════════════════════════════════════════════
-# Step 7: SDDM Theme
+# Step 7: SDDM Theme (Rice / Full only)
 # ═══════════════════════════════════════════════
 print_step "Step 7/8: Setting up Display Manager (SDDM)"
 
-sudo pacman -S --needed --noconfirm sddm 2>/dev/null || true
-
 if [ "$INSTALL_RICE" = true ]; then
-    sudo pacman -S --needed --noconfirm qt5-graphicaleffects qt5-quickcontrols2 \
+    sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 \
         qt5-svg qt6-svg qt6-declarative 2>/dev/null || true
 
     SDDM_TMP="/tmp/sddm-astronaut-theme-$$"
@@ -342,7 +340,7 @@ EOF'
         print_warning "SDDM theme clone failed (network?). Existing theme preserved."
     fi
 else
-    print_info "Standard SDDM enabled (skipping astronaut theme for $INSTALL_MODE)"
+    print_info "Skipping SDDM display manager theme for $INSTALL_MODE profile"
 fi
 
 # ═══════════════════════════════════════════════
@@ -353,7 +351,10 @@ print_step "Step 8/8: Enabling services & finalizing"
 sudo systemctl enable --now NetworkManager 2>/dev/null || true
 sudo systemctl enable --now bluetooth 2>/dev/null || true
 sudo systemctl enable --now power-profiles-daemon 2>/dev/null || true
-sudo systemctl enable sddm 2>/dev/null || true
+
+if [ "$INSTALL_RICE" = true ]; then
+    sudo systemctl enable sddm 2>/dev/null || true
+fi
 
 # Set Fish as default shell
 if [ "${SHELL:-}" != "$(which fish)" ]; then
@@ -389,7 +390,7 @@ echo -e "${CYAN}  Profile: ${PINK}$INSTALL_MODE${NC}"
 echo -e "${CYAN}  GPU:     ${PINK}${GPU_ENV_PROFILE:-auto}${NC}"
 echo ""
 echo -e "${CYAN}  Next steps:${NC}"
-echo -e "${GREEN}  1. Log out and log back in${NC}"
+echo -e "${GREEN}  1. Log out and log back in (or reboot)${NC}"
 if [ "$INSTALL_RICE" = true ]; then
     echo -e "${GREEN}  2. Set wallpaper: ${PINK}caelestia wallpaper -f ~/Pictures/Wallpapers/emilia_dark.png${NC}"
 fi

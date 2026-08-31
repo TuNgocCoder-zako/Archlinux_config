@@ -52,20 +52,15 @@ check_service() {
     local name="$1"
     local svc="$2"
 
-    local enabled=0
-    local active=0
-    systemctl is-enabled --quiet "$svc" 2>/dev/null && enabled=1
-    systemctl is-active --quiet "$svc" 2>/dev/null && active=1
-
-    if [ "$enabled" -eq 1 ] && [ "$active" -eq 1 ]; then
+    if systemctl is-enabled --quiet "$svc" 2>/dev/null && systemctl is-active --quiet "$svc" 2>/dev/null; then
         echo -e "  ${GREEN}[OK]${NC}   $name (enabled & active)"
         ((ok++))
-    elif [ "$enabled" -eq 1 ]; then
-        echo -e "  ${YELLOW}[WARN]${NC} $name (enabled, currently inactive)"
+    elif systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+        echo -e "  ${YELLOW}[WARN]${NC} $name (enabled but inactive)"
         ((warn++))
     else
-        echo -e "  ${RED}[FAIL]${NC} $name — service not enabled"
-        ((fail++))
+        echo -e "  ${YELLOW}[WARN]${NC} $name (not enabled)"
+        ((warn++))
     fi
 }
 
@@ -119,14 +114,14 @@ check_cmd "Starship prompt"   "starship"           optional
 echo -e "\n${CYAN}── GPU & Driver Detection ──${NC}"
 if command -v lspci &>/dev/null && lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
     echo -e "  ${GREEN}[OK]${NC}   NVIDIA GPU detected"
-    if pacman -Qi nvidia-open-dkms &>/dev/null; then
-        echo -e "  ${GREEN}[OK]${NC}   nvidia-open-dkms installed"
-        ((ok++))
-    elif pacman -Qi nvidia-dkms &>/dev/null; then
+    if pacman -Qi nvidia-dkms &>/dev/null; then
         echo -e "  ${GREEN}[OK]${NC}   nvidia-dkms installed"
         ((ok++))
+    elif pacman -Qi nvidia-open-dkms &>/dev/null; then
+        echo -e "  ${GREEN}[OK]${NC}   nvidia-open-dkms installed"
+        ((ok++))
     else
-        echo -e "  ${RED}[FAIL]${NC} nvidia-open-dkms or nvidia-dkms missing"
+        echo -e "  ${RED}[FAIL]${NC} nvidia-dkms or nvidia-open-dkms missing"
         ((fail++))
     fi
     check_pkg "nvidia-utils"  "nvidia-utils"
@@ -140,7 +135,7 @@ else
     echo -e "  ${YELLOW}[WARN]${NC} VMware / Generic GPU — using fallback profile"
 fi
 
-# Check unified GPU env profile (created by installer)
+# Unified GPU env profile check (created by installer for ALL GPUs)
 if [ -f "$HOME/.config/hypr/env-gpu.conf" ]; then
     echo -e "  ${GREEN}[OK]${NC}   GPU env profile installed (~/.config/hypr/env-gpu.conf)"
     ((ok++))
