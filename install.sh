@@ -261,7 +261,7 @@ print_step "Step 6/8: Backing up & copying dotfiles"
 mkdir -p ~/.config/{hypr,foot,fuzzel,fish,Thunar}
 mkdir -p ~/.local/bin
 
-# Hyprland env (common)
+# Hyprland configs (common)
 copy_with_backup "$DOTFILES_DIR/hypr/env.conf" ~/.config/hypr/env.conf
 copy_with_backup "$DOTFILES_DIR/hypr/hypridle.conf" ~/.config/hypr/hypridle.conf
 
@@ -270,11 +270,15 @@ if [ -n "$GPU_ENV_PROFILE" ] && [ -f "$DOTFILES_DIR/hypr/$GPU_ENV_PROFILE" ]; th
     backup_config "$HOME/.config/hypr/env-gpu.conf"
     cp -v "$DOTFILES_DIR/hypr/$GPU_ENV_PROFILE" ~/.config/hypr/env-gpu.conf
     print_success "GPU profile applied: $GPU_ENV_PROFILE → env-gpu.conf"
+fi
 
-    # Ensure hyprland.conf sources it
-    if ! grep -q 'env-gpu.conf' ~/.config/hypr/hyprland.conf 2>/dev/null; then
-        echo 'source = ~/.config/hypr/env-gpu.conf' >> ~/.config/hypr/hyprland.conf 2>/dev/null || true
-    fi
+# Ensure hyprland.conf exists and sources common & GPU envs
+touch ~/.config/hypr/hyprland.conf
+if ! grep -q 'env\.conf' ~/.config/hypr/hyprland.conf 2>/dev/null; then
+    echo 'source = ~/.config/hypr/env.conf' >> ~/.config/hypr/hyprland.conf
+fi
+if ! grep -q 'env-gpu\.conf' ~/.config/hypr/hyprland.conf 2>/dev/null; then
+    echo 'source = ~/.config/hypr/env-gpu.conf' >> ~/.config/hypr/hyprland.conf
 fi
 
 # Base Terminal, Launcher, Fish, Thunar
@@ -295,6 +299,11 @@ if [ "$INSTALL_RICE" = true ]; then
     copy_with_backup "$DOTFILES_DIR/fastfetch/config.jsonc" ~/.config/fastfetch/config.jsonc
     copy_with_backup "$DOTFILES_DIR/cava/config" ~/.config/cava/config
     copy_with_backup "$DOTFILES_DIR/waypaper/config.ini" ~/.config/waypaper/config.ini
+
+    # Ensure hyprland.conf sources caelestia user rules & keybinds
+    if ! grep -q 'hypr-user\.conf' ~/.config/hypr/hyprland.conf 2>/dev/null; then
+        echo 'source = ~/.config/caelestia/hypr-user.conf' >> ~/.config/hypr/hyprland.conf
+    fi
 fi
 
 # Scripts
