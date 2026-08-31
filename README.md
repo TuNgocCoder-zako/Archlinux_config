@@ -9,7 +9,7 @@ Modern Arch Linux dotfiles with **Caelestia Shell** (Material You dynamic themin
 - **GPU Auto-Detection** — Automatic NVIDIA / AMD / Intel / VMware driver setup
 - **Modular Installer** — Choose `--minimal`, `--rice`, `--full`, or `--dev` profiles
 - **Config Backup** — Automatic backup of existing configs before overwriting
-- **System Health Check** — `./check.sh` verifies all components
+- **System Health Check** — `./check.sh` verifies all components & service statuses
 
 ## Requirements
 
@@ -31,15 +31,15 @@ chmod +x install.sh check.sh
 | Flag | Description |
 |------|-------------|
 | *(none)* | Interactive — choose profile at runtime |
-| `--minimal` | Core only: Hyprland, Foot, Fish, PipeWire, etc. |
-| `--rice` | Core + theming: Cava, Fastfetch, Waypaper, etc. |
-| `--full` | Everything including Firefox and dev tools |
-| `--dev` | Core + development tools (Python, Rust, ripgrep, etc.) |
+| `--minimal` | Core only: Hyprland, Foot, Fish, PipeWire, GPU drivers |
+| `--rice` | Core + theming: Caelestia Shell, SDDM Astronaut, Cava, Fastfetch, Waypaper |
+| `--full` | Core + Rice + Optional (Firefox) + Dev tools |
+| `--dev` | Core + development tools (Neovim, Python, Rust, ripgrep, etc.) |
 
 ### Post-Install
 
 1. Log out and log back in (or reboot)
-2. Set your wallpaper:
+2. Set your wallpaper (if Rice profile installed):
    ```bash
    caelestia wallpaper -f ~/Pictures/Wallpapers/emilia_dark.png
    ```
@@ -73,7 +73,7 @@ chmod +x install.sh check.sh
 │   │   └── hypridle.conf      # Auto-lock & screen off
 │   ├── caelestia/
 │   │   ├── hypr-vars.lua      # Caelestia variables & keybinds
-│   │   └── hypr-user.conf     # Hyprland user overrides
+│   │   └── hypr-user.conf     # Hyprland user overrides & rules
 │   ├── foot/foot.ini          # Terminal (Catppuccin Mocha)
 │   ├── fuzzel/fuzzel.ini      # App launcher
 │   ├── fish/config.fish       # Fish shell config
@@ -93,20 +93,19 @@ chmod +x install.sh check.sh
 
 | Key | Action |
 |-----|--------|
-| `Super + T` / `Super + Return` | Terminal (Foot) |
-| `Super + D` | App launcher (Fuzzel) |
-| `Super + V` | Clipboard history (Cliphist) |
-| `Super + C` | Audio visualizer (Cava) |
-| `Super + I` | System info (Fastfetch) |
-| `Super + N` | Sidebar / Control Center |
-| `Super + E` | File manager (Thunar) |
+| `Super + T` / `Super + Return` / `Alt + Return` | Terminal (Foot) |
+| `Super + D` / `Alt + D` | App launcher (Fuzzel) |
+| `Super + V` / `Alt + V` | Clipboard history (Cliphist) |
+| `Super + C` / `Alt + C` | Audio visualizer (Cava) |
+| `Super + I` / `Alt + I` | System info (Fastfetch) |
+| `Super + N` / `Alt + N` | Sidebar / Control Center (Caelestia) |
+| `Super + E` / `Alt + E` | File manager (Thunar) |
 | `Super + W` | Browser (Firefox) |
 | `Super + L` | Lock screen |
-| `Super + Q` | Close window |
-| `Super + F` | Fullscreen |
+| `Super + Q` / `Alt + Q` | Close window |
 | `Alt + S` | Screenshot to clipboard |
 | `Super + Shift + S` | Screenshot + annotation (Swappy) |
-| `Super + Shift + W` | Wallpaper picker (Waypaper) |
+| `Super + Shift + W` / `Alt + W` | Wallpaper picker (Waypaper) |
 | `Super + 1-9` | Switch workspace |
 | `Super + Shift + Q` | Exit Hyprland |
 
@@ -116,7 +115,7 @@ The installer **auto-detects** your GPU and installs appropriate drivers:
 
 | GPU | Driver | Env Profile |
 |-----|--------|-------------|
-| NVIDIA | `nvidia-dkms`, `nvidia-utils`, `egl-wayland` | `env-nvidia.conf` |
+| NVIDIA | `nvidia-open-dkms`, `nvidia-utils`, `egl-wayland` | `env-nvidia.conf` |
 | AMD | `vulkan-radeon`, `libva-mesa-driver` | `env-amd.conf` |
 | Intel | `vulkan-intel`, `intel-media-driver` | `env-intel.conf` |
 | VMware / Generic | Mesa / VM Fallback | `env-vmware.conf` |
@@ -131,7 +130,7 @@ prime-run steam
 
 ## VMware Notes
 
-The installer automatically applies VMware-compatible settings when running in a VM or no discrete GPU is detected. Hardware 3D acceleration is preserved when enabled in VMware settings, with virtual cursor fixes applied (`WLR_NO_HARDWARE_CURSORS=1`). Software rendering fallback options are documented in `env-vmware.conf`.
+The installer automatically applies VMware-compatible settings when running in a VM or when no discrete GPU is detected. Hardware 3D acceleration is preserved when enabled in VMware settings, with virtual cursor fixes applied (`WLR_NO_HARDWARE_CURSORS=1`). Software rendering fallback options are documented in `env-vmware.conf`.
 
 ## Wallpaper
 

@@ -7,11 +7,11 @@
 # ║    ./install.sh              # Interactive (default)     ║
 # ║    ./install.sh --minimal    # Core only                 ║
 # ║    ./install.sh --rice       # Core + Rice               ║
-# ║    ./install.sh --full       # Everything                ║
+# ║    ./install.sh --full       # Core + Rice + Opt + Dev   ║
 # ║    ./install.sh --dev        # Core + Dev tools          ║
 # ╚══════════════════════════════════════════════════════════╝
 
-set -e
+set -Eeuo pipefail
 
 # ── Colors ──
 RED='\033[0;31m'
@@ -43,6 +43,8 @@ print_success() { echo -e "${GREEN}  ✔ $1${NC}"; }
 print_warning() { echo -e "${RED}  ⚠ $1${NC}"; }
 print_info() { echo -e "${BLUE}  ℹ $1${NC}"; }
 
+trap 'print_warning "Error on line $LINENO (exit status: $?)"' ERR
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_DIR="$SCRIPT_DIR/dotfiles"
 SCRIPTS_DIR="$SCRIPT_DIR/scripts"
@@ -60,7 +62,7 @@ case "${1:-}" in
         echo ""
         echo "  --minimal   Core packages only (Hyprland, Foot, Fish, etc.)"
         echo "  --rice      Core + theming/aesthetic packages"
-        echo "  --full      Everything (Core + Rice + Optional + Dev)"
+        echo "  --full      Core + Rice + Optional + Dev"
         echo "  --dev       Core + development tools"
         echo "  (no flag)   Interactive mode — choose what to install"
         exit 0
@@ -87,6 +89,16 @@ backup_config() {
     fi
 }
 
+# ── Copy dotfiles with backup ──
+copy_with_backup() {
+    local src="$1"
+    local dest="$2"
+    if [ -f "$src" ]; then
+        backup_config "$dest"
+        cp -v "$src" "$dest"
+    fi
+}
+
 print_banner
 
 # ═══════════════════════════════════════════════
@@ -104,10 +116,10 @@ if [ "$INSTALL_MODE" = "interactive" ]; then
     echo -e "${CYAN}Select install profile:${NC}"
     echo -e "  1) Minimal  — Core packages only"
     echo -e "  2) Rice     — Core + theming"
-    echo -e "  3) Full     — Everything"
+    echo -e "  3) Full     — Core + Rice + Optional + Dev"
     echo -e "  4) Dev      — Core + dev tools"
     echo ""
-    read -p "Choose [1-4] (default: 2): " choice
+    read -r -p "Choose [1-4] (default: 2): " choice
     case "$choice" in
         1) INSTALL_MODE="minimal" ;;
         3) INSTALL_MODE="full" ;;
@@ -116,7 +128,12 @@ if [ "$INSTALL_MODE" = "interactive" ]; then
     esac
 fi
 
-print_info "Install mode: $INSTALL_MODE"
+INSTALL_RICE=false
+if [ "$INSTALL_MODE" = "rice" ] || [ "$INSTALL_MODE" = "full" ]; then
+    INSTALL_RICE=true
+fi
+
+print_info "Install mode: $INSTALL_MODE (Rice features: $INSTALL_RICE)"
 
 # ═══════════════════════════════════════════════
 # Step 1: System Update
@@ -174,9 +191,9 @@ print_step "Step 4/8: Detecting GPU & Installing Drivers"
 GPU_ENV_PROFILE=""
 
 if lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
-    print_info "NVIDIA GPU detected — Installing drivers..."
+    print_info "NVIDIA GPU detected — Installing nvidia-open-dkms drivers..."
     sudo pacman -S --needed --noconfirm \
-        nvidia-dkms nvidia-utils lib32-nvidia-utils \
+        nvidia-open-dkms nvidia-utils lib32-nvidia-utils \
         libva-nvidia-driver egl-wayland nvidia-prime
 
     sudo systemctl enable nvidia-suspend.service 2>/dev/null || true
@@ -205,53 +222,42 @@ else
 fi
 
 # ═══════════════════════════════════════════════
-# Step 5: Install Caelestia Shell via AUR
+# Step 5: Install Caelestia Shell (Rice / Full only)
 # ═══════════════════════════════════════════════
-print_step "Step 5/8: Installing Caelestia Shell (AUR)"
+print_step "Step 5/8: Desktop Shell & Themes"
 
-AUR_PKGS=(
-    caelestia-cli
-    papirus-icon-theme
-    catppuccin-gtk-theme-mocha
-    bibata-cursor-theme-bin
-)
+if [ "$INSTALL_RICE" = true ]; then
+    AUR_PKGS=(
+        caelestia-cli
+        papirus-icon-theme
+        catppuccin-gtk-theme-mocha
+        bibata-cursor-theme-bin
+    )
 
-for pkg in "${AUR_PKGS[@]}"; do
-    if pacman -Qi "$pkg" &> /dev/null; then
-        print_info "$pkg already installed, skipping"
-    else
-        yay -S --noconfirm "$pkg" || print_warning "Failed to install $pkg"
-    fi
-done
+    for pkg in "${AUR_PKGS[@]}"; do
+        if pacman -Qi "$pkg" &> /dev/null; then
+            print_info "$pkg already installed, skipping"
+        else
+            yay -S --noconfirm "$pkg" || print_warning "Failed to install $pkg"
+        fi
+    done
 
-print_info "Running Caelestia installer..."
-print_info "Recommended: select uwsm (8) for basic setup."
-caelestia install
-print_success "Caelestia Shell installed"
+    print_info "Running Caelestia installer..."
+    print_info "Recommended: select uwsm (8) for basic setup."
+    caelestia install || print_warning "Caelestia installer finished with notices"
+    print_success "Caelestia Shell installed"
+else
+    print_info "Skipping Caelestia Shell & rice themes for $INSTALL_MODE profile"
+fi
 
 # ═══════════════════════════════════════════════
 # Step 6: Backup & Copy dotfiles
 # ═══════════════════════════════════════════════
 print_step "Step 6/8: Backing up & copying dotfiles"
 
-# Create directories
-mkdir -p ~/.config/{caelestia,hypr,foot,fuzzel,mako,gtk-3.0,fastfetch,cava,fish,Thunar,waypaper}
+# Create common directories
+mkdir -p ~/.config/{hypr,foot,fuzzel,fish,Thunar}
 mkdir -p ~/.local/bin
-mkdir -p ~/Pictures/Wallpapers
-
-# ── Copy dotfiles with backup ──
-copy_with_backup() {
-    local src="$1"
-    local dest="$2"
-    if [ -f "$src" ]; then
-        backup_config "$dest"
-        cp -v "$src" "$dest"
-    fi
-}
-
-# Caelestia overrides
-copy_with_backup "$DOTFILES_DIR/caelestia/hypr-vars.lua" ~/.config/caelestia/hypr-vars.lua
-copy_with_backup "$DOTFILES_DIR/caelestia/hypr-user.conf" ~/.config/caelestia/hypr-user.conf
 
 # Hyprland env (common)
 copy_with_backup "$DOTFILES_DIR/hypr/env.conf" ~/.config/hypr/env.conf
@@ -269,16 +275,25 @@ if [ -n "$GPU_ENV_PROFILE" ] && [ -f "$DOTFILES_DIR/hypr/$GPU_ENV_PROFILE" ]; th
     fi
 fi
 
-# Terminal, Launcher, Notifications, GTK, Fastfetch, Cava, Fish, Thunar
+# Base Terminal, Launcher, Fish, Thunar
 copy_with_backup "$DOTFILES_DIR/foot/foot.ini" ~/.config/foot/foot.ini
 copy_with_backup "$DOTFILES_DIR/fuzzel/fuzzel.ini" ~/.config/fuzzel/fuzzel.ini
-copy_with_backup "$DOTFILES_DIR/mako/config" ~/.config/mako/config
-copy_with_backup "$DOTFILES_DIR/gtk-3.0/settings.ini" ~/.config/gtk-3.0/settings.ini
-copy_with_backup "$DOTFILES_DIR/fastfetch/config.jsonc" ~/.config/fastfetch/config.jsonc
-copy_with_backup "$DOTFILES_DIR/cava/config" ~/.config/cava/config
 copy_with_backup "$DOTFILES_DIR/fish/config.fish" ~/.config/fish/config.fish
 copy_with_backup "$DOTFILES_DIR/Thunar/uca.xml" ~/.config/Thunar/uca.xml
-copy_with_backup "$DOTFILES_DIR/waypaper/config.ini" ~/.config/waypaper/config.ini
+
+# Rice dotfiles (only for rice / full)
+if [ "$INSTALL_RICE" = true ]; then
+    mkdir -p ~/.config/{caelestia,mako,gtk-3.0,fastfetch,cava,waypaper}
+    mkdir -p ~/Pictures/Wallpapers
+
+    copy_with_backup "$DOTFILES_DIR/caelestia/hypr-vars.lua" ~/.config/caelestia/hypr-vars.lua
+    copy_with_backup "$DOTFILES_DIR/caelestia/hypr-user.conf" ~/.config/caelestia/hypr-user.conf
+    copy_with_backup "$DOTFILES_DIR/mako/config" ~/.config/mako/config
+    copy_with_backup "$DOTFILES_DIR/gtk-3.0/settings.ini" ~/.config/gtk-3.0/settings.ini
+    copy_with_backup "$DOTFILES_DIR/fastfetch/config.jsonc" ~/.config/fastfetch/config.jsonc
+    copy_with_backup "$DOTFILES_DIR/cava/config" ~/.config/cava/config
+    copy_with_backup "$DOTFILES_DIR/waypaper/config.ini" ~/.config/waypaper/config.ini
+fi
 
 # Scripts
 if [ -d "$SCRIPTS_DIR" ]; then
@@ -289,39 +304,45 @@ fi
 print_success "Dotfiles copied (old configs backed up with .backup.* suffix)"
 
 # ═══════════════════════════════════════════════
-# Step 7: SDDM Theme (safe install)
+# Step 7: SDDM Theme
 # ═══════════════════════════════════════════════
-print_step "Step 7/8: Setting up SDDM Astronaut Theme"
+print_step "Step 7/8: Setting up Display Manager (SDDM)"
 
-sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 \
-    qt5-svg qt6-svg qt6-declarative 2>/dev/null || true
+sudo pacman -S --needed --noconfirm sddm 2>/dev/null || true
 
-SDDM_TMP="/tmp/sddm-astronaut-theme-$$"
-SDDM_DEST="/usr/share/sddm/themes/sddm-astronaut-theme"
+if [ "$INSTALL_RICE" = true ]; then
+    sudo pacman -S --needed --noconfirm qt5-graphicaleffects qt5-quickcontrols2 \
+        qt5-svg qt6-svg qt6-declarative 2>/dev/null || true
 
-# Clone to temp dir first — only replace if successful
-if sudo git clone https://github.com/Keyitdev/sddm-astronaut-theme.git "$SDDM_TMP" 2>/dev/null; then
-    # Clone succeeded — safe to replace
-    sudo rm -rf "$SDDM_DEST"
-    sudo mv "$SDDM_TMP" "$SDDM_DEST"
+    SDDM_TMP="/tmp/sddm-astronaut-theme-$$"
+    SDDM_DEST="/usr/share/sddm/themes/sddm-astronaut-theme"
 
-    # Apply wallpaper & config
-    if [ -f ~/Pictures/Wallpapers/emilia_dark.png ]; then
-        sudo cp ~/Pictures/Wallpapers/emilia_dark.png "$SDDM_DEST/Backgrounds/emilia.png" 2>/dev/null || true
-    fi
-    sudo sed -i 's|^ConfigFile=.*|ConfigFile=Themes/pixel_sakura.conf|' "$SDDM_DEST/metadata.desktop" 2>/dev/null || true
-    sudo sed -i 's/ScaleMode=.*/ScaleMode="Fill"/' "$SDDM_DEST/Themes/pixel_sakura.conf" 2>/dev/null || true
+    # Clone to temp dir first — only replace if successful
+    if sudo git clone https://github.com/Keyitdev/sddm-astronaut-theme.git "$SDDM_TMP" 2>/dev/null; then
+        # Clone succeeded — safe to replace
+        sudo rm -rf "$SDDM_DEST"
+        sudo mv "$SDDM_TMP" "$SDDM_DEST"
 
-    sudo mkdir -p /etc/sddm.conf.d
-    sudo bash -c 'cat << "EOF" > /etc/sddm.conf.d/theme.conf
+        # Apply wallpaper & config
+        if [ -f ~/Pictures/Wallpapers/emilia_dark.png ]; then
+            sudo cp ~/Pictures/Wallpapers/emilia_dark.png "$SDDM_DEST/Backgrounds/emilia.png" 2>/dev/null || true
+        fi
+        sudo sed -i 's|^ConfigFile=.*|ConfigFile=Themes/pixel_sakura.conf|' "$SDDM_DEST/metadata.desktop" 2>/dev/null || true
+        sudo sed -i 's/ScaleMode=.*/ScaleMode="Fill"/' "$SDDM_DEST/Themes/pixel_sakura.conf" 2>/dev/null || true
+
+        sudo mkdir -p /etc/sddm.conf.d
+        sudo bash -c 'cat << "EOF" > /etc/sddm.conf.d/theme.conf
 [Theme]
 Current=sddm-astronaut-theme
 EOF'
-    print_success "SDDM Astronaut theme configured"
+        print_success "SDDM Astronaut theme configured"
+    else
+        # Clone failed — keep existing theme intact
+        sudo rm -rf "$SDDM_TMP"
+        print_warning "SDDM theme clone failed (network?). Existing theme preserved."
+    fi
 else
-    # Clone failed — keep existing theme intact
-    sudo rm -rf "$SDDM_TMP"
-    print_warning "SDDM theme clone failed (network?). Existing theme preserved."
+    print_info "Standard SDDM enabled (skipping astronaut theme for $INSTALL_MODE)"
 fi
 
 # ═══════════════════════════════════════════════
@@ -335,7 +356,7 @@ sudo systemctl enable --now power-profiles-daemon 2>/dev/null || true
 sudo systemctl enable sddm 2>/dev/null || true
 
 # Set Fish as default shell
-if [ "$SHELL" != "$(which fish)" ]; then
+if [ "${SHELL:-}" != "$(which fish)" ]; then
     chsh -s "$(which fish)"
     print_success "Default shell changed to Fish"
 fi
@@ -343,8 +364,8 @@ fi
 # Create user directories
 xdg-user-dirs-update 2>/dev/null || true
 
-# Download default wallpapers (optional, non-blocking)
-if [ ! -f ~/Pictures/Wallpapers/emilia_dark.png ]; then
+# Download default wallpapers (Rice / Full only)
+if [ "$INSTALL_RICE" = true ] && [ ! -f ~/Pictures/Wallpapers/emilia_dark.png ]; then
     print_info "Downloading default wallpapers..."
     curl -sL -o ~/Pictures/Wallpapers/emilia_dark.png \
         "https://raw.githubusercontent.com/doki-theme/doki-theme-assets/master/backgrounds/wallpapers/emilia_dark.png" 2>/dev/null || true
@@ -369,16 +390,19 @@ echo -e "${CYAN}  GPU:     ${PINK}${GPU_ENV_PROFILE:-auto}${NC}"
 echo ""
 echo -e "${CYAN}  Next steps:${NC}"
 echo -e "${GREEN}  1. Log out and log back in${NC}"
-echo -e "${GREEN}  2. Set wallpaper: ${PINK}caelestia wallpaper -f ~/Pictures/Wallpapers/emilia_dark.png${NC}"
+if [ "$INSTALL_RICE" = true ]; then
+    echo -e "${GREEN}  2. Set wallpaper: ${PINK}caelestia wallpaper -f ~/Pictures/Wallpapers/emilia_dark.png${NC}"
+fi
 echo -e "${GREEN}  3. Run health check: ${PINK}./check.sh${NC}"
 echo ""
 echo -e "${CYAN}  Key bindings:${NC}"
-echo -e "${GREEN}  Super + T          →  Terminal (Foot)${NC}"
-echo -e "${GREEN}  Super (tap)        →  App Launcher${NC}"
-echo -e "${GREEN}  Super + N          →  Sidebar / Control Center${NC}"
-echo -e "${GREEN}  Super + Q          →  Close window${NC}"
-echo -e "${GREEN}  Super + E          →  File manager (Thunar)${NC}"
-echo -e "${GREEN}  Super + L          →  Lock screen${NC}"
+echo -e "${GREEN}  Super + T / Super + Return →  Terminal (Foot)${NC}"
+echo -e "${GREEN}  Super + D / Alt + D        →  App Launcher${NC}"
+echo -e "${GREEN}  Super + V / Alt + V        →  Clipboard History${NC}"
+echo -e "${GREEN}  Super + N / Alt + N        →  Sidebar / Control Center${NC}"
+echo -e "${GREEN}  Super + Q / Alt + Q        →  Close window${NC}"
+echo -e "${GREEN}  Super + E / Alt + E        →  File manager (Thunar)${NC}"
+echo -e "${GREEN}  Super + L                  →  Lock screen${NC}"
 echo ""
-echo -e "${PURPLE}  Enjoy your Caelestia Shell rice! 🌸✨${NC}"
+echo -e "${PURPLE}  Enjoy your Arch Linux + Hyprland setup! 🌸✨${NC}"
 echo -e "${PINK}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
