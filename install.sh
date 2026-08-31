@@ -311,8 +311,9 @@ print_success "Dotfiles copied (old configs backed up with .backup.* suffix)"
 print_step "Step 7/8: Setting up Display Manager (SDDM)"
 
 if [ "$INSTALL_RICE" = true ]; then
-    sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 \
-        qt5-svg qt6-svg qt6-declarative 2>/dev/null || true
+    sudo pacman -S --needed --noconfirm sddm \
+        qt6-multimedia-ffmpeg qt6-multimedia qt6-5compat qt6-declarative qt6-svg \
+        qt5-graphicaleffects qt5-quickcontrols2 qt5-svg qt5-multimedia 2>/dev/null || true
 
     SDDM_TMP="/tmp/sddm-astronaut-theme-$$"
     SDDM_DEST="/usr/share/sddm/themes/sddm-astronaut-theme"
