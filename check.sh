@@ -181,6 +181,7 @@ check_cmd "Firefox"           "firefox"            optional
 # ── 8. Config Files Verification ──
 echo -e "\n${CYAN}── Core Config Files ──${NC}"
 core_configs=(
+    "$HOME/.config/hypr/hyprland.conf"
     "$HOME/.config/hypr/env.conf"
     "$HOME/.config/hypr/env-gpu.conf"
     "$HOME/.config/hypr/hypridle.conf"

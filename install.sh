@@ -261,7 +261,8 @@ print_step "Step 6/8: Backing up & copying dotfiles"
 mkdir -p ~/.config/{hypr,foot,fuzzel,fish,Thunar}
 mkdir -p ~/.local/bin
 
-# Hyprland configs (common)
+# Hyprland master configs (common)
+copy_with_backup "$DOTFILES_DIR/hypr/hyprland.conf" ~/.config/hypr/hyprland.conf
 copy_with_backup "$DOTFILES_DIR/hypr/env.conf" ~/.config/hypr/env.conf
 copy_with_backup "$DOTFILES_DIR/hypr/hypridle.conf" ~/.config/hypr/hypridle.conf
 
@@ -270,15 +271,6 @@ if [ -n "$GPU_ENV_PROFILE" ] && [ -f "$DOTFILES_DIR/hypr/$GPU_ENV_PROFILE" ]; th
     backup_config "$HOME/.config/hypr/env-gpu.conf"
     cp -v "$DOTFILES_DIR/hypr/$GPU_ENV_PROFILE" ~/.config/hypr/env-gpu.conf
     print_success "GPU profile applied: $GPU_ENV_PROFILE → env-gpu.conf"
-fi
-
-# Ensure hyprland.conf exists and sources common & GPU envs
-touch ~/.config/hypr/hyprland.conf
-if ! grep -q 'env\.conf' ~/.config/hypr/hyprland.conf 2>/dev/null; then
-    echo 'source = ~/.config/hypr/env.conf' >> ~/.config/hypr/hyprland.conf
-fi
-if ! grep -q 'env-gpu\.conf' ~/.config/hypr/hyprland.conf 2>/dev/null; then
-    echo 'source = ~/.config/hypr/env-gpu.conf' >> ~/.config/hypr/hyprland.conf
 fi
 
 # Base Terminal, Launcher, Fish, Thunar
