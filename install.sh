@@ -219,6 +219,9 @@ elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'intel'; then
 else
     print_info "VMware or Generic GPU detected — using fallback profile"
     GPU_ENV_PROFILE="env-vmware.conf"
+    if ! grep -q 'LIBGL_ALWAYS_SOFTWARE=1' /etc/environment 2>/dev/null; then
+        echo 'LIBGL_ALWAYS_SOFTWARE=1' | sudo tee -a /etc/environment >/dev/null || true
+    fi
 fi
 
 # ═══════════════════════════════════════════════
