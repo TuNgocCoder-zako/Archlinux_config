@@ -199,8 +199,13 @@ if lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
     sudo systemctl enable nvidia-suspend.service 2>/dev/null || true
     sudo systemctl enable nvidia-hibernate.service 2>/dev/null || true
     sudo systemctl enable nvidia-resume.service 2>/dev/null || true
+
+    # Enable NVIDIA DRM Modesetting & Framebuffer for Hyprland
+    sudo mkdir -p /etc/modprobe.d
+    echo "options nvidia_drm modeset=1 fbdev=1" | sudo tee /etc/modprobe.d/nvidia.conf >/dev/null || true
+
     GPU_ENV_PROFILE="env-nvidia.conf"
-    print_success "NVIDIA drivers installed"
+    print_success "NVIDIA drivers & DRM modesetting configured"
 
 elif lspci | grep -Ei 'vga|3d|display' | grep -iq 'amd'; then
     print_info "AMD GPU detected — Installing Mesa & Vulkan..."
