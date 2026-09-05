@@ -1,15 +1,8 @@
--- ╔══════════════════════════════════════════════════╗
--- ║  Caelestia Shell — User Variables                ║
--- ║  Arch Linux + Hyprland + Material You            ║
--- ╚══════════════════════════════════════════════════╝
+-- Caelestia Shell — User Variables
 
 local scheme = require("scheme.current")
 
 return {
-    -------------------
-    ----- HYPRLAND -----
-    -------------------
-
     -- Apps
     terminal            = "foot",
     browser             = "firefox",
@@ -17,7 +10,7 @@ return {
     fileExplorer        = "thunar",
     audioSettings       = "pavucontrol",
 
-    -- Blur (enable on bare metal, disable for VMware)
+    -- Blur
     blurEnabled         = true,
     blurSpecialWs       = false,
     blurPopups          = true,
@@ -31,11 +24,7 @@ return {
     windowRounding      = 15,
     windowBorderSize    = 1,
 
-    -------------------
-    ----- KEYBINDS -----
-    -------------------
-
-    -- Custom keybinds (additions to Caelestia defaults)
+    -- Keybinds
     kbTerminal          = { "SUPER + Return", "SUPER + T", "ALT + Return" },
     kbLauncher          = { "SUPER + D", "ALT + D", "SUPER + SUPER_L" },
     kbCloseWindow       = { "SUPER + Q", "ALT + Q" },

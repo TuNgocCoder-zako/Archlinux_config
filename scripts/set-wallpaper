@@ -1,24 +1,12 @@
 #!/bin/bash
-# ╔══════════════════════════════════════════════════╗
-# ║  Set Wallpaper & Persist across Reboots          ║
-# ╚══════════════════════════════════════════════════╝
+# Set Wallpaper & Persist across Reboots
 
 IMG="$1"
-if [ -z "$IMG" ] || [ ! -f "$IMG" ]; then
-    notify-send "Error" "No valid image file provided"
-    exit 1
-fi
+[ -z "$IMG" ] || [ ! -f "$IMG" ] && { notify-send "Error" "No valid image file provided"; exit 1; }
 
-# Get absolute path
 IMG_PATH="$(realpath "$IMG")"
-
-# Ensure directories exist
 mkdir -p ~/.cache ~/.local/state/caelestia/wallpaper
-
-# Save persistent path
 echo "$IMG_PATH" > ~/.cache/current_wallpaper
 echo "$IMG_PATH" > ~/.local/state/caelestia/wallpaper/path.txt
-
-# Apply to Caelestia Shell (let session provide WAYLAND_DISPLAY)
 caelestia wallpaper -f "$IMG_PATH"
-notify-send -i "$IMG_PATH" "Caelestia" "Wallpaper set & saved for next boots!"
+notify-send -i "$IMG_PATH" "Caelestia" "Wallpaper set & saved!"

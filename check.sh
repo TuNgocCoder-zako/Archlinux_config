@@ -1,27 +1,12 @@
 #!/bin/bash
-# ╔══════════════════════════════════════════════════════════╗
-# ║  System Health Check — Archlinux + Hyprland              ║
-# ║  Verifies all required components & configs by profile   ║
-# ║                                                          ║
-# ║  Usage:                                                  ║
-# ║    ./check.sh            # Auto-detect installed profile ║
-# ║    ./check.sh --minimal  # Check minimal components only ║
-# ║    ./check.sh --rice     # Check core + rice components  ║
-# ║    ./check.sh --full     # Check all components          ║
-# ╚══════════════════════════════════════════════════════════╝
+# System Health Check — Archlinux + Hyprland
+# Usage: ./check.sh [--minimal|--rice|--full]
 
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+GREEN='\033[0;32m' YELLOW='\033[1;33m' RED='\033[0;31m'
+BLUE='\033[0;34m' CYAN='\033[0;36m' NC='\033[0m'
 
-ok=0
-warn=0
-fail=0
+ok=0 warn=0 fail=0
 
-# Profile detection / override
 CHECK_MODE="auto"
 case "${1:-}" in
     --minimal) CHECK_MODE="minimal" ;;
@@ -31,218 +16,156 @@ case "${1:-}" in
 esac
 
 check_cmd() {
-    local name="$1"
-    local cmd="$2"
-    local level="${3:-required}"  # required | optional
-
-    if command -v "$cmd" &> /dev/null; then
-        echo -e "  ${GREEN}[OK]${NC}   $name"
-        ((ok++))
+    local name="$1" cmd="$2" level="${3:-required}"
+    if command -v "$cmd" &>/dev/null; then
+        echo -e "  ${GREEN}[OK]${NC}   $name"; ((ok++))
     elif [ "$level" = "optional" ]; then
-        echo -e "  ${YELLOW}[WARN]${NC} $name — not installed (optional)"
-        ((warn++))
+        echo -e "  ${YELLOW}[WARN]${NC} $name — not installed (optional)"; ((warn++))
     else
-        echo -e "  ${RED}[FAIL]${NC} $name — missing!"
-        ((fail++))
+        echo -e "  ${RED}[FAIL]${NC} $name — missing!"; ((fail++))
     fi
 }
 
 check_pkg() {
-    local name="$1"
-    local pkg="$2"
-    local level="${3:-required}"
-
-    if pacman -Qi "$pkg" &> /dev/null; then
-        echo -e "  ${GREEN}[OK]${NC}   $name"
-        ((ok++))
+    local name="$1" pkg="$2" level="${3:-required}"
+    if pacman -Qi "$pkg" &>/dev/null; then
+        echo -e "  ${GREEN}[OK]${NC}   $name"; ((ok++))
     elif [ "$level" = "optional" ]; then
-        echo -e "  ${YELLOW}[WARN]${NC} $name — not installed (optional)"
-        ((warn++))
+        echo -e "  ${YELLOW}[WARN]${NC} $name — not installed (optional)"; ((warn++))
     else
-        echo -e "  ${RED}[FAIL]${NC} $name — missing package: $pkg"
-        ((fail++))
+        echo -e "  ${RED}[FAIL]${NC} $name — missing package: $pkg"; ((fail++))
     fi
 }
 
 check_service() {
-    local name="$1"
-    local svc="$2"
-
+    local name="$1" svc="$2"
     if systemctl is-enabled --quiet "$svc" 2>/dev/null && systemctl is-active --quiet "$svc" 2>/dev/null; then
-        echo -e "  ${GREEN}[OK]${NC}   $name (enabled & active)"
-        ((ok++))
+        echo -e "  ${GREEN}[OK]${NC}   $name (enabled & active)"; ((ok++))
     elif systemctl is-enabled --quiet "$svc" 2>/dev/null; then
-        echo -e "  ${YELLOW}[WARN]${NC} $name (enabled but inactive)"
-        ((warn++))
+        echo -e "  ${YELLOW}[WARN]${NC} $name (enabled but inactive)"; ((warn++))
     else
-        echo -e "  ${YELLOW}[WARN]${NC} $name (not enabled)"
-        ((warn++))
+        echo -e "  ${YELLOW}[WARN]${NC} $name (not enabled)"; ((warn++))
     fi
 }
 
-echo -e "\n${CYAN}══════════════════════════════════════════════${NC}"
-echo -e "${CYAN}  System Health Check — Archlinux + Hyprland${NC}"
-echo -e "${CYAN}══════════════════════════════════════════════${NC}\n"
+echo -e "\n${CYAN}══ System Health Check — Archlinux + Hyprland ══${NC}\n"
 
-# ── 1. Core Components (Always Required) ──
+# 1. Core Components
 echo -e "${CYAN}── Core Components ──${NC}"
-check_cmd "lspci (pciutils)"  "lspci"
-check_cmd "Hyprland"          "Hyprland"
-check_cmd "Foot terminal"     "foot"
-check_cmd "Fish shell"        "fish"
-check_cmd "Fuzzel launcher"   "fuzzel"
+check_cmd "lspci (pciutils)"    "lspci"
+check_cmd "Hyprland"            "Hyprland"
+check_cmd "Foot terminal"       "foot"
+check_cmd "Fish shell"          "fish"
+check_cmd "Fuzzel launcher"     "fuzzel"
 check_cmd "Thunar file manager" "thunar"
 
-# ── 2. Wayland & Display ──
+# 2. Wayland & Display
 echo -e "\n${CYAN}── Wayland & Display ──${NC}"
-check_cmd "Hyprlock"          "hyprlock"
-check_cmd "Hypridle"          "hypridle"
-check_cmd "grim (screenshot)" "grim"
-check_cmd "slurp (select)"    "slurp"
-check_cmd "wl-copy"           "wl-copy"
-check_cmd "cliphist"          "cliphist"
-check_cmd "brightnessctl"     "brightnessctl"
+for pair in "Hyprlock:hyprlock" "Hypridle:hypridle" "grim:grim" "slurp:slurp" "wl-copy:wl-copy" "cliphist:cliphist" "brightnessctl:brightnessctl"; do
+    check_cmd "${pair%%:*}" "${pair##*:}"
+done
 
-# ── 3. Audio ──
+# 3. Audio
 echo -e "\n${CYAN}── Audio ──${NC}"
-check_pkg "PipeWire"          "pipewire"
-check_pkg "WirePlumber"       "wireplumber"
-check_cmd "pavucontrol"       "pavucontrol"
-check_cmd "playerctl"         "playerctl"
+check_pkg "PipeWire"    "pipewire"
+check_pkg "WirePlumber" "wireplumber"
+check_cmd "pavucontrol" "pavucontrol"
+check_cmd "playerctl"   "playerctl"
 
-# ── 4. Networking ──
+# 4. Networking
 echo -e "\n${CYAN}── Networking ──${NC}"
-check_service "NetworkManager"    "NetworkManager"
-check_service "Bluetooth"         "bluetooth"
+check_service "NetworkManager" "NetworkManager"
+check_service "Bluetooth"      "bluetooth"
 
-# ── 5. GPU & Driver Detection ──
+# 5. GPU & Driver Detection
 echo -e "\n${CYAN}── GPU & Driver Detection ──${NC}"
-if command -v lspci &>/dev/null && lspci | grep -Ei 'vga|3d|display' | grep -iq 'nvidia'; then
-    echo -e "  ${GREEN}[OK]${NC}   NVIDIA GPU detected"
-    if pacman -Qi nvidia-dkms &>/dev/null; then
-        echo -e "  ${GREEN}[OK]${NC}   nvidia-dkms installed"
-        ((ok++))
-    elif pacman -Qi nvidia-open-dkms &>/dev/null; then
-        echo -e "  ${GREEN}[OK]${NC}   nvidia-open-dkms installed"
-        ((ok++))
+if command -v lspci &>/dev/null; then
+    GPU_INFO="$(lspci | grep -Ei 'vga|3d|display')"
+    if echo "$GPU_INFO" | grep -iq 'nvidia'; then
+        echo -e "  ${GREEN}[OK]${NC}   NVIDIA GPU detected"
+        if pacman -Qi nvidia-dkms &>/dev/null || pacman -Qi nvidia-open-dkms &>/dev/null; then
+            echo -e "  ${GREEN}[OK]${NC}   NVIDIA driver installed"; ((ok++))
+        else
+            echo -e "  ${RED}[FAIL]${NC} nvidia-dkms or nvidia-open-dkms missing"; ((fail++))
+        fi
+        check_pkg "nvidia-utils" "nvidia-utils"
+    elif echo "$GPU_INFO" | grep -iq 'amd'; then
+        echo -e "  ${GREEN}[OK]${NC}   AMD GPU detected"
+        check_pkg "vulkan-radeon" "vulkan-radeon"
+    elif echo "$GPU_INFO" | grep -iq 'intel'; then
+        echo -e "  ${GREEN}[OK]${NC}   Intel GPU detected"
+        check_pkg "vulkan-intel" "vulkan-intel"
     else
-        echo -e "  ${RED}[FAIL]${NC} nvidia-dkms or nvidia-open-dkms missing"
-        ((fail++))
+        echo -e "  ${YELLOW}[WARN]${NC} VMware / Generic GPU — using fallback profile"
     fi
-    check_pkg "nvidia-utils"  "nvidia-utils"
-elif command -v lspci &>/dev/null && lspci | grep -Ei 'vga|3d|display' | grep -iq 'amd'; then
-    echo -e "  ${GREEN}[OK]${NC}   AMD GPU detected"
-    check_pkg "vulkan-radeon" "vulkan-radeon"
-elif command -v lspci &>/dev/null && lspci | grep -Ei 'vga|3d|display' | grep -iq 'intel'; then
-    echo -e "  ${GREEN}[OK]${NC}   Intel GPU detected"
-    check_pkg "vulkan-intel"  "vulkan-intel"
-else
-    echo -e "  ${YELLOW}[WARN]${NC} VMware / Generic GPU — using fallback profile"
 fi
 
-# Unified GPU env profile check (created by installer for ALL GPUs)
 if [ -f "$HOME/.config/hypr/env-gpu.conf" ]; then
-    echo -e "  ${GREEN}[OK]${NC}   GPU env profile installed (~/.config/hypr/env-gpu.conf)"
-    ((ok++))
+    echo -e "  ${GREEN}[OK]${NC}   GPU env profile installed"; ((ok++))
 else
-    echo -e "  ${RED}[FAIL]${NC} GPU env profile missing (~/.config/hypr/env-gpu.conf)"
-    ((fail++))
+    echo -e "  ${RED}[FAIL]${NC} GPU env profile missing (~/.config/hypr/env-gpu.conf)"; ((fail++))
 fi
 
-# ── 6. Rice & Theming (Profile-Aware) ──
-echo -e "\n${CYAN}── Rice & Theming Profile ──${NC}"
+# 6. Rice & Theming
+echo -e "\n${CYAN}── Rice & Theming ──${NC}"
 HAS_RICE=false
-if [ "$CHECK_MODE" = "rice" ] || [ "$CHECK_MODE" = "full" ] || command -v caelestia &>/dev/null; then
-    HAS_RICE=true
-fi
+[[ "$CHECK_MODE" =~ ^(rice|full)$ ]] || command -v caelestia &>/dev/null && HAS_RICE=true
 
 if [ "$HAS_RICE" = true ]; then
-    echo -e "  ${BLUE}[INFO]${NC} Rice profile detected / active"
-    check_cmd "Caelestia CLI"     "caelestia"
-    check_cmd "Fastfetch"         "fastfetch"         optional
-    check_cmd "Cava visualizer"   "cava"              optional
-    check_cmd "Waypaper"          "waypaper"           optional
-    check_cmd "Viewnior"          "viewnior"           optional
-    check_cmd "Mako notifications" "mako"              optional
-    check_cmd "swappy"            "swappy"            optional
-    check_cmd "Starship prompt"   "starship"           optional
+    echo -e "  ${BLUE}[INFO]${NC} Rice profile detected"
+    for pair in "Caelestia CLI:caelestia" "Fastfetch:fastfetch" "Cava:cava" "Waypaper:waypaper" "Viewnior:viewnior" "Mako:mako" "swappy:swappy" "Starship:starship"; do
+        name="${pair%%:*}" cmd="${pair##*:}"
+        [ "$name" = "Caelestia CLI" ] && check_cmd "$name" "$cmd" || check_cmd "$name" "$cmd" optional
+    done
 else
-    echo -e "  ${BLUE}[INFO]${NC} Minimal profile active (Caelestia Shell not required)"
-    check_cmd "Mako notifications" "mako"              optional
-    check_cmd "Starship prompt"   "starship"           optional
+    echo -e "  ${BLUE}[INFO]${NC} Minimal profile active"
+    check_cmd "Mako"     "mako"     optional
+    check_cmd "Starship" "starship" optional
 fi
 
-# ── 7. Extras & Package Manager ──
+# 7. Extras
 echo -e "\n${CYAN}── Extras & AUR ──${NC}"
-check_cmd "yay (AUR)"        "yay"
-check_cmd "momoisay"          "momoisay"           optional
-check_cmd "Firefox"           "firefox"            optional
+check_cmd "yay (AUR)"  "yay"
+check_cmd "momoisay"   "momoisay"  optional
+check_cmd "Firefox"    "firefox"   optional
 
-# ── 8. Config Files Verification ──
+# 8. Config Files
 echo -e "\n${CYAN}── Core Config Files ──${NC}"
-core_configs=(
-    "$HOME/.config/hypr/hyprland.conf"
-    "$HOME/.config/hypr/env.conf"
-    "$HOME/.config/hypr/env-gpu.conf"
-    "$HOME/.config/hypr/hypridle.conf"
-    "$HOME/.config/foot/foot.ini"
-    "$HOME/.config/fuzzel/fuzzel.ini"
-    "$HOME/.config/fish/config.fish"
-)
+core_configs=(hypr/hyprland.conf hypr/env.conf hypr/env-gpu.conf hypr/hypridle.conf foot/foot.ini fuzzel/fuzzel.ini fish/config.fish)
 for cfg in "${core_configs[@]}"; do
-    name="$(basename "$(dirname "$cfg")")/$(basename "$cfg")"
-    if [ -f "$cfg" ]; then
-        echo -e "  ${GREEN}[OK]${NC}   $name"
-        ((ok++))
+    if [ -f "$HOME/.config/$cfg" ]; then
+        echo -e "  ${GREEN}[OK]${NC}   $cfg"; ((ok++))
     else
-        echo -e "  ${RED}[FAIL]${NC} $name — missing"
-        ((fail++))
+        echo -e "  ${RED}[FAIL]${NC} $cfg — missing"; ((fail++))
     fi
 done
 
 if [ "$HAS_RICE" = true ]; then
     echo -e "\n${CYAN}── Rice Config Files ──${NC}"
-    rice_configs=(
-        "$HOME/.config/caelestia/hypr-vars.lua"
-        "$HOME/.config/caelestia/hypr-user.conf"
-        "$HOME/.config/cava/config"
-        "$HOME/.config/fastfetch/config.jsonc"
-        "$HOME/.config/waypaper/config.ini"
-    )
+    rice_configs=(caelestia/hypr-vars.lua caelestia/hypr-user.conf cava/config fastfetch/config.jsonc waypaper/config.ini)
     for cfg in "${rice_configs[@]}"; do
-        name="$(basename "$(dirname "$cfg")")/$(basename "$cfg")"
-        if [ -f "$cfg" ]; then
-            echo -e "  ${GREEN}[OK]${NC}   $name"
-            ((ok++))
+        if [ -f "$HOME/.config/$cfg" ]; then
+            echo -e "  ${GREEN}[OK]${NC}   $cfg"; ((ok++))
         else
-            echo -e "  ${YELLOW}[WARN]${NC} $name — not found"
-            ((warn++))
+            echo -e "  ${YELLOW}[WARN]${NC} $cfg — not found"; ((warn++))
         fi
     done
 fi
 
-# ── 9. Hyprland Runtime Syntax Check (if inside session) ──
+# 9. Hyprland Runtime
 if command -v hyprctl &>/dev/null && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
     echo -e "\n${CYAN}── Hyprland Runtime ──${NC}"
     config_errs="$(hyprctl configerrors 2>/dev/null || true)"
     if echo "$config_errs" | grep -q '^Config error'; then
-        echo -e "  ${RED}[FAIL]${NC} Hyprland configuration errors detected:"
-        echo "$config_errs" | head -n 5
-        ((fail++))
+        echo -e "  ${RED}[FAIL]${NC} Hyprland config errors:"; echo "$config_errs" | head -5; ((fail++))
     else
-        echo -e "  ${GREEN}[OK]${NC}   Hyprland config parsed without syntax errors"
-        ((ok++))
+        echo -e "  ${GREEN}[OK]${NC}   Hyprland config OK"; ((ok++))
     fi
 fi
 
-# ── Summary ──
+# Summary
 echo -e "\n${CYAN}══════════════════════════════════════════════${NC}"
 echo -e "  ${GREEN}OK: $ok${NC}  ${YELLOW}WARN: $warn${NC}  ${RED}FAIL: $fail${NC}"
-if [ "$fail" -eq 0 ]; then
-    echo -e "  ${GREEN}✔ System health check passed!${NC}"
-else
-    echo -e "  ${RED}⚠ Some components are missing. Run ./install.sh to fix.${NC}"
-fi
+[ "$fail" -eq 0 ] && echo -e "  ${GREEN}✔ System health check passed!${NC}" || echo -e "  ${RED}⚠ Some components missing. Run ./install.sh to fix.${NC}"
 echo -e "${CYAN}══════════════════════════════════════════════${NC}\n"
-
 exit "$fail"

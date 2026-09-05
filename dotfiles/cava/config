@@ -1,7 +1,4 @@
-# ╔══════════════════════════════════════════════════╗
-# ║  Cava — Audio Visualizer Config                  ║
-# ║  Theme: Catppuccin Mocha / Anime 6-Gradient      ║
-# ╚══════════════════════════════════════════════════╝
+# Cava — Audio Visualizer (Catppuccin Mocha)
 
 [general]
 framerate = 60
