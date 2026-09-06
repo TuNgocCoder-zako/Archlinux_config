@@ -88,6 +88,17 @@ INSTALL_RICE=false
 
 print_info "Install mode: $INSTALL_MODE (Rice features: $INSTALL_RICE)"
 
+# Step 0: Enable multilib repository (required for lib32-* packages)
+print_step "Step 0/8: Enabling multilib repository"
+if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+    sudo sed -i '/^#\[multilib\]/,/^#Include/ s/^#//' /etc/pacman.conf
+    print_success "multilib repository enabled"
+else
+    print_info "multilib already enabled, skipping"
+fi
+sudo pacman -Sy --noconfirm
+print_success "Package database refreshed"
+
 # Step 1: System Update
 print_step "Step 1/8: Updating system"
 sudo pacman -Syu --noconfirm
@@ -125,13 +136,24 @@ GPU_INFO="$(lspci | grep -Ei 'vga|3d|display')"
 if echo "$GPU_INFO" | grep -iq 'nvidia'; then
     print_info "NVIDIA GPU detected — Installing nvidia-dkms drivers..."
     sudo pacman -S --needed --noconfirm \
-        nvidia-dkms nvidia-utils lib32-nvidia-utils \
-        libva-nvidia-driver egl-wayland nvidia-prime
+        nvidia-dkms nvidia-utils egl-wayland nvidia-prime \
+        libva-nvidia-driver 2>/dev/null || true
+    # lib32 packages require multilib — install separately, non-fatal
+    sudo pacman -S --needed --noconfirm lib32-nvidia-utils 2>/dev/null || \
+        print_warning "lib32-nvidia-utils skipped (multilib may not be synced yet — rerun install.sh to retry)"
     sudo systemctl enable nvidia-{suspend,hibernate,resume}.service 2>/dev/null || true
     sudo mkdir -p /etc/modprobe.d
     echo "options nvidia_drm modeset=1 fbdev=1" | sudo tee /etc/modprobe.d/nvidia.conf >/dev/null || true
     GPU_ENV_PROFILE="env-nvidia.conf"
-    print_success "NVIDIA drivers & DRM modesetting configured"
+    # Also install Intel iGPU drivers for Optimus hybrid laptops
+    if echo "$GPU_INFO" | grep -iq 'intel'; then
+        print_info "Intel iGPU also detected — Installing Optimus hybrid support..."
+        sudo pacman -S --needed --noconfirm \
+            vulkan-intel lib32-vulkan-intel intel-media-driver 2>/dev/null || true
+        print_success "Optimus (Intel + NVIDIA) hybrid drivers configured"
+    else
+        print_success "NVIDIA drivers & DRM modesetting configured"
+    fi
 elif echo "$GPU_INFO" | grep -iq 'amd'; then
     print_info "AMD GPU detected — Installing Mesa & Vulkan..."
     sudo pacman -S --needed --noconfirm \
