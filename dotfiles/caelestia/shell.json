@@ -1,0 +1,156 @@
+{
+    "ai": {
+        "defaultOllamaModel": "qwen2.5-coder:3b",
+        "ollamaHistoryJson": "[]"
+    },
+    "appearance": {
+        "islands": false,
+        "pitchBlack": false,
+        "transparency": {
+            "base": 0.4056846217105263,
+            "enabled": true,
+            "layers": 0.19492701480263158
+        }
+    },
+    "audio": {
+        "sounds": {
+            "notificationVolume": 1,
+            "sfxVolume": 1
+        }
+    },
+    "background": {
+        "desktopClock": {
+            "background": {
+                "enabled": true,
+                "opacity": 0.058588610197368385
+            },
+            "enabled": true,
+            "invertColors": true,
+            "position": "top-center",
+            "scale": 0.9645225123355263,
+            "shadow": {
+                "blur": 1.1923828125,
+                "enabled": true,
+                "opacity": 0.7801963404605263
+            }
+        },
+        "desktopLyrics": {
+            "autoHideFullscreen": true,
+            "autoHideTiled": true,
+            "background": {
+                "blur": false,
+                "enabled": false,
+                "opacity": 0.0916067023026314
+            },
+            "enabled": true,
+            "invertColors": true,
+            "overlay": true,
+            "position": "bottom-center",
+            "scale": 1.159243935032895,
+            "shadow": {
+                "blur": 0.3500411184210527,
+                "enabled": true,
+                "opacity": 1
+            }
+        },
+        "videoWallpaperPaused": false,
+        "visualiser": {
+            "autoHide": true,
+            "blur": true,
+            "enabled": true,
+            "rounding": 6.033871299342105,
+            "spacing": 0.3824527138157895
+        },
+        "wallpaperEnabled": true,
+        "wallpaperRecolor": false,
+        "wallpaperRecolorStrength": 0
+    },
+    "bar": {
+        "clock": {
+            "background": true,
+            "showDate": true,
+            "showIcon": true
+        },
+        "github": {
+            "background": false
+        },
+        "position": "right",
+        "showOnHover": true,
+        "spotify": {
+            "autoHide": false,
+            "background": false,
+            "horizontalVolume": false,
+            "inverted": false
+        }
+    },
+    "dashboard": {
+        "enabled": true,
+        "profilePicShape": 0,
+        "showHyprlandSplash": true,
+        "showOnHover": true,
+        "showPerformance": true,
+        "showWeather": true,
+        "syncMediaShapesToBeat": false
+    },
+    "general": {
+        "apps": {
+            "audio": [
+                "pavucontrol"
+            ],
+            "explorer": [
+                "thunar"
+            ],
+            "playback": [
+                "mpv"
+            ],
+            "terminal": [
+                "kitty"
+            ]
+        }
+    },
+    "launcher": {
+        "favouriteApps": [
+            "spotify",
+            "brave-browser"
+        ],
+        "hiddenApps": [
+            "org.pulseaudio.pavucontrol",
+            "vim",
+            "viewnior",
+            "qt6ct",
+            "avahi-discover",
+            "bvnc",
+            "thunar-bulk-rename"
+        ],
+        "useFuzzy": {
+            "apps": false,
+            "wallpapers": true
+        }
+    },
+    "nexus": {
+        "networkRescanInterval": 5000
+    },
+    "services": {
+        "audioIncrement": 0.05,
+        "gpuType": "NVIDIA",
+        "pipPaused": false,
+        "smartScheme": true,
+        "useFahrenheit": false,
+        "visualiserBars": 80
+    },
+    "shimeji": {
+        "autoHide": false,
+        "count": 1,
+        "enabled": false
+    },
+    "utilities": {
+        "gameMode": {
+            "autoEnable": false,
+            "disableHyprlandAnimations": true
+        },
+        "toasts": {
+            "transparency": true,
+            "transparencyBase": 0.8873766447368421
+        }
+    }
+}
