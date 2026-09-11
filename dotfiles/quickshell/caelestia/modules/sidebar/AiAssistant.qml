@@ -66,6 +66,7 @@ Item {
     onVisibleChanged: {
         if (visible) {
             fetchOllamaModels();
+            inputArea.forceActiveFocus();
         }
     }
 
@@ -1556,6 +1557,7 @@ Item {
                          radius: 24
                          hoverEnabled: false
                          cursorShape: Qt.IBeamCursor
+                         disabled: inputArea.activeFocus
                          onClicked: inputArea.forceActiveFocus()
                      }
 
@@ -1572,6 +1574,8 @@ Item {
                              
                              TextArea {
                                  id: inputArea
+                                 focus: true
+                                 activeFocusOnTab: true
                                  verticalAlignment: TextInput.AlignVCenter
                                  placeholderText: qsTr("Ask assistant...")
                                  color: Colours.palette.m3onSurface
@@ -1579,22 +1583,13 @@ Item {
                                  font: Tokens.font.body.small
                                  wrapMode: Text.Wrap
                                  selectByMouse: true
+                                 renderType: Text.NativeRendering
+                                 inputMethodHints: Qt.ImhNone
                                  background: null
-
-                                 MouseArea {
-                                     anchors.fill: parent
-                                     hoverEnabled: true
-                                     cursorShape: Qt.IBeamCursor
-                                     propagateComposedEvents: true
-                                     onPressed: mouse => {
-                                          var mapped = mapToItem(inputStateLayer, mouse.x, mouse.y);
-                                          inputStateLayer.press(mapped.x, mapped.y);
-                                          mouse.accepted = false;
-                                      }
-                                 }
 
                                  Keys.onPressed: event => {
                                      if (event.key === Qt.Key_Return && !(event.modifiers & Qt.ShiftModifier)) {
+                                         if (inputArea.inputMethodComposing) return;
                                          event.accepted = true;
                                          root.sendPrompt(inputArea.text);
                                          inputArea.clear();
