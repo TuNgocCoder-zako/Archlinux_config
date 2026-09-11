@@ -54,7 +54,12 @@ echo -e "\n${CYAN}══ System Health Check — Archlinux + Hyprland ══${NC
 echo -e "${CYAN}── Core Components ──${NC}"
 check_cmd "lspci (pciutils)"    "lspci"
 check_cmd "Hyprland"            "Hyprland"
-check_cmd "Foot terminal"       "foot"
+if command -v kitty &>/dev/null || command -v foot &>/dev/null; then
+    TERM_NAME="$(command -v kitty &>/dev/null && echo "Kitty" || echo "Foot")"
+    echo -e "  ${GREEN}[OK]${NC}   $TERM_NAME terminal"; ((ok++))
+else
+    echo -e "  ${RED}[FAIL]${NC} Terminal emulator (kitty or foot) — missing!"; ((fail++))
+fi
 check_cmd "Fish shell"          "fish"
 check_cmd "Fuzzel launcher"     "fuzzel"
 check_cmd "Thunar file manager" "thunar"
@@ -83,10 +88,10 @@ if command -v lspci &>/dev/null; then
     GPU_INFO="$(lspci | grep -Ei 'vga|3d|display')"
     if echo "$GPU_INFO" | grep -iq 'nvidia'; then
         echo -e "  ${GREEN}[OK]${NC}   NVIDIA GPU detected"
-        if pacman -Qi nvidia-dkms &>/dev/null || pacman -Qi nvidia-open-dkms &>/dev/null; then
+        if pacman -Qi nvidia &>/dev/null || pacman -Qi nvidia-open &>/dev/null || pacman -Qi nvidia-dkms &>/dev/null || pacman -Qi nvidia-open-dkms &>/dev/null; then
             echo -e "  ${GREEN}[OK]${NC}   NVIDIA driver installed"; ((ok++))
         else
-            echo -e "  ${RED}[FAIL]${NC} nvidia-dkms or nvidia-open-dkms missing"; ((fail++))
+            echo -e "  ${RED}[FAIL]${NC} NVIDIA driver missing (nvidia, nvidia-open, or dkms variant)"; ((fail++))
         fi
         check_pkg "nvidia-utils" "nvidia-utils"
     elif echo "$GPU_INFO" | grep -iq 'amd'; then
@@ -131,7 +136,7 @@ check_cmd "Firefox"    "firefox"   optional
 
 # 8. Config Files
 echo -e "\n${CYAN}── Core Config Files ──${NC}"
-core_configs=(hypr/hyprland.conf hypr/env.conf hypr/env-gpu.conf hypr/hypridle.conf foot/foot.ini fuzzel/fuzzel.ini fish/config.fish)
+core_configs=(hypr/hyprland.conf hypr/env.conf hypr/env-gpu.conf hypr/hypridle.conf fuzzel/fuzzel.ini fish/config.fish)
 for cfg in "${core_configs[@]}"; do
     if [ -f "$HOME/.config/$cfg" ]; then
         echo -e "  ${GREEN}[OK]${NC}   $cfg"; ((ok++))
@@ -139,6 +144,13 @@ for cfg in "${core_configs[@]}"; do
         echo -e "  ${RED}[FAIL]${NC} $cfg — missing"; ((fail++))
     fi
 done
+if [ -f "$HOME/.config/kitty/kitty.conf" ]; then
+    echo -e "  ${GREEN}[OK]${NC}   kitty/kitty.conf"; ((ok++))
+elif [ -f "$HOME/.config/foot/foot.ini" ]; then
+    echo -e "  ${GREEN}[OK]${NC}   foot/foot.ini"; ((ok++))
+else
+    echo -e "  ${YELLOW}[WARN]${NC} Terminal config missing (~/.config/kitty/kitty.conf or ~/.config/foot/foot.ini)"; ((warn++))
+fi
 
 if [ "$HAS_RICE" = true ]; then
     echo -e "\n${CYAN}── Rice Config Files ──${NC}"
