@@ -16,10 +16,10 @@ hl.curve("specialWorkSwitch", { type = "bezier", points = { { 0.1, 0.9 }, { 0.1,
 hl.curve("linear", { type = "bezier", points = { { 0, 0 }, { 1, 1 } } })
 
 -- Animation configs tuned for 144Hz buttery smoothness
-hl.animation({ leaf = "windows", enabled = true, speed = 2.8, bezier = "popin_overshoot", style = "popin 85%" })
-hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.8, bezier = "popin_overshoot", style = "popin 85%" })
-hl.animation({ leaf = "windowsOut", enabled = true, speed = 2.0, bezier = "easeIn", style = "popin 85%" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 2.6, bezier = "fluent_decel" })
+hl.animation({ leaf = "windows", enabled = true, speed = 2.8, bezier = "fluent_decel", style = "popin 75%" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 2.8, bezier = "fluent_decel", style = "popin 75%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 2.0, bezier = "easeIn", style = "popin 80%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 2.8, bezier = "fluent_decel" })
 
 hl.animation({ leaf = "layers", enabled = true, speed = 2.6, bezier = "fluent_decel", style = "slide" })
 hl.animation({ leaf = "layersIn", enabled = true, speed = 2.6, bezier = "fluent_decel", style = "slide" })
