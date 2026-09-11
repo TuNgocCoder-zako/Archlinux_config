@@ -32,7 +32,7 @@ chmod +x install.sh check.sh
 |------|-------------|
 | *(none)* | Interactive — choose profile at runtime |
 | `--minimal` | Core only: Hyprland, Foot, Fish, PipeWire, GPU drivers |
-| `--rice` | Core + theming: Caelestia Shell, SDDM Astronaut, Cava, Fastfetch, Waypaper |
+| `--rice` | Core + theming: Caelestia Shell, SDDM Astronaut, Cava, Fastfetch |
 | `--full` | Core + Rice + Optional (Firefox) + Dev tools |
 | `--dev` | Core + development tools (Neovim, Python, Rust, ripgrep, etc.) |
 
@@ -81,7 +81,6 @@ chmod +x install.sh check.sh
 │   ├── fastfetch/config.jsonc # System info display
 │   ├── mako/config            # Notification daemon
 │   ├── gtk-3.0/settings.ini   # GTK theme settings
-│   ├── waypaper/config.ini    # Wallpaper picker
 │   └── Thunar/uca.xml         # Right-click wallpaper action
 │
 └── scripts/
@@ -105,7 +104,8 @@ chmod +x install.sh check.sh
 | `Super + Q` / `Alt + Q` | Close window |
 | `Alt + S` | Screenshot to clipboard |
 | `Super + Shift + S` | Screenshot + annotation (Swappy) |
-| `Super + Shift + W` / `Alt + W` | Wallpaper picker (Waypaper) |
+| `Super + Shift + W` / `Alt + W` | Wallpaper Picker (Caelestia) |
+| `Super + Ctrl + W` | Random Wallpaper (Smooth Animated) |
 | `Super + 1-9` | Switch workspace |
 | `Super + Shift + Q` | Exit Hyprland |
 

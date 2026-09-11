@@ -113,7 +113,7 @@ HAS_RICE=false
 
 if [ "$HAS_RICE" = true ]; then
     echo -e "  ${BLUE}[INFO]${NC} Rice profile detected"
-    for pair in "Caelestia CLI:caelestia" "Fastfetch:fastfetch" "Cava:cava" "Waypaper:waypaper" "Viewnior:viewnior" "Mako:mako" "swappy:swappy" "Starship:starship"; do
+    for pair in "Caelestia CLI:caelestia" "Fastfetch:fastfetch" "Cava:cava" "Viewnior:viewnior" "Mako:mako" "swappy:swappy" "Starship:starship"; do
         name="${pair%%:*}" cmd="${pair##*:}"
         [ "$name" = "Caelestia CLI" ] && check_cmd "$name" "$cmd" || check_cmd "$name" "$cmd" optional
     done
@@ -142,7 +142,7 @@ done
 
 if [ "$HAS_RICE" = true ]; then
     echo -e "\n${CYAN}── Rice Config Files ──${NC}"
-    rice_configs=(caelestia/hypr-vars.lua caelestia/hypr-user.conf cava/config fastfetch/config.jsonc waypaper/config.ini)
+    rice_configs=(caelestia/hypr-vars.lua caelestia/hypr-user.conf cava/config fastfetch/config.jsonc quickshell/caelestia/modules/background/Wallpaper.qml)
     for cfg in "${rice_configs[@]}"; do
         if [ -f "$HOME/.config/$cfg" ]; then
             echo -e "  ${GREEN}[OK]${NC}   $cfg"; ((ok++))

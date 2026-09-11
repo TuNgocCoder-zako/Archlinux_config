@@ -8,5 +8,17 @@ IMG_PATH="$(realpath "$IMG")"
 mkdir -p ~/.cache ~/.local/state/caelestia/wallpaper
 echo "$IMG_PATH" > ~/.cache/current_wallpaper
 echo "$IMG_PATH" > ~/.local/state/caelestia/wallpaper/path.txt
+
+# Đảm bảo Caelestia luôn chạy scheme dynamic (Material You)
+SCHEME_NAME=$(caelestia scheme get -n 2>/dev/null)
+if [ "$SCHEME_NAME" != "dynamic" ]; then
+    caelestia scheme set -n dynamic -v tonalspot
+fi
+
+# Cập nhật hình nền và sinh bảng màu Material You từ hình nền
 caelestia wallpaper -f "$IMG_PATH"
-notify-send -i "$IMG_PATH" "Caelestia" "Wallpaper set & saved!"
+
+
+
+notify-send -i "$IMG_PATH" "Caelestia" "Wallpaper set & Material You updated!"
+

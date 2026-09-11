@@ -176,7 +176,7 @@ fi
 # Step 5: Install Caelestia Shell (Rice / Full only)
 print_step "Step 5/8: Desktop Shell & Themes"
 if [ "$INSTALL_RICE" = true ]; then
-    AUR_PKGS=(caelestia-cli papirus-icon-theme catppuccin-gtk-theme-mocha bibata-cursor-theme-bin waypaper swww)
+    AUR_PKGS=(caelestia-cli papirus-icon-theme catppuccin-gtk-theme-mocha bibata-cursor-theme-bin)
     for pkg in "${AUR_PKGS[@]}"; do
         pacman -Qi "$pkg" &>/dev/null && { print_info "$pkg already installed, skipping"; continue; }
         yay -S --noconfirm "$pkg" || print_warning "Failed to install $pkg"
@@ -208,12 +208,20 @@ copy_with_backup "$DOTFILES_DIR/fish/config.fish" ~/.config/fish/config.fish
 copy_with_backup "$DOTFILES_DIR/Thunar/uca.xml" ~/.config/Thunar/uca.xml
 
 if [ "$INSTALL_RICE" = true ]; then
-    mkdir -p ~/.config/{caelestia,mako,gtk-3.0,fastfetch,cava,waypaper} ~/Pictures/Wallpapers
-    for f in caelestia/hypr-vars.lua caelestia/hypr-user.conf mako/config gtk-3.0/settings.ini fastfetch/config.jsonc cava/config waypaper/config.ini; do
+    mkdir -p ~/.config/{caelestia,mako,gtk-3.0,fastfetch,cava} ~/Pictures/Wallpapers
+    for f in caelestia/hypr-vars.lua caelestia/hypr-user.conf mako/config gtk-3.0/settings.ini fastfetch/config.jsonc cava/config; do
         copy_with_backup "$DOTFILES_DIR/$f" "$HOME/.config/$f"
     done
     grep -q 'hypr-user\.conf' ~/.config/hypr/hyprland.conf 2>/dev/null || \
         echo 'source = ~/.config/caelestia/hypr-user.conf' >> ~/.config/hypr/hyprland.conf
+
+    if [ -d "$DOTFILES_DIR/quickshell" ]; then
+        mkdir -p ~/.config/quickshell/caelestia
+        if [ -d "/etc/xdg/quickshell/caelestia" ] && [ ! -f "$HOME/.config/quickshell/caelestia/shell.qml" ]; then
+            cp -rn /etc/xdg/quickshell/caelestia/* ~/.config/quickshell/caelestia/ 2>/dev/null || true
+        fi
+        cp -r "$DOTFILES_DIR/quickshell/"* ~/.config/quickshell/
+    fi
 fi
 
 [ -d "$SCRIPTS_DIR" ] && { cp -v "$SCRIPTS_DIR/"* ~/.local/bin/ 2>/dev/null || true; chmod +x ~/.local/bin/*; }
