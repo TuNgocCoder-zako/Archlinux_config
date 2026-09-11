@@ -200,7 +200,7 @@ Item {
 
         Timer {
             id: cleanupTimer
-            interval: (img.animsEnabled && root.completed) ? 2600 : (img.fadeMs + 20)
+            interval: (img.animsEnabled && root.completed) ? 1200 : (img.fadeMs + 20)
             repeat: false
             onTriggered: img.state = "inactive"
         }
@@ -320,10 +320,10 @@ Item {
                 maskSource: maskLoader.item ? maskLoader.item.maskSource : null
 
                 shadowEnabled: img.needsMask && !img.isVideo
-                shadowColor: "black"
-                shadowBlur: 1.0
-                shadowVerticalOffset: 15
-                shadowHorizontalOffset: 5
+                shadowColor: "#99000000"
+                shadowBlur: 0.45
+                shadowVerticalOffset: 6
+                shadowHorizontalOffset: 0
 
                 saturation: (root.shouldRecolor && root.isDynamicMonochrome) ? -1 : 0
                 colorization: (root.shouldRecolor && !root.isDynamicMonochrome) ? (Config.background ? Config.background["wallpaperRecolorStrength"] : 0) : 0
@@ -441,14 +441,14 @@ Item {
             }
         }
 
-        Anim {
+        NumberAnimation {
             id: maskAnim
             target: img
             property: "maskRadius"
             from: 0
             to: img.maxRadius
-            type: Anim.Emphasized
-            duration: 2500
+            duration: 1100
+            easing.type: Easing.OutCubic
         }
     }
 }
