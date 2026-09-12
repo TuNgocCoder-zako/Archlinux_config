@@ -1527,7 +1527,12 @@ Item {
                                      textFormat: Text.MarkdownText
                                      width: Math.min(implicitWidth, bubbleRect.maxBubbleWidth - Tokens.padding.medium * 2)
                                      
-                                     property string fullText: delegateItem.text !== undefined ? delegateItem.text : ""
+                                     property string fullText: {
+                                         var raw = delegateItem.text !== undefined ? delegateItem.text : "";
+                                         // Convert reference-style links [Label]: https://... to inline [Label](https://...)
+                                         // In CommonMark / Qt MarkdownText, [Label]: url is treated as an invisible reference definition, causing links to disappear.
+                                         return raw.replace(/\[([^\]]+)\]:\s*(https?:\/\/[^\s\)\<\>]+)/g, "[$1]($2)");
+                                     }
                                      
                                      property bool cursorVisible: true
                                      Timer {
@@ -1546,13 +1551,28 @@ Item {
                                      selectByMouse: true
                                      selectionColor: Colours.palette.m3primary
                                      selectedTextColor: Colours.palette.m3onPrimary
+                                     onLinkActivated: link => Qt.openUrlExternally(link)
 
                                      MouseArea {
                                          anchors.fill: parent
                                          hoverEnabled: true
-                                         cursorShape: Qt.IBeamCursor
+                                         cursorShape: messageText.hoveredLink ? Qt.PointingHandCursor : Qt.IBeamCursor
                                          propagateComposedEvents: true
-                                         onPressed: mouse => mouse.accepted = false
+                                         onClicked: mouse => {
+                                             if (messageText.hoveredLink) {
+                                                 Qt.openUrlExternally(messageText.hoveredLink);
+                                                 mouse.accepted = true;
+                                             } else {
+                                                 mouse.accepted = false;
+                                             }
+                                         }
+                                         onPressed: mouse => {
+                                             if (messageText.hoveredLink) {
+                                                 mouse.accepted = true;
+                                             } else {
+                                                 mouse.accepted = false;
+                                             }
+                                         }
                                      }
                                  }
 
