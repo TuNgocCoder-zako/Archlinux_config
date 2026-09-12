@@ -606,9 +606,36 @@ Item {
                         chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
                         saveHistory();
                         
+                        var enableTools = GlobalConfig.ai.enableCelestialMode;
+                        if (enableTools && (!finalToolCalls || finalToolCalls.length === 0)) {
+                            var trimmedContent = rawAccumulatedContentText ? rawAccumulatedContentText.trim() : "";
+                            var jsonCandidate = trimmedContent;
+                            var jsonBlockMatch = trimmedContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+                            if (jsonBlockMatch) {
+                                jsonCandidate = jsonBlockMatch[1].trim();
+                            }
+                            if (jsonCandidate.startsWith("{") && jsonCandidate.endsWith("}")) {
+                                try {
+                                    var parsedCandidate = JSON.parse(jsonCandidate);
+                                    if (parsedCandidate && parsedCandidate.name) {
+                                        var candArgs = parsedCandidate.arguments || parsedCandidate.parameters || {};
+                                        if (typeof candArgs === "string") {
+                                            try { candArgs = JSON.parse(candArgs); } catch (e) {}
+                                        }
+                                        finalToolCalls = [{
+                                            "function": {
+                                                "name": parsedCandidate.name,
+                                                "arguments": candArgs
+                                            }
+                                        }];
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+
                         if (finalToolCalls && finalToolCalls.length > 0) {
-                            var enableTools = GlobalConfig.ai.enableCelestialMode;
                             if (enableTools) {
+                                chatHistory.setProperty(chatHistory.count - 1, "text", "");
                                 currentActionText = "Using tools...";
                                 accumulatedToolResults = "";
                                 accumulatedToolImage = "";
@@ -617,7 +644,10 @@ Item {
                                 for (var t = 0; t < finalToolCalls.length; t++) {
                                     var tool = finalToolCalls[t].function;
                                     var toolName = tool.name;
-                                    var args = tool.arguments;
+                                    var args = tool.arguments || {};
+                                    if (typeof args === "string") {
+                                        try { args = JSON.parse(args); } catch (e) {}
+                                    }
                                     
                                     if (toolName === "take_screenshot" || toolName === "web_search" || toolName === "read_webpage" || toolName === "open_app" || toolName === "get_weather" || toolName === "caelestia_command") {
                                         runningToolsCount++;
@@ -630,28 +660,45 @@ Item {
                                     } else if (toolName === "web_search") {
                                         currentActionText = "Searching the web...";
                                         var query = args.query;
+                                        if (typeof query === "object" && query !== null) {
+                                            query = query.value || query.description || query.query || "";
+                                        }
+                                        if (!query && typeof args === "string") query = args;
+                                        query = String(query || "").trim();
                                         var page = args.page || 1;
-                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode search --query "' + query.replace(new RegExp("\"", "g"), '\"') + '" --page ' + page, "exec_" + toolName);
+                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode search --query "' + query.replace(new RegExp("\"", "g"), '\\"') + '" --page ' + page, "exec_" + toolName);
                                     } else if (toolName === "read_webpage") {
                                         currentActionText = "Reading webpage...";
                                         var url = args.url;
-                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode read --url "' + url.replace(new RegExp("\"", "g"), '\"') + '"', "exec_" + toolName);
+                                        if (typeof url === "object" && url !== null) {
+                                            url = url.value || url.description || url.url || "";
+                                        }
+                                        url = String(url || "").trim();
+                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode read --url "' + url.replace(new RegExp("\"", "g"), '\\"') + '"', "exec_" + toolName);
                                     } else if (toolName === "open_app") {
                                         currentActionText = "Opening app...";
-                                        var app = args.app_name;
-                                        runAgentCommand('grep -i -m 1 "^Exec=" $(find /usr/share/applications ~/.local/share/applications -name "*.desktop" -exec grep -il "Name=.*' + app.replace(new RegExp("\"", "g"), '\"') + '" {} \;) | cut -d "=" -f 2- | sed "s/ %[a-zA-Z]//g" | xargs -I {} sh -c "{} & disown"', "exec_" + toolName);
+                                        var app = args.app_name || args.app;
+                                        if (typeof app === "object" && app !== null) {
+                                            app = app.value || app.description || app.app_name || "";
+                                        }
+                                        app = String(app || "").trim();
+                                        runAgentCommand('grep -i -m 1 "^Exec=" $(find /usr/share/applications ~/.local/share/applications -name "*.desktop" -exec grep -il "Name=.*' + app.replace(new RegExp("\"", "g"), '\\"') + '" {} \\;) | cut -d "=" -f 2- | sed "s/ %[a-zA-Z]//g" | xargs -I {} sh -c "{} & disown"', "exec_" + toolName);
                                     } else if (toolName === "set_timer") {
                                         currentActionText = "Setting timer...";
                                         var secs = args.seconds || 5;
                                         var msg = args.message || "Timer finished";
-                                        var safeMsg = msg.replace(new RegExp("\"", "g"), '\"');
+                                        var safeMsg = String(msg).replace(new RegExp("\"", "g"), '\\"');
                                         var timerQml = "import QtQuick; Timer { interval: " + (secs * 1000) + "; running: true; onTriggered: { root.runAgentCommand('notify-send \"Orion Timer\" \"" + safeMsg + "\"', \"timer_trigger\"); destroy(); } }";
                                         Qt.createQmlObject(timerQml, root, "timer_" + Date.now());
                                         accumulatedToolResults += "Tool: set_timer\nResult: Timer successfully set for " + secs + " seconds in the background.\n\n";
                                     } else if (toolName === "get_weather") {
                                         currentActionText = "Checking weather...";
-                                        var loc = args.location;
-                                        runAgentCommand('curl -s "wttr.in/' + loc.replace(new RegExp("\"", "g"), '\"') + '?0T"', "exec_" + toolName);
+                                        var loc = args.location || args.city || "";
+                                        if (typeof loc === "object" && loc !== null) {
+                                            loc = loc.value || loc.description || loc.location || "";
+                                        }
+                                        loc = String(loc || "").trim();
+                                        runAgentCommand('curl -s "wttr.in/' + loc.replace(new RegExp("\"", "g"), '\\"') + '?0T"', "exec_" + toolName);
                                     } else if (toolName === "caelestia_command") {
                                         currentActionText = "Running caelestia...";
                                         var subcmd = args.subcommand || "";
@@ -1014,7 +1061,34 @@ Item {
                  }
              }
 
+             // Web Search & Tools (Celestial Mode) Toggle Button
+             StyledRect {
+                 id: toolsToggleBtn
+                 Layout.preferredWidth: 32
+                 Layout.preferredHeight: 32
+                 Layout.alignment: Qt.AlignVCenter
+                 radius: Tokens.rounding.small
+                 color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3primaryContainer : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+                 
+                 Behavior on color { CAnim {} }
 
+                 StateLayer {
+                     anchors.fill: parent
+                     radius: parent.radius
+                     cursorShape: Qt.PointingHandCursor
+                     onClicked: {
+                         GlobalConfig.ai.enableCelestialMode = !GlobalConfig.ai.enableCelestialMode;
+                     }
+                 }
+
+                 Text {
+                     anchors.centerIn: parent
+                     text: "travel_explore"
+                     font.family: Tokens.font.icon.family
+                     font.pixelSize: Tokens.font.icon.small.pixelSize
+                     color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
+                 }
+             }
          }
          
          Item {
@@ -1551,14 +1625,8 @@ Item {
                          }
                      }
 
-                     StateLayer {
-                         id: inputStateLayer
-                         anchors.fill: parent
-                         radius: 24
-                         hoverEnabled: false
-                         cursorShape: Qt.IBeamCursor
-                         disabled: inputArea.activeFocus
-                         onClicked: inputArea.forceActiveFocus()
+                     TapHandler {
+                         onTapped: inputArea.forceActiveFocus()
                      }
 
                      RowLayout {
@@ -1583,16 +1651,16 @@ Item {
                                  font: Tokens.font.body.small
                                  wrapMode: Text.Wrap
                                  selectByMouse: true
-                                 renderType: Text.NativeRendering
-                                 inputMethodHints: Qt.ImhNone
                                  background: null
 
                                  Keys.onPressed: event => {
                                      if (event.key === Qt.Key_Return && !(event.modifiers & Qt.ShiftModifier)) {
                                          if (inputArea.inputMethodComposing) return;
-                                         event.accepted = true;
-                                         root.sendPrompt(inputArea.text);
-                                         inputArea.clear();
+                                         if (inputArea.text.trim().length > 0) {
+                                             event.accepted = true;
+                                             root.sendPrompt(inputArea.text);
+                                             inputArea.clear();
+                                         }
                                      }
                                  }
                              }
