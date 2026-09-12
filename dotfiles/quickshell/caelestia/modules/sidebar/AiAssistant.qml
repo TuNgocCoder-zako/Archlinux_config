@@ -963,8 +963,7 @@ Item {
                      Item {
                          id: chatTab
                          height: parent.height
-                         width: !isHistoryTab ? 40 : chatContent.implicitWidth + Tokens.padding.medium * 2
-                         
+                         width: !isHistoryTab ? chatContent.implicitWidth + Tokens.padding.medium * 2 : 36
 
                          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
@@ -988,7 +987,7 @@ Item {
                                  text: "Chat"
                                  color: !isHistoryTab ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
                                  font: Tokens.font.body.small
-                                 visible: isHistoryTab
+                                 visible: !isHistoryTab
                              }
                          }
                      }
@@ -996,8 +995,7 @@ Item {
                      Item {
                          id: historyTab
                          height: parent.height
-                         width: isHistoryTab ? 40 : historyContent.implicitWidth + Tokens.padding.medium * 2
-                         
+                         width: isHistoryTab ? historyContent.implicitWidth + Tokens.padding.medium * 2 : 36
 
                          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
@@ -1021,7 +1019,7 @@ Item {
                                  text: "History"
                                  color: isHistoryTab ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
                                  font: Tokens.font.body.small
-                                 visible: !isHistoryTab
+                                 visible: isHistoryTab
                              }
                          }
                      }
@@ -1035,6 +1033,7 @@ Item {
                  id: modelSelector
                  type: SplitButton.Tonal
                  verticalPadding: 4
+                 horizontalPadding: Tokens.padding.small
                  Layout.preferredWidth: implicitWidth
 
                  active: menuItems.find(m => m.modelData === GlobalConfig.ai.defaultOllamaModel) ?? menuItems[0] ?? null
@@ -1046,7 +1045,8 @@ Item {
 
                  fallbackIcon: "smart_toy"
                  fallbackText: qsTr("Select Model")
-                 stateLayer.disabled: true
+                 stateLayer.disabled: false
+                 stateLayer.onClicked: modelSelector.expanded = !modelSelector.expanded
 
                  Variants {
                      id: modelVariants
@@ -1057,6 +1057,14 @@ Item {
                      delegate: MenuItem {
                          required property string modelData
                          text: modelData
+                         activeText: {
+                             var name = modelData;
+                             if (name.endsWith(":latest")) name = name.slice(0, -7);
+                             if (name.length > 14) {
+                                 return name.slice(0, 12) + "…";
+                             }
+                             return name;
+                         }
                      }
                  }
              }
@@ -1067,7 +1075,7 @@ Item {
                  Layout.preferredWidth: 32
                  Layout.preferredHeight: 32
                  Layout.alignment: Qt.AlignVCenter
-                 radius: Tokens.rounding.small
+                 radius: Tokens.rounding.full
                  color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3primaryContainer : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
                  
                  Behavior on color { CAnim {} }
@@ -1078,14 +1086,18 @@ Item {
                      cursorShape: Qt.PointingHandCursor
                      onClicked: {
                          GlobalConfig.ai.enableCelestialMode = !GlobalConfig.ai.enableCelestialMode;
+                         Toaster.toast(
+                             GlobalConfig.ai.enableCelestialMode ? qsTr("Celestial Mode enabled (Web & Tools)") : qsTr("Celestial Mode disabled"),
+                             "",
+                             "travel_explore"
+                         );
                      }
                  }
 
-                 Text {
+                 MaterialIcon {
                      anchors.centerIn: parent
                      text: "travel_explore"
-                     font.family: Tokens.font.icon.family
-                     font.pixelSize: Tokens.font.icon.small.pixelSize
+                     font: Tokens.font.icon.small
                      color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
                  }
              }
