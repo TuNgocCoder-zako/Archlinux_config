@@ -106,7 +106,7 @@ return {
     kbSpecialWs                = "SUPER + S",
     kbSystemMonitorWs          = "CTRL + SHIFT + Escape",
     kbMusicWs                  = "SUPER + M",
-    kbCommunicationWs          = "SUPER + D",
+    kbCommunicationWs          = "SUPER + Z",
     kbTodoWs                   = "SUPER + R",
 
     -- Apps
@@ -133,7 +133,7 @@ return {
     kbVolumeMute               = "SUPER + SHIFT + M",
 
     -- Misc
-    kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "SUPER + D", "ALT + D" },
+    kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "ALT + D" },
     kbSession                  = "CTRL + ALT + Delete",
     kbShowSidebar              = "SUPER + N",
     kbClearNotifs              = "CTRL + ALT + C",

@@ -35,7 +35,7 @@ return {
     kbShowSidebar              = { "SUPER + N", "ALT + N" },
 
     -- Custom
-    kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "SUPER + D", "ALT + D" },
+    kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "ALT + D" },
 
     -- Special Workspaces (Keybinds)
     kbMusicWs                  = { "SUPER + M", "ALT + M" },
