@@ -57,7 +57,7 @@ end
 
 create_bind(
     vars.kbLauncher,
-    hl.dsp.global("caelestia:launcher"),
+    hl.dsp.exec_cmd("QT_QPA_PLATFORM=offscreen qs -c caelestia ipc call drawers toggle launcher"),
     function(key)
         return is_launcher_release(key) and release or nil
     end

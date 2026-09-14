@@ -65,7 +65,14 @@ Scope {
         // qmllint enable unresolved-type
         name: "launcher"
         description: "Toggle launcher"
+        property real lastTriggerTime: 0
         onPressed: {
+            const now = Date.now();
+            if (now - lastTriggerTime < 250) {
+                console.warn("[LAUNCHER] Debounced duplicate trigger within " + (now - lastTriggerTime) + "ms");
+                return;
+            }
+            lastTriggerTime = now;
             if (!root.hasFullscreen) {
                 const screenState = ShellState.forActive();
                 screenState.launcher = !screenState.launcher;
@@ -206,10 +213,20 @@ Scope {
     }
 
     IpcHandler {
+        property real lastToggleTime: 0
+
         function toggle(drawer: string): void {
             if (list().split("\n").includes(drawer)) {
                 if (root.hasFullscreen && ["launcher", "session", "dashboard"].includes(drawer))
                     return;
+                const now = Date.now();
+                if (drawer === "launcher") {
+                    if (now - lastToggleTime < 250) {
+                        console.warn("[IPC] Debounced duplicate toggle within " + (now - lastToggleTime) + "ms");
+                        return;
+                    }
+                    lastToggleTime = now;
+                }
                 const screenState = ShellState.forActive();
                 screenState[drawer] = !screenState[drawer];
             } else {
