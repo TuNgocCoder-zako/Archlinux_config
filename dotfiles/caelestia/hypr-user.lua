@@ -23,11 +23,19 @@ hl.on("hyprland.start", function()
     -- Idle daemon & wallpaper
     hl.exec_cmd("hypridle")
     hl.exec_cmd(home .. "/.local/bin/restore-wallpaper")
+
+    -- Bluetooth
+    hl.exec_cmd("bluetoothctl power on")
+    hl.exec_cmd("blueman-applet")
 end)
 
 --------------------------------------------------------------------------------
 -- 3. Custom Keybindings
 --------------------------------------------------------------------------------
+-- Bluetooth Manager
+hl.bind("SUPER + B", hl.dsp.exec_cmd("blueman-manager"))
+hl.bind("ALT + B", hl.dsp.exec_cmd("blueman-manager"))
+
 -- ASUS TUF fan profile switching
 hl.bind("XF86Launch4", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("SUPER + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
@@ -50,6 +58,9 @@ hl.bind("SUPER + CTRL + W", hl.dsp.exec_cmd("caelestia wallpaper -r"))
 
 -- Lock screen
 hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"))
+
+-- App Launcher (Fallback Fuzzel)
+hl.bind("SUPER + Space", hl.dsp.exec_cmd("fuzzel"))
 
 -- AI Assistant drawer
 hl.bind("SUPER + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))

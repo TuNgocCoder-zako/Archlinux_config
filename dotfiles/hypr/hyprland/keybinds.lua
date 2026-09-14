@@ -50,12 +50,16 @@ local function extend_keybind(base, suffix)
 end
 
 -- Launcher
-local launcher_default = normalise_keybind("SUPER + SUPER_L")
+local function is_launcher_release(key)
+    local n = normalise_keybind(key)
+    return n == "super_l" or n == "super_r" or n == "super+super_l" or n == "super+super_r"
+end
+
 create_bind(
     vars.kbLauncher,
     hl.dsp.global("caelestia:launcher"),
     function(key)
-        return normalise_keybind(key) == launcher_default and release or nil
+        return is_launcher_release(key) and release or nil
     end
 )
 
