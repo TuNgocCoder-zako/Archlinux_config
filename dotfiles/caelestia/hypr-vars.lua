@@ -1,7 +1,7 @@
 return {
     -- Apps (Chỉ giữ lại Terminal, Web Browser, Thunar File Explorer)
     terminal                   = "kitty",
-    browser                    = "brave",
+    browser                    = "firefox",
     fileExplorer               = "thunar",
 
     -- Blur & Styling

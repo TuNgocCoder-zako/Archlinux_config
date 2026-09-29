@@ -8,7 +8,7 @@ SETUVAR _fisher_upgraded_to_4_4:\x1d
 SETUVAR _tide_left_items:os\x1epwd\x1egit\x1enewline\x1echaracter
 SETUVAR _tide_prompt_17581:\x1b\x5b30\x3b49m\x1b\x5b38\x3b2\x3b213\x3b203\x3b237\x3b40m\x20\uf303\x20\x1b\x5b90m\ue0b1\x1b\x5b40m\x20\x40PWD\x40\x20\x1b\x5b30\x3b49m\ue0b0\x1e\x1b\x5b38\x3b2\x3b213\x3b203\x3b237m\u276e\x1e\x1b\x5b30\x3b49m\ue0b2\x1b\x5b38\x3b2\x3b202\x3b197\x3b205\x3b40m\x2006\x3a27\x3a32\x20PM\x20\x1b\x5b30\x3b49m
 SETUVAR _tide_prompt_21327:\x1d
-SETUVAR _tide_prompt_33481:\x1b\x5b30\x3b49m\x1b\x5b38\x3b2\x3b213\x3b203\x3b237\x3b40m\x20\uf303\x20\x1b\x5b90m\ue0b1\x1b\x5b40m\x20\x40PWD\x40\x20\x1b\x5b30\x3b49m\ue0b0\x1e\x1b\x5b38\x3b2\x3b213\x3b203\x3b237m\u276e\x1e\x1b\x5b30\x3b49m\ue0b2\x1b\x5b38\x3b2\x3b202\x3b197\x3b205\x3b40m\x2007\x3a36\x3a05\x20PM\x20\x1b\x5b30\x3b49m
+SETUVAR _tide_prompt_33481:\x1b\x5b30\x3b49m\x1b\x5b38\x3b2\x3b246\x3b182\x3b190\x3b40m\x20\uf303\x20\x1b\x5b90m\ue0b1\x1b\x5b40m\x20\x40PWD\x40\x20\x1b\x5b30\x3b49m\ue0b0\x1e\x1b\x5b38\x3b2\x3b246\x3b182\x3b190m\u276e\x1e\x1b\x5b30\x3b49m\ue0b2\x1b\x5b38\x3b2\x3b187\x3b166\x3b168\x3b40m\x2008\x3a19\x3a21\x20PM\x20\x1b\x5b30\x3b49m
 SETUVAR _tide_right_items:status\x1ecmd_duration\x1econtext\x1ejobs\x1edirenv\x1enode\x1epython\x1erustc\x1ejava\x1ephp\x1etime
 SETUVAR fish_user_paths:/home/tu/\x2enpm\x2dglobal/bin\x1e/home/tu/Android/Sdk/platform\x2dtools\x1e/home/tu/Android/Sdk/cmdline\x2dtools/latest/bin\x1e/home/tu/src/flutter/bin\x1e/home/tu/\x2ecargo/bin\x1e/home/tu/\x2elocal/bin\x1e/usr/local/bin
 SETUVAR tide_aws_bg_color:black
@@ -17,8 +17,8 @@ SETUVAR tide_aws_icon:\uf270
 SETUVAR tide_bun_bg_color:black
 SETUVAR tide_bun_color:white
 SETUVAR tide_bun_icon:\U000f0cd3
-SETUVAR tide_character_color:d5cbed
-SETUVAR tide_character_color_failure:ffb4ab
+SETUVAR tide_character_color:f6b6be
+SETUVAR tide_character_color_failure:fa746f
 SETUVAR tide_character_icon:\u276f
 SETUVAR tide_character_vi_icon_default:\u276e
 SETUVAR tide_character_vi_icon_replace:\u25b6
@@ -58,7 +58,7 @@ SETUVAR tide_gcloud_icon:\U000f02ad
 SETUVAR tide_git_bg_color:black
 SETUVAR tide_git_bg_color_unstable:black
 SETUVAR tide_git_bg_color_urgent:black
-SETUVAR tide_git_color_branch:d5cbed
+SETUVAR tide_git_color_branch:f6b6be
 SETUVAR tide_git_color_conflicted:brred
 SETUVAR tide_git_color_dirty:bryellow
 SETUVAR tide_git_color_operation:brred
@@ -95,7 +95,7 @@ SETUVAR tide_node_bg_color:black
 SETUVAR tide_node_color:green
 SETUVAR tide_node_icon:\ue24f
 SETUVAR tide_os_bg_color:black
-SETUVAR tide_os_color:d5cbed
+SETUVAR tide_os_color:f6b6be
 SETUVAR tide_os_icon:\uf303
 SETUVAR tide_php_bg_color:black
 SETUVAR tide_php_color:blue
@@ -104,7 +104,7 @@ SETUVAR tide_private_mode_bg_color:black
 SETUVAR tide_private_mode_color:brwhite
 SETUVAR tide_private_mode_icon:\U000f05f9
 SETUVAR tide_prompt_add_newline_before:false
-SETUVAR tide_prompt_color_frame_and_connection:48464d
+SETUVAR tide_prompt_color_frame_and_connection:544446
 SETUVAR tide_prompt_color_separator_same_color:brblack
 SETUVAR tide_prompt_icon_connection:\x20
 SETUVAR tide_prompt_min_cols:34
@@ -114,9 +114,9 @@ SETUVAR tide_pulumi_bg_color:black
 SETUVAR tide_pulumi_color:yellow
 SETUVAR tide_pulumi_icon:\uf1b2
 SETUVAR tide_pwd_bg_color:black
-SETUVAR tide_pwd_color_anchors:d5cbed
-SETUVAR tide_pwd_color_dirs:cac4d3
-SETUVAR tide_pwd_color_truncated_dirs:f0c4d9
+SETUVAR tide_pwd_color_anchors:f6b6be
+SETUVAR tide_pwd_color_dirs:e5bdc1
+SETUVAR tide_pwd_color_truncated_dirs:ffe7fa
 SETUVAR tide_pwd_icon:\uf07c
 SETUVAR tide_pwd_icon_home:\uf015
 SETUVAR tide_pwd_icon_unwritable:\uf023
@@ -150,7 +150,7 @@ SETUVAR tide_terraform_bg_color:black
 SETUVAR tide_terraform_color:magenta
 SETUVAR tide_terraform_icon:\U000f1062
 SETUVAR tide_time_bg_color:black
-SETUVAR tide_time_color:cac5cd
+SETUVAR tide_time_color:bba6a8
 SETUVAR tide_time_format:\x25r
 SETUVAR tide_toolbox_bg_color:black
 SETUVAR tide_toolbox_color:magenta

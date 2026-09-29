@@ -7,7 +7,7 @@ return {
 
     -- Apps
     terminal                   = "kitty",
-    browser                    = "brave",
+    browser                    = "firefox",
     editor                     = "codium",
     fileExplorer               = "thunar",
     audioSettings              = "pwvucontrol",
