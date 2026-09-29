@@ -1,8 +1,9 @@
 {
     "ai": {
         "defaultOllamaModel": "qwen2.5:3b",
-        "enableCelestialMode": true,
-        "ollamaHistoryJson": "[{\"id\":\"chat_1790172830523\",\"title\":\"Screen Analysis Request\",\"messages\":[{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Tôi không thể phân tích màn hình hiện tại vì chưa cài đặt mô hình xử lý hình ảnh cần thiết. Vui lòng chạy lệnh sau trong terminal để cài đặt:  \\n`ollama pull moondream`  \\n\\nSau khi hoàn tất, bạn có thể yêu cầu tôi phân tích màn hình lần nữa.\",\"isFinished\":true,\"thoughtText\":\"Okay, the user asked me to check their screen, so I used the take_screenshot tool. But the output said there's no vision model installed in Ollama. Hmm, I need to let them know they need to install moondream for visual analysis. Wait, the error message already mentions that. So I should explain that I can't analyze the screen without it and suggest installing moondream. Let me check if there's another way. No, the tools don't have another option. So I'll inform them about the missing model and the installation step. Make sure to mention the exact command: 'ollama pull moondream'. Alright, that's clear.\"},{\"isUser\":true,\"text\":\"Tìm tên nhà vô địch wc 2026 đi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Giải vô địch thế giới (World Cup) năm 2026 vẫn chưa diễn ra, vì thời điểm hiện tại (2023) còn 3 năm nữa trước khi diễn ra giải đấu. Giải này sẽ được tổ chức bởi ba quốc gia: Hoa Kỳ, Canada và Mexico. Nhà vô địch sẽ được xác định sau khi giải đấu kết thúc vào năm 2026. Nếu bạn muốn biết thêm thông tin về lịch trình hoặc đội tuyển tham dự, hãy cho tôi biết!\",\"isFinished\":true,\"thoughtText\":\"Okay, the user is asking for the name of the 2026 World Cup champion. First, I need to check if I have the latest information on the 2026 World Cup. Since the tournament hasn't happened yet, the current champions don't exist. The last World Cup was in 2022, won by Argentina. The 2026 edition will be hosted by the USA, Canada, and Mexico. \\n\\nI should confirm the host countries and the schedule. The user might be confused about the year or the tournament. Maybe they meant the 2022 World Cup, but they specifically said 2026. Since the 2026 tournament is upcoming, there's no champion yet. I should inform them that the 2026 World Cup hasn't occurred yet and mention the host countries. Also, maybe suggest that they check official sources for updates as the tournament approaches.\\n\\nI don't need to use any tools here because this is a straightforward fact-check. The answer is that the 2026 World Cup hasn't taken place yet, so there's no current champion. Provide the host countries and the next tournament details to be helpful.\"},{\"isUser\":true,\"text\":\"xin chao\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Xin lỗi, tôi chưa hiểu yêu cầu của bạn. Bạn muốn được hỗ trợ về điều gì?\",\"isFinished\":true,\"thoughtText\":\"\"}]}]"
+        "enableCelestialMode": false,
+        "enableOllama": false,
+        "ollamaHistoryJson": ""
     },
     "appearance": {
         "islands": false,
@@ -164,7 +165,7 @@
     },
     "sidebar": {
         "enabled": true,
-        "showNews": true
+        "showNews": false
     },
     "utilities": {
         "enabled": true,
