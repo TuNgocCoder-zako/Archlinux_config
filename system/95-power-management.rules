@@ -1,0 +1,2 @@
+# Tự động điều chỉnh hiệu năng CPU, WiFi, Bluetooth khi cắm hoặc rút sạc
+SUBSYSTEM=="power_supply", ACTION=="change", RUN+="/usr/local/bin/auto-power-profile"

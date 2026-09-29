@@ -1,0 +1,12 @@
+# Custom Hyprland & Caelestia Shell latency optimization
+{ "name": "Hyprland", "type": "LowLatency_RT" }
+{ "name": "start-hyprland", "type": "LowLatency_RT" }
+{ "name": "qs", "type": "LowLatency_RT" }
+{ "name": "hyprlock", "type": "LowLatency_RT" }
+{ "name": "hypridle", "type": "Service" }
+{ "name": "fuzzel", "type": "LowLatency_RT" }
+{ "name": "kitty", "type": "LowLatency_RT" }
+{ "name": "thunar", "type": "Doc-View" }
+{ "name": "zalo", "type": "Chat" }
+{ "name": "spotify", "type": "Media" }
+{ "name": "brave", "type": "Browser" }

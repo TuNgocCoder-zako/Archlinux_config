@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Auto Power Profile & Hardware Optimization Dispatcher
+# Max performance on AC, optimal energy efficiency on Battery
+
+is_ac_online() {
+    if [ -f /sys/class/power_supply/ACAD/online ]; then
+        [ "$(cat /sys/class/power_supply/ACAD/online 2>/dev/null)" = "1" ] && return 0
+    fi
+    for p in /sys/class/power_supply/*; do
+        if [ -f "$p/type" ] && [ -f "$p/online" ]; then
+            stype=$(cat "$p/type" 2>/dev/null)
+            if [ "$stype" = "Mains" ] || [ "$stype" = "USB" ]; then
+                [ "$(cat "$p/online" 2>/dev/null)" = "1" ] && return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+WIFI_IFACE=$(iw dev 2>/dev/null | awk '$1=="Interface"{print $2}' | head -n 1)
+[ -z "$WIFI_IFACE" ] && WIFI_IFACE="wlp45s0"
+
+if is_ac_online; then
+    # ─── ĐANG CẮM SẠC (AC POWER: MAX PERFORMANCE) ───
+    # 1. Chuyển power-profiles-daemon sang performance
+    powerprofilesctl set performance >/dev/null 2>&1 || true
+
+    # 2. Ép tất cả CPU cores sang Energy-Performance Preference: performance
+    for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
+        [ -f "$epp" ] && echo "performance" > "$epp" 2>/dev/null || true
+    done
+
+    # 3. Tắt WiFi Power Save để giảm ping jitter, triệt tiêu độ trễ mạng
+    [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save off >/dev/null 2>&1 || true
+
+    # 4. Bật Bluetooth sẵn sàng
+    rfkill unblock bluetooth >/dev/null 2>&1 || true
+    bluetoothctl power on >/dev/null 2>&1 || true
+
+    # 5. Nâng xung tối thiểu của Intel iGPU lên 800MHz (đáp ứng 144Hz tức thì, triệt tiêu micro-stutter khi cắm sạc)
+    for c in /sys/class/drm/card[0-9]*; do
+        if [ -f "$c/gt_min_freq_mhz" ] && [ -f "$c/device/vendor" ] && [ "$(cat "$c/device/vendor" 2>/dev/null)" = "0x8086" ]; then
+            echo 800 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+        fi
+    done
+
+    logger -t auto-power-profile "Switched to AC Performance Mode (CPU: max, iGPU min: 800MHz, WiFi PS: off, BT: on)"
+else
+    # ─── ĐANG DÙNG PIN (BATTERY: ENERGY SAVING & FLUIDITY) ───
+    # 1. Chuyển power-profiles-daemon sang balanced để vừa mát vừa mượt
+    powerprofilesctl set balanced >/dev/null 2>&1 || true
+
+    # 2. Chuyển CPU sang balance_power (tiết kiệm điện năng tối đa khi nhàn rỗi)
+    for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
+        [ -f "$epp" ] && echo "balance_power" > "$epp" 2>/dev/null || true
+    done
+
+    # 3. Bật WiFi Power Save để tiết kiệm pin
+    [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save on >/dev/null 2>&1 || true
+
+    # 4. Kiểm tra nếu không có thiết bị Bluetooth nào đang kết nối thì tắt Bluetooth
+    CONNECTED_BT=$(bluetoothctl devices Connected 2>/dev/null)
+    if [ -z "$CONNECTED_BT" ]; then
+        bluetoothctl power off >/dev/null 2>&1 || true
+        rfkill block bluetooth >/dev/null 2>&1 || true
+    fi
+
+    # 5. Hạ xung tối thiểu của Intel iGPU về 350MHz (tiết kiệm pin tối đa khi dùng pin)
+    for c in /sys/class/drm/card[0-9]*; do
+        if [ -f "$c/gt_min_freq_mhz" ] && [ -f "$c/device/vendor" ] && [ "$(cat "$c/device/vendor" 2>/dev/null)" = "0x8086" ]; then
+            echo 350 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+        fi
+    done
+
+    logger -t auto-power-profile "Switched to Battery Mode (CPU: balance_power, iGPU min: 350MHz, WiFi PS: on, BT: smart-off)"
+fi

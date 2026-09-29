@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply Auto Power Profile on Boot (AC / Battery)
+After=multi-user.target power-profiles-daemon.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/auto-power-profile
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

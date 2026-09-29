@@ -84,8 +84,37 @@ chmod +x install.sh check.sh
 │   └── Thunar/uca.xml         # Right-click wallpaper action
 │
 └── scripts/
-    ├── set-wallpaper          # Set wallpaper + persist
-    └── restore-wallpaper      # Restore wallpaper on boot
+    ├── apply-all-optimizations.sh  # Master runner applying all system tweaks
+    ├── manage-dotfiles.sh          # GNU Stow dotfiles manager (2-way symlink sync)
+    ├── setup-uwsm.sh               # UWSM session manager for crash-proof Hyprland
+    ├── setup-cachyos-kernel.sh     # CachyOS kernel (BORE scheduler) & x86-64-v3 repo
+    ├── fix-boot-space-and-cachyos.sh # Fix /boot partition space & finalize CachyOS kernel
+    ├── setup-boot-optimization.sh  # Docker socket activation + GRUB 1s + Early KMS i915
+    ├── setup-system-snapshot.sh    # Automated Timeshift snapshot & pacman pre-upgrade hook
+    ├── setup-gpu-hibernation.sh    # NVIDIA D3cold deep sleep (0W)
+    ├── setup-display-smoothness.sh # Intel TigerLake PSR fix & dynamic GPU clocks
+    ├── setup-bluetooth-optimized.sh# Bluetooth audio & power profile
+    ├── setup-aula-driver.sh        # AULA peripheral driver setup
+    ├── set-wallpaper               # Set wallpaper + persist
+    └── restore-wallpaper           # Restore wallpaper on boot
+```
+
+## Dotfiles Management (GNU Stow)
+
+All dotfiles in `~/.config/` are managed via bidirectional symlinks powered by **GNU Stow**:
+
+```bash
+# Check status of dotfiles symlinks
+~/manage-dotfiles.sh status
+
+# Stow/Sync all modules to ~/.config/
+~/manage-dotfiles.sh stow all
+
+# Stow a specific module (e.g. hypr, kitty, uwsm, caelestia)
+~/manage-dotfiles.sh stow kitty
+
+# Check changes against Git repo
+~/manage-dotfiles.sh diff
 ```
 
 ## Key Bindings
