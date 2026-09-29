@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
+import Caelestia
 import Caelestia.Config
 import qs.components
 import qs.components.containers
@@ -86,6 +87,7 @@ Item {
     }
 
     property var ollamaModelsList: []
+    property var ollamaModelsCaps: ({})
     property bool isTyping: false
     property bool isThinking: false
     property string currentThoughtText: ""
@@ -201,15 +203,20 @@ Item {
                     try {
                         var response = JSON.parse(xhr.responseText);
                         var list = [];
+                        var capsMap = {};
                         if (response.models) {
                             for (var i = 0; i < response.models.length; i++) {
-                                list.push(response.models[i].name);
+                                var m = response.models[i];
+                                list.push(m.name);
+                                capsMap[m.name] = m.capabilities || [];
                             }
                         }
+                        ollamaModelsCaps = capsMap;
                         if (list.length > 0) {
                             ollamaModelsList = list;
-                            if (list.indexOf(GlobalConfig.ai.defaultOllamaModel) === -1) {
-                                GlobalConfig.ai.defaultOllamaModel = list[0];
+                            if (list.indexOf(GlobalConfig.ai.defaultOllamaModel) === -1 || GlobalConfig.ai.defaultOllamaModel.indexOf("moondream") !== -1) {
+                                var preferred = list.find(n => n.indexOf("qwen") !== -1) || list.find(n => n.indexOf("llama") !== -1) || list[0];
+                                GlobalConfig.ai.defaultOllamaModel = preferred;
                             }
                         } else {
                             ollamaModelsList = ["llama3", "mistral", "phi3", "gemma"];
@@ -480,6 +487,42 @@ Item {
             });
             listView.positionViewAtEnd();
             saveHistory();
+
+            var enableTools = GlobalConfig.ai.enableCelestialMode;
+            var lower = (promptText || "").toLowerCase();
+            var screenWords = /(?:màn\s*hình|man\s*hinh|màn\s*này|desktop|screen|screenshot)/i;
+            var actionWords = /(?:xem|đọc|dọc|nhìn|coi|chụp|kiểm\s*tra|quét|check|look|read|view|inspect|capture|thấy|giúp|bài)/i;
+            var directPhrases = /(?:xem\s*màn|đọc\s*màn|dọc\s*màn|nhìn\s*màn|chụp\s*màn|coi\s*màn|màn\s*hình\s*đi|màn\s*hình\s*có|trên\s*màn|xem\s*ảnh|đọc\s*ảnh)/i;
+            var isScreenReq = enableTools && (directPhrases.test(lower) || (screenWords.test(lower) && actionWords.test(lower)));
+
+            if (isScreenReq) {
+                for (var i = chatHistory.count - 1; i >= 0; i--) {
+                    var m = chatHistory.get(i);
+                    if (!m.isUser && !m.isFinished && m.text === "") {
+                        chatHistory.remove(i);
+                    }
+                }
+                chatHistory.append({
+                    "isUser": false,
+                    "text": "",
+                    "isFinished": false,
+                    "thoughtText": ""
+                });
+                listView.positionViewAtEnd();
+
+                isTyping = true;
+                isThinking = true;
+                inAgentLoop = true;
+                currentActionText = "Analyzing screen...";
+                currentThoughtText = "";
+                accumulatedToolResults = "";
+                accumulatedToolImage = "";
+                runningToolsCount = 1;
+
+                var screenCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_screen.py" --query ' + JSON.stringify(promptText);
+                runAgentCommand(screenCmd, "exec_take_screenshot");
+                return;
+            }
         }
 
         isTyping = true;
@@ -603,6 +646,34 @@ Item {
                 
                 if (xhr.readyState === XMLHttpRequest.DONE) {
                     if (xhr.status === 200) {
+                        var enableTools = GlobalConfig.ai.enableCelestialMode;
+                        var finalResponseText = chatHistory.get(chatHistory.count - 1).text;
+                        var refusalRegex = /(?:không thể xem|không có khả năng xem|không xem được|không thể nhìn|không có mắt|cannot see (?:your )?screen|unable to (?:view|see) (?:your )?screen)/i;
+                        var screenKeywords = /(?:màn\s*hình|man\s*hinh|screen|screenshot|desktop|màn)/i;
+                        
+                        var lastUserMsg = "";
+                        for (var u = chatHistory.count - 2; u >= 0; u--) {
+                            if (chatHistory.get(u).isUser) {
+                                lastUserMsg = chatHistory.get(u).text;
+                                break;
+                            }
+                        }
+                        
+                        if (enableTools && !isSystemToolResult && refusalRegex.test(finalResponseText) && (screenKeywords.test(lastUserMsg) || screenKeywords.test(finalResponseText))) {
+                            console.log("Refusal intercepted! Triggering screen analysis fallback...");
+                            chatHistory.setProperty(chatHistory.count - 1, "text", "");
+                            currentActionText = "Analyzing screen...";
+                            isTyping = true;
+                            isThinking = true;
+                            inAgentLoop = true;
+                            accumulatedToolResults = "";
+                            accumulatedToolImage = "";
+                            runningToolsCount = 1;
+                            var fallbackCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_screen.py" --query ' + JSON.stringify(lastUserMsg);
+                            runAgentCommand(fallbackCmd, "exec_take_screenshot");
+                            return;
+                        }
+
                         chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
                         saveHistory();
                         
@@ -655,8 +726,16 @@ Item {
                                     
                                     if (toolName === "take_screenshot") {
                                         currentActionText = "Analyzing screen...";
-                                        var screenCmd = 'grim -g "$(hyprctl monitors -j | jq -r \'.[] | select(.focused) | "\\(.x),\\(.y) \\(.width)x\\(.height)"\')" /tmp/orion_screenshot.png';
-                                        runAgentCommand(screenCmd, "screenshot_take");
+                                        var query = args.query || args.focus || "";
+                                        if (typeof query === "object" && query !== null) {
+                                            query = query.value || query.description || query.query || "";
+                                        }
+                                        query = String(query || "").trim();
+                                        var screenCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_screen.py"';
+                                        if (query) {
+                                            screenCmd += ' --query "' + query.replace(new RegExp("\"", "g"), '\\"') + '"';
+                                        }
+                                        runAgentCommand(screenCmd, "exec_" + toolName);
                                     } else if (toolName === "web_search") {
                                         currentActionText = "Searching the web...";
                                         var query = args.query;
@@ -735,7 +814,20 @@ Item {
                             isStreaming = false;
                         }
                     } else {
-                        var errMsg = (xhr.status === 0) ? "Generation cancelled" : "Ollama request failed (status " + xhr.status + ").";
+                        var errMsg = (xhr.status === 0) ? "Generation cancelled" : ("Ollama request failed (status " + xhr.status + ").");
+                        try {
+                            if (xhr.responseText) {
+                                var errObj = JSON.parse(xhr.responseText);
+                                if (errObj && errObj.error) {
+                                    var errStr = errObj.error;
+                                    try {
+                                        var nested = JSON.parse(errStr);
+                                        if (nested && nested.error && nested.error.message) errStr = nested.error.message;
+                                    } catch (e2) {}
+                                    errMsg = "Ollama: " + errStr;
+                                }
+                            }
+                        } catch (e) {}
                         var currentText = chatHistory.get(chatHistory.count - 1).text;
                         if (currentText.trim() === "") {
                             chatHistory.setProperty(chatHistory.count - 1, "text", errMsg);
@@ -755,9 +847,9 @@ Item {
 
         var messages = [];
         var enableTools = GlobalConfig.ai.enableCelestialMode;
-        var sysPrompt = "You are Orion, a smart, fast, and helpful AI desktop assistant integrated into Arch Linux with Hyprland and Caelestia shell. You respond accurately, concisely, and use the user's preferred language (Vietnamese or English).";
+        var sysPrompt = "You are Orion, an intelligent and helpful AI desktop assistant integrated into Arch Linux with Hyprland and Caelestia shell. You assist the user with programming, homework, desktop questions, and screen inspection. Answer accurately and directly in Vietnamese if asked in Vietnamese.";
         if (enableTools) {
-            sysPrompt += "\nCRITICAL RULES:\n1. You ARE integrated into the OS. NEVER say you don't have access to visual information. Call the take_screenshot tool if asked to look at the screen.\n2. You CAN browse the web using the web_search tool or read_webpage tool.\n3. DO NOT apologize for errors, simply explain what happened.\n4. When using tools, you don't need to explain that you are using a tool, just do it and respond to the user smoothly.\n5. Answer in Vietnamese if the user asks in Vietnamese, or English if asked in English.";
+            sysPrompt += "\nCRITICAL INSTRUCTIONS:\n1. You HAVE FULL ACCESS to the user's screen through integrated tools. When the user asks you to look at, read, view, or check their screen (e.g. 'xem màn hình', 'đọc màn hình', 'dọc màn hình', 'giúp giải bài trên màn hình'), ALWAYS call the take_screenshot tool immediately.\n2. NEVER say 'Tôi không thể xem màn hình', 'Tôi không có khả năng xem', 'I cannot view your screen', or ask the user to provide an image if you haven't called take_screenshot first.\n3. You can browse the web using web_search or read_webpage.\n4. When using tools, do not explain that you are calling a tool, execute it directly and provide the solution to the user smoothly.";
         }
         
         messages.push({
@@ -799,14 +891,26 @@ Item {
             }
         };
         
-        if (enableTools) {
+        var isKnownNonTool = ollamaModel.indexOf("moondream") !== -1 || ollamaModel.indexOf("llava") !== -1 || ollamaModel.indexOf("bakllava") !== -1;
+        var caps = root.ollamaModelsCaps[ollamaModel] || [];
+        var modelSupportsTools = !isKnownNonTool && ((caps.length === 0) || (caps.indexOf("tools") !== -1));
+        
+        if (enableTools && modelSupportsTools) {
             requestBody["tools"] = [
                 {
                     "type": "function",
                     "function": {
                         "name": "take_screenshot",
-                        "description": "Takes a screenshot of the user's screen and provides it to you for visual analysis.",
-                        "parameters": { "type": "object", "properties": {} }
+                        "description": "Takes a screenshot of the user's active desktop and performs visual analysis. Provide a query if you want to inspect something specific.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Optional specific question or detail to look for on the screen"
+                                }
+                            }
+                        }
                     }
                 },
                 {
@@ -1695,6 +1799,42 @@ Item {
                                          }
                                      }
                                  }
+                             }
+                         }
+
+                         Item {
+                             Layout.preferredWidth: 36
+                             Layout.preferredHeight: 36
+                             visible: !root.isTyping && GlobalConfig.ai.enableCelestialMode
+
+                             MaterialShape {
+                                 anchors.fill: parent
+                                 color: screenBtnMouse.containsMouse ? Colours.layer(Colours.tPalette.m3surfaceContainerHighest, 2) : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+                                 shape: MaterialShape.Circle
+                                 scale: screenBtnMouse.pressed ? 0.6 : screenBtnMouse.containsMouse ? 0.85 : 0.75
+
+                                 Behavior on scale { Anim { type: Anim.FastSpatial } }
+                                 Behavior on color { CAnim {} }
+
+                                 MouseArea {
+                                     id: screenBtnMouse
+                                     anchors.fill: parent
+                                     hoverEnabled: true
+                                     cursorShape: Qt.PointingHandCursor
+                                     onClicked: {
+                                         var query = inputArea.text.trim();
+                                         var prompt = query.length > 0 ? query : "Hãy xem và phân tích màn hình hiện tại của tôi";
+                                         inputArea.clear();
+                                         root.sendPrompt(prompt);
+                                     }
+                                 }
+                             }
+
+                             MaterialIcon {
+                                 anchors.centerIn: parent
+                                 text: "screenshot_monitor"
+                                 color: screenBtnMouse.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                                 font: Tokens.font.icon.small
                              }
                          }
 
