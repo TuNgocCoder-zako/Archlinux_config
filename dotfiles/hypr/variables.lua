@@ -19,26 +19,26 @@ return {
     workspaceSwipeFingers      = 4,
     gestureFingersMore         = 4,
 
-    -- Blur
+    -- Blur (Tối ưu mượt mà cho 144Hz iGPU)
     blurEnabled                = true,
     blurSpecialWs              = false,
-    blurPopups                 = true,
-    blurInputMethods           = true,
-    blurSize                   = 8,
+    blurPopups                 = false,
+    blurInputMethods           = false,
+    blurSize                   = 6,
     blurPasses                 = 2,
     blurXray                   = false,
 
-    -- Shadow
+    -- Shadow (Tối ưu shader render power)
     shadowEnabled              = true,
-    shadowRange                = 15,
-    shadowRenderPower          = 4,
+    shadowRange                = 12,
+    shadowRenderPower          = 3,
     shadowColour               = "rgba(" .. scheme.inversePrimary .. "10)",
 
-    -- Gaps
-    workspaceGaps              = 20,
-    windowGapsIn               = 5,
-    windowGapsOut              = 10,
-    singleWindowGapsOut        = 20,
+    -- Gaps (Tối ưu cửa sổ rộng rãi, không bị thu nhỏ)
+    workspaceGaps              = 10,
+    windowGapsIn               = 4,
+    windowGapsOut              = 6,
+    singleWindowGapsOut        = 4,
 
     -- Window styling
     windowOpacity              = 0.95,
@@ -50,7 +50,7 @@ return {
     -- Misc
     volumeStep                 = 10,
     volumeMax                  = 100,
-    cursorTheme                = "sweet-cursors",
+    cursorTheme                = "Bibata-Modern-Classic",
     cursorSize                 = 24,
     sleepGestureCmd            = "systemctl suspend-then-hibernate",
 

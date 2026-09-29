@@ -17,13 +17,15 @@ hl.config({
         mouse_move_enables_dpms      = true,
         key_press_enables_dpms       = true,
 
-        vrr                          = 0, -- Tắt VRR trên desktop (giữ 144Hz cố định để chống rung/giật ở góc màn hình)
+        -- Tắt VRR (giữ 144Hz cố định chống flicker khi đọc tài liệu/viết code)
+        vrr                          = 0,
 
         background_color             = "rgb(" .. scheme.surfaceContainer .. ")",
     },
 
     render = {
-        direct_scanout               = 0, -- Tắt direct scanout để tránh xung đột với các góc bo màn hình của Caelestia
+        direct_scanout         = 0,
+        new_render_scheduling  = false,
     },
 
     debug = {

@@ -4,7 +4,7 @@ hl.config({
     general = {
         layout          = "dwindle",
 
-        allow_tearing   = true, -- Allows `immediate` window rule to work for games
+        allow_tearing   = false, -- Disabled to eliminate tearing and screen flicker
 
         gaps_workspaces = vars.workspaceGaps,
         gaps_in         = vars.windowGapsIn,

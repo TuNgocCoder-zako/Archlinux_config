@@ -1,15 +1,16 @@
 {
     "ai": {
-        "defaultOllamaModel": "qwen2.5-coder:3b",
-        "ollamaHistoryJson": "[]"
+        "defaultOllamaModel": "qwen2.5:3b",
+        "enableCelestialMode": true,
+        "ollamaHistoryJson": "[{\"id\":\"chat_1790172830523\",\"title\":\"Screen Analysis Request\",\"messages\":[{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Tôi không thể phân tích màn hình hiện tại vì chưa cài đặt mô hình xử lý hình ảnh cần thiết. Vui lòng chạy lệnh sau trong terminal để cài đặt:  \\n`ollama pull moondream`  \\n\\nSau khi hoàn tất, bạn có thể yêu cầu tôi phân tích màn hình lần nữa.\",\"isFinished\":true,\"thoughtText\":\"Okay, the user asked me to check their screen, so I used the take_screenshot tool. But the output said there's no vision model installed in Ollama. Hmm, I need to let them know they need to install moondream for visual analysis. Wait, the error message already mentions that. So I should explain that I can't analyze the screen without it and suggest installing moondream. Let me check if there's another way. No, the tools don't have another option. So I'll inform them about the missing model and the installation step. Make sure to mention the exact command: 'ollama pull moondream'. Alright, that's clear.\"},{\"isUser\":true,\"text\":\"Tìm tên nhà vô địch wc 2026 đi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Giải vô địch thế giới (World Cup) năm 2026 vẫn chưa diễn ra, vì thời điểm hiện tại (2023) còn 3 năm nữa trước khi diễn ra giải đấu. Giải này sẽ được tổ chức bởi ba quốc gia: Hoa Kỳ, Canada và Mexico. Nhà vô địch sẽ được xác định sau khi giải đấu kết thúc vào năm 2026. Nếu bạn muốn biết thêm thông tin về lịch trình hoặc đội tuyển tham dự, hãy cho tôi biết!\",\"isFinished\":true,\"thoughtText\":\"Okay, the user is asking for the name of the 2026 World Cup champion. First, I need to check if I have the latest information on the 2026 World Cup. Since the tournament hasn't happened yet, the current champions don't exist. The last World Cup was in 2022, won by Argentina. The 2026 edition will be hosted by the USA, Canada, and Mexico. \\n\\nI should confirm the host countries and the schedule. The user might be confused about the year or the tournament. Maybe they meant the 2022 World Cup, but they specifically said 2026. Since the 2026 tournament is upcoming, there's no champion yet. I should inform them that the 2026 World Cup hasn't occurred yet and mention the host countries. Also, maybe suggest that they check official sources for updates as the tournament approaches.\\n\\nI don't need to use any tools here because this is a straightforward fact-check. The answer is that the 2026 World Cup hasn't taken place yet, so there's no current champion. Provide the host countries and the next tournament details to be helpful.\"},{\"isUser\":true,\"text\":\"xin chao\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Xin lỗi, tôi chưa hiểu yêu cầu của bạn. Bạn muốn được hỗ trợ về điều gì?\",\"isFinished\":true,\"thoughtText\":\"\"}]}]"
     },
     "appearance": {
         "islands": false,
         "pitchBlack": false,
         "transparency": {
-            "base": 0.4056846217105263,
-            "enabled": true,
-            "layers": 0.19492701480263158
+            "base": 0.3351356907894737,
+            "enabled": false,
+            "layers": 0.7853772615131579
         }
     },
     "audio": {
@@ -21,17 +22,18 @@
     "background": {
         "desktopClock": {
             "background": {
+                "blur": true,
                 "enabled": true,
-                "opacity": 0.058588610197368385
+                "opacity": 0.12501541940789473
             },
             "enabled": true,
             "invertColors": true,
             "position": "top-center",
-            "scale": 0.9645225123355263,
+            "scale": 1.1029373972039473,
             "shadow": {
-                "blur": 1.1923828125,
-                "enabled": true,
-                "opacity": 0.7801963404605263
+                "blur": 1.3760587993421052,
+                "enabled": false,
+                "opacity": 0.6640573601973685
             }
         },
         "desktopLyrics": {
@@ -46,17 +48,17 @@
             "invertColors": true,
             "overlay": true,
             "position": "bottom-center",
-            "scale": 1.159243935032895,
+            "scale": 1.2666015625000004,
             "shadow": {
-                "blur": 0.3500411184210527,
+                "blur": 0.43318256578947373,
                 "enabled": true,
-                "opacity": 1
+                "opacity": 0.06169819078947369
             }
         },
         "videoWallpaperPaused": false,
         "visualiser": {
             "autoHide": true,
-            "blur": true,
+            "blur": false,
             "enabled": true,
             "rounding": 6.033871299342105,
             "spacing": 0.3824527138157895
@@ -84,13 +86,17 @@
         }
     },
     "dashboard": {
+        "colorizeMediaGif": false,
         "enabled": true,
         "profilePicShape": 0,
+        "randomizeMediaShapeColors": false,
+        "replaceMediaLyricsWithVisuals": false,
         "showHyprlandSplash": true,
         "showOnHover": true,
         "showPerformance": true,
         "showWeather": true,
-        "syncMediaShapesToBeat": false
+        "syncMediaShapesToBeat": false,
+        "useMediaShapes": false
     },
     "general": {
         "apps": {
@@ -106,12 +112,21 @@
             "terminal": [
                 "kitty"
             ]
+        },
+        "idle": {
+            "inhibitWhenCharging": true,
+            "lockBeforeSleep": true,
+            "timeouts": [
+            ]
         }
     },
     "launcher": {
         "favouriteApps": [
             "spotify",
-            "brave-browser"
+            "brave-browser",
+            "idea",
+            "io.dbeaver.DBeaver",
+            "postman"
         ],
         "hiddenApps": [
             "org.pulseaudio.pavucontrol",
@@ -127,12 +142,16 @@
             "wallpapers": true
         }
     },
+    "lock": {
+        "profilePicShape": 1
+    },
     "nexus": {
         "networkRescanInterval": 5000
     },
     "services": {
         "audioIncrement": 0.05,
         "gpuType": "NVIDIA",
+        "lyricsBackend": "Auto",
         "pipPaused": false,
         "smartScheme": true,
         "useFahrenheit": false,
@@ -143,13 +162,68 @@
         "count": 1,
         "enabled": false
     },
+    "sidebar": {
+        "enabled": true,
+        "showNews": true
+    },
     "utilities": {
+        "enabled": true,
         "gameMode": {
             "autoEnable": false,
             "disableHyprlandAnimations": true
         },
+        "quickToggles": [
+            {
+                "enabled": true,
+                "id": "wifi"
+            },
+            {
+                "enabled": true,
+                "id": "bluetooth"
+            },
+            {
+                "enabled": false,
+                "id": "quickshare"
+            },
+            {
+                "enabled": true,
+                "id": "mic"
+            },
+            {
+                "enabled": true,
+                "id": "settings"
+            },
+            {
+                "enabled": false,
+                "id": "gameMode"
+            },
+            {
+                "enabled": true,
+                "id": "dnd"
+            },
+            {
+                "enabled": false,
+                "id": "vpn"
+            },
+            {
+                "enabled": true,
+                "id": "wallpaper"
+            },
+            {
+                "enabled": true,
+                "id": "badapple"
+            },
+            {
+                "enabled": true,
+                "id": "pauseWallpaper"
+            },
+            {
+                "enabled": true,
+                "id": "pipPause"
+            }
+        ],
         "toasts": {
-            "transparency": true,
+            "transparency": false,
             "transparencyBase": 0.8873766447368421
         }
     }

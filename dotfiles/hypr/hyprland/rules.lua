@@ -39,6 +39,13 @@ local todo_app_tag = "todo_app"
 ---- Window rules ----
 ----------------------
 
+-- Ignore maximize requests from all apps (prevents apps from auto-maximizing over Hyprland tiling)
+hl.window_rule({
+    name           = "suppress-maximize-events",
+    match          = { class = ".*" },
+    suppress_event = "maximize",
+})
+
 -- Apply default opacity to all windows except fullscreen
 hl.window_rule({ match = { fullscreen = false }, opacity = vars.windowOpacity .. " override" })
 
@@ -135,16 +142,16 @@ tagged_rule(xwl_popup_tag, {
 tagged_rule(system_monitor_tag, { "btop" }, "class")
 tagged_rule(music_player_tag, {
     "feishin|Supersonic|Plexamp",                                  -- Self hosted
-    "Spotify",                                                     -- Spotify
+    "[sS]potify|spotify|Spotify",                                  -- Spotify (X11 & Wayland)
     "Cider",                                                       -- Apple music
     "com.github.th-ch.youtube-music|com-maxrave-simpmusic-MainKt", -- YouTube music
 }, "class")
 tagged_rule(music_player_tag, {
-    "Spotify|Spotify Free" -- Spotify wayland, it has no class for some reason
+    "[sS]potify.*" -- Spotify wayland title
 }, "initial_title")
 tagged_rule(communication_app_tag, {
     "discord|equibop|vesktop", -- Discord clients
-    "whatsapp"                 -- Whatsapp
+    "whatsapp",                -- Whatsapp
 }, "class")
 tagged_rule(todo_app_tag, {
     "todoist" -- Todoist
@@ -215,5 +222,5 @@ hl.layer_rule({ match = { namespace = "wayfreeze" }, animation = "fade" })      
 hl.layer_rule({ match = { namespace = "launcher" }, animation = "popin 80%", blur = true }) -- Fuzzel
 
 -- Shell
-hl.layer_rule({ match = { namespace = "caelestia-(border-exclusion|area-picker)" }, no_anim = true })
-hl.layer_rule({ match = { namespace = "caelestia-(drawers|background)" }, animation = "fade" })
+hl.layer_rule({ match = { namespace = "caelestia-(border-exclusion|area-picker|drawers)" }, no_anim = true })
+hl.layer_rule({ match = { namespace = "caelestia-background" }, animation = "fade" })

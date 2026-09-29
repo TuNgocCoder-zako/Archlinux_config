@@ -24,8 +24,7 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("hypridle")
     hl.exec_cmd(home .. "/.local/bin/restore-wallpaper")
 
-    -- Bluetooth
-    hl.exec_cmd("bluetoothctl power on")
+    -- Bluetooth (nguồn được quản lý tự động theo sạc AC)
     hl.exec_cmd("blueman-applet")
 end)
 
@@ -59,12 +58,17 @@ hl.bind("SUPER + CTRL + W", hl.dsp.exec_cmd("caelestia wallpaper -r"))
 -- Lock screen
 hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"))
 
--- App Launcher (Fallback Fuzzel)
-hl.bind("SUPER + Space", hl.dsp.exec_cmd("fuzzel"))
+-- Voice AI Alexa Assistant (Trigger & Stop)
+hl.bind("SUPER + Space", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-trigger"))
+hl.bind("SUPER + SHIFT + Space", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-stop"))
 
 -- AI Assistant drawer
 hl.bind("SUPER + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))
 hl.bind("ALT + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))
+
+-- Multitasking (Workspace Overview & Window Switcher)
+hl.bind("SUPER + Tab", hl.dsp.global("caelestia:workspaceOverview"))
+hl.bind("SUPER + Grave", hl.dsp.global("caelestia:windowSwitcher"))
 
 --------------------------------------------------------------------------------
 -- 4. Window Rules

@@ -22,7 +22,8 @@ hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 -- Others
 hl.env("_JAVA_AWT_WM_NONREPARENTING", "1")
 
--- Hardware Video Acceleration & Mesa Drivers
+-- Hardware Video Acceleration & Mesa Drivers (Intel Iris Xe 144Hz Coding Mode)
 hl.env("LIBVA_DRIVER_NAME", "iHD")
 hl.env("MESA_LOADER_DRIVER_OVERRIDE", "iris")
-hl.env("NVD_BACKEND", "direct")
+hl.env("MESA_SHADER_CACHE_MAX_SIZE", "4G")
+hl.env("AQ_DRM_DEVICES", "/dev/dri/card-intel:/dev/dri/card-nvidia")

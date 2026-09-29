@@ -1,0 +1,8 @@
+{
+  "wallpaper": {
+    "postHook": "mkdir -p ~/.cache && echo \"$WALLPAPER_PATH\" > ~/.cache/current_wallpaper && test -f ~/.local/state/caelestia/theme/fish_colors.fish && fish ~/.local/state/caelestia/theme/fish_colors.fish && ~/.local/bin/sync-thunar-theme"
+  },
+  "theme": {
+    "postHook": "~/.local/bin/sync-thunar-theme"
+  }
+}

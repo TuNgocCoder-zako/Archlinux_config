@@ -1,0 +1,34 @@
+# ######## Toolkit backends ########
+export GDK_BACKEND='wayland,x11'
+export QT_QPA_PLATFORM='wayland;xcb'
+export SDL_VIDEODRIVER='wayland,x11,windows'
+export CLUTTER_BACKEND='wayland'
+export ELECTRON_OZONE_PLATFORM_HINT='auto'
+
+# ####### XDG specifications #######
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=Hyprland
+
+# ############# Others #############
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+# ######### Input Method (Fcitx5) #########
+export XMODIFIERS='@im=fcitx'
+export QT_IM_MODULE='fcitx'
+export GTK_IM_MODULE='fcitx'
+export SDL_IM_MODULE='fcitx'
+export GLFW_IM_MODULE='fcitx'
+export FCITX_ENABLE_WAYLAND_IM_PROTOCOL='1'
+
+# ############# Cursors #############
+export XCURSOR_THEME='Bibata-Modern-Classic'
+export XCURSOR_SIZE='24'
+export HYPRCURSOR_THEME='Bibata-Modern-Classic'
+export HYPRCURSOR_SIZE='24'
+
+# ######### Hardware & Drivers (Intel TigerLake Iris Xe) #########
+export LIBVA_DRIVER_NAME='iHD'
+export MESA_LOADER_DRIVER_OVERRIDE='iris'
+export MESA_SHADER_CACHE_MAX_SIZE='4G'
+export AQ_DRM_DEVICES='/dev/dri/card-intel:/dev/dri/card-nvidia'

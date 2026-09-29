@@ -1,12 +1,10 @@
 return {
-    -- Apps
+    -- Apps (Chỉ giữ lại Terminal, Web Browser, Thunar File Explorer)
     terminal                   = "kitty",
     browser                    = "brave",
-    editor                     = "nvim",
     fileExplorer               = "thunar",
-    audioSettings              = "pavucontrol",
 
-    -- Blur
+    -- Blur & Styling
     blurEnabled                = true,
     blurSpecialWs              = true,
     blurPopups                 = true,
@@ -27,17 +25,21 @@ return {
     -- Window Action
     kbCloseWindow              = { "SUPER + Q", "ALT + Q" },
 
-    -- Apps (Keybinds)
+    -- Phím gán ứng dụng được giữ lại: Terminal, Web, Thunar
     kbTerminal                 = { "SUPER + Return", "SUPER + T", "ALT + Return" },
+    kbBrowser                  = "SUPER + W",
     kbFileExplorer             = { "SUPER + E", "ALT + E" },
+
+    -- Loại bỏ hoàn toàn các phím gán ứng dụng khác & ứng dụng gây xung đột/lỗi
+    kbEditor                   = "",
+    kbAudioSettings            = "",
+    kbMusicWs                  = "",
+    kbCommunicationWs          = "",
+    kbTodoWs                   = "",
 
     -- Misc (Keybinds)
     kbShowSidebar              = { "SUPER + N", "ALT + N" },
 
-    -- Custom
+    -- Caelestia Launcher
     kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "ALT + D" },
-
-    -- Special Workspaces (Keybinds)
-    kbMusicWs                  = { "SUPER + M", "ALT + M" },
-    kbCommunicationWs          = { "SUPER + Z", "ALT + Z" },
 }
