@@ -34,6 +34,8 @@ if contains newline $_tide_left_items # two line prompt initialization
         set -l bot_right_frame "$prompt_and_frame_color─╯" &&
         set column_offset (math $column_offset-2)
 
+    set -U $prompt_var (_tide_2_line_prompt)
+
     if test "$tide_prompt_transient_enabled" = true
         eval "
 function fish_prompt
@@ -47,6 +49,8 @@ PATH=\$(string escape \"\$PATH\") CMD_DURATION=\$CMD_DURATION fish_bind_mode=\$f
         command kill \$_tide_last_pid 2>/dev/null
         set -g _tide_last_pid \$last_pid
     end
+
+    test -z \"\$$prompt_var\" && set -U $prompt_var (_tide_2_line_prompt)
 
     if not set -q _tide_transient
         math \$COLUMNS-(string length -V \"\$$prompt_var[1][1]\$$prompt_var[1][3]\")+$column_offset | read -lx dist_btwn_sides
@@ -76,6 +80,8 @@ PATH=\$(string escape \"\$PATH\") CMD_DURATION=\$CMD_DURATION fish_bind_mode=\$f
         set -g _tide_last_pid \$last_pid
     end
 
+    test -z \"\$$prompt_var\" && set -U $prompt_var (_tide_2_line_prompt)
+
     math \$COLUMNS-(string length -V \"\$$prompt_var[1][1]\$$prompt_var[1][3]\")+$column_offset | read -lx dist_btwn_sides
 
     echo -ns $add_newline'$top_left_frame'(string replace @PWD@ (_tide_pwd) \"\$$prompt_var[1][1]\")'$prompt_and_frame_color'
@@ -93,6 +99,8 @@ else # one line prompt initialization
     math 5 -$tide_prompt_min_cols | read -l column_offset
     test $column_offset -ge 0 && set column_offset "+$column_offset"
 
+    set -U $prompt_var (_tide_1_line_prompt)
+
     if test "$tide_prompt_transient_enabled" = true
         eval "
 function fish_prompt
@@ -107,6 +115,8 @@ PATH=\$(string escape \"\$PATH\") CMD_DURATION=\$CMD_DURATION fish_bind_mode=\$f
         command kill \$_tide_last_pid 2>/dev/null
         set -g _tide_last_pid \$last_pid
     end
+
+    test -z \"\$$prompt_var\" && set -U $prompt_var (_tide_1_line_prompt)
 
     if set -q _tide_transient
         echo -n \e\[0J
@@ -134,6 +144,8 @@ PATH=\$(string escape \"\$PATH\") CMD_DURATION=\$CMD_DURATION fish_bind_mode=\$f
         command kill \$_tide_last_pid 2>/dev/null
         set -g _tide_last_pid \$last_pid
     end
+
+    test -z \"\$$prompt_var\" && set -U $prompt_var (_tide_1_line_prompt)
 
     math \$COLUMNS-(string length -V \"\$$prompt_var[1][1]\$$prompt_var[1][2]\")$column_offset | read -lx dist_btwn_sides
     string replace @PWD@ (_tide_pwd) $add_newline \$$prompt_var[1][1]'$color_normal '
