@@ -1,5 +1,5 @@
 function _tide_item_character
-    test $_tide_status = 0 && set_color $tide_character_color || set_color $tide_character_color_failure
+    test "$_tide_status" = 0 && set_color $tide_character_color || set_color $tide_character_color_failure
 
     set -q add_prefix || echo -ns ' '
 
