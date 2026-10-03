@@ -436,9 +436,37 @@ def show_status():
     """Xem trạng thái service dock."""
     subprocess.run(["systemctl", "--user", "status", "nwg-dock.service", "--no-pager"])
 
+def complete_apps():
+    apps = scan_installed_apps()
+    seen = set()
+    for fn, info in sorted(apps.items(), key=lambda x: x[1]["name"].lower()):
+        base = info["base"]
+        name = info["name"]
+        if base not in seen:
+            seen.add(base)
+            print(f"{base}\t{name}")
+
+def complete_pinned():
+    pinned = read_pinned()
+    apps = scan_installed_apps()
+    id_to_app = {info["pin_id"]: info for info in apps.values()}
+    for fn, info in apps.items():
+        id_to_app[info["base"]] = info
+        if info["wm_class"]:
+            id_to_app[info["wm_class"]] = info
+    for p in pinned:
+        name = id_to_app.get(p, {}).get("name", p)
+        print(f"{p}\t{name}")
+
 def main():
     if len(sys.argv) < 2:
         add_app()
+    elif sys.argv[1] in ["complete", "--complete"]:
+        sub = sys.argv[2] if len(sys.argv) > 2 else "apps"
+        if sub == "pinned":
+            complete_pinned()
+        else:
+            complete_apps()
     elif sys.argv[1] in ["list", "ls", "-l"]:
         list_pinned()
     elif sys.argv[1] in ["add", "pin", "-a"]:
