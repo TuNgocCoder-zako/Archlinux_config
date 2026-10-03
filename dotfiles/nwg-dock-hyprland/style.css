@@ -2,18 +2,18 @@
    macOS Frosted Glassmorphism Theme for nwg-dock-hyprland (GTK3 Compatible)
    ============================================================================== */
 
-window {
-    background-color: transparent;
+window,
+window.background {
+    background-color: rgba(0, 0, 0, 0);
     background: none;
     border: none;
     box-shadow: none;
 }
 
 #box {
-    background-color: rgba(20, 22, 34, 0.72);
+    background-color: rgba(20, 22, 34, 0.75);
     border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.20);
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     padding: 6px 14px;
 }
 
@@ -35,10 +35,9 @@ button {
     transition: all 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Hiệu ứng macOS: Nâng nút, đổ bóng và sáng đèn khi rê chuột */
+/* Hiệu ứng macOS: Nâng nút và sáng đèn khi rê chuột */
 button:hover {
-    background-color: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.40);
+    background-color: rgba(255, 255, 255, 0.20);
     padding: 2px 5px 8px 5px;
     margin: 0px 4px;
 }

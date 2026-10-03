@@ -226,5 +226,5 @@ hl.layer_rule({ match = { namespace = "caelestia-(border-exclusion|area-picker|d
 hl.layer_rule({ match = { namespace = "caelestia-background" }, animation = "fade" })
 
 -- macOS Bottom Dock (nwg-dock-hyprland)
-hl.layer_rule({ match = { namespace = "nwg-dock" }, blur = true, blur_popups = true, animation = "slide bottom" })
+hl.layer_rule({ match = { namespace = "nwg-dock" }, blur = true, blur_popups = true, ignore_alpha = 0.5, animation = "slide bottom" })
 

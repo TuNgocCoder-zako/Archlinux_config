@@ -1,6 +1,6 @@
 {
     "ai": {
-        "defaultOllamaModel": "qwen2.5:3b",
+        "defaultOllamaModel": "test-qwen3-nothink:latest",
         "enableCelestialMode": false,
         "enableOllama": false,
         "ollamaHistoryJson": ""
@@ -74,16 +74,100 @@
             "showDate": true,
             "showIcon": true
         },
+        "dock": {
+            "monitorCenter": true,
+            "recolourIcons": false
+        },
+        "entries": {
+            "center": [
+                {
+                    "enabled": true,
+                    "id": "activeWindow"
+                }
+            ],
+            "end": [
+                {
+                    "enabled": true,
+                    "id": "statusIcons"
+                },
+                {
+                    "enabled": true,
+                    "id": "clock"
+                },
+                {
+                    "enabled": true,
+                    "id": "tray"
+                },
+                {
+                    "enabled": true,
+                    "id": "power"
+                }
+            ],
+            "start": [
+                {
+                    "enabled": true,
+                    "id": "logo"
+                },
+                {
+                    "enabled": true,
+                    "id": "workspaces"
+                }
+            ]
+        },
         "github": {
             "background": false
         },
+        "persistent": true,
         "position": "right",
         "showOnHover": true,
         "spotify": {
             "autoHide": false,
-            "background": false,
+            "background": true,
             "horizontalVolume": false,
             "inverted": false
+        },
+        "statusIcons": [
+            {
+                "enabled": true,
+                "id": "lockStatus"
+            },
+            {
+                "enabled": false,
+                "id": "audio"
+            },
+            {
+                "enabled": false,
+                "id": "microphone"
+            },
+            {
+                "enabled": false,
+                "id": "kbLayout"
+            },
+            {
+                "enabled": true,
+                "id": "network"
+            },
+            {
+                "enabled": true,
+                "id": "bluetooth"
+            },
+            {
+                "enabled": true,
+                "id": "battery"
+            },
+            {
+                "enabled": false,
+                "id": "peripheralBattery"
+            },
+            {
+                "enabled": true,
+                "id": "notifications"
+            }
+        ],
+        "tray": {
+            "background": false,
+            "compact": false,
+            "recolour": false
         }
     },
     "dashboard": {
@@ -122,7 +206,10 @@
         }
     },
     "launcher": {
+        "enabled": true,
         "favouriteApps": [
+            "thunar",
+            "kitty",
             "spotify",
             "firefox",
             "idea",
@@ -138,9 +225,12 @@
             "bvnc",
             "thunar-bulk-rename"
         ],
+        "showOnHover": false,
         "useFuzzy": {
             "apps": false,
-            "wallpapers": true
+            "schemes": false,
+            "variants": false,
+            "wallpapers": false
         }
     },
     "lock": {
