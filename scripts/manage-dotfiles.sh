@@ -148,6 +148,10 @@ case "$cmd" in
         echo -e "${CYAN}>>> Đang tái tạo (Restow) liên kết...${NC}"
         "$0" unstow "$target_pkg"
         "$0" stow "$target_pkg"
+        if command -v hyprctl &>/dev/null; then
+            hyprctl seterror disable &>/dev/null || true
+            hyprctl reload &>/dev/null || true
+        fi
         ;;
     status)
         check_status
