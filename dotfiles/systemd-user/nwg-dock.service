@@ -1,0 +1,13 @@
+[Unit]
+Description=nwg-dock-hyprland - macOS style floating dock for Hyprland
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nwg-dock-hyprland -d -p bottom -i 48 -mb 10 -hd 0 -a center -c "caelestia shell drawers toggle launcher"
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=graphical-session.target

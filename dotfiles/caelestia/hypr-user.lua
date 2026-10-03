@@ -26,11 +26,18 @@ hl.on("hyprland.start", function()
 
     -- Bluetooth (nguồn được quản lý tự động theo sạc AC)
     hl.exec_cmd("blueman-applet")
+
+    -- macOS-style Bottom Dock (nwg-dock-hyprland systemd service)
+    hl.exec_cmd("systemctl --user start nwg-dock.service")
 end)
 
 --------------------------------------------------------------------------------
 -- 3. Custom Keybindings
 --------------------------------------------------------------------------------
+-- macOS Dock Toggle (Super + D hoặc Super + Alt + D)
+hl.bind("SUPER + D", hl.dsp.exec_cmd(home .. "/.local/bin/dock-pin toggle"))
+hl.bind("SUPER + ALT + D", hl.dsp.exec_cmd(home .. "/.local/bin/dock-pin toggle"))
+
 -- Bluetooth Manager
 hl.bind("SUPER + B", hl.dsp.exec_cmd("blueman-manager"))
 hl.bind("ALT + B", hl.dsp.exec_cmd("blueman-manager"))
@@ -58,12 +65,11 @@ hl.bind("SUPER + CTRL + W", hl.dsp.exec_cmd("caelestia wallpaper -r"))
 -- Lock screen
 hl.bind("SUPER + L", hl.dsp.exec_cmd("loginctl lock-session"))
 
--- Voice AI Alexa Assistant (Trigger & Stop)
-hl.bind("SUPER + Space", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-trigger"))
-hl.bind("SUPER + SHIFT + Space", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-stop"))
+-- Voice AI Alexa Assistant (Trigger & Stop - chuyển sang SUPER + A theo yêu cầu)
+hl.bind("SUPER + A", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-trigger"))
+hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-stop"))
 
 -- AI Assistant drawer
-hl.bind("SUPER + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))
 hl.bind("ALT + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))
 
 -- Multitasking (Workspace Overview & Window Switcher)

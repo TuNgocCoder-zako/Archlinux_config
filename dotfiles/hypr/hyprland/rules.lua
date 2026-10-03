@@ -224,3 +224,7 @@ hl.layer_rule({ match = { namespace = "launcher" }, animation = "popin 80%", blu
 -- Shell
 hl.layer_rule({ match = { namespace = "caelestia-(border-exclusion|area-picker|drawers)" }, no_anim = true })
 hl.layer_rule({ match = { namespace = "caelestia-background" }, animation = "fade" })
+
+-- macOS Bottom Dock (nwg-dock-hyprland)
+hl.layer_rule({ match = { namespace = "nwg-dock" }, blur = true, blur_popups = true, animation = "slide bottom" })
+

@@ -43,6 +43,7 @@ CONFIG_PACKAGES=(
     "gtk-3.0"
     "Thunar"
     "quickshell"
+    "nwg-dock-hyprland"
 )
 
 backup_and_stow_pkg() {

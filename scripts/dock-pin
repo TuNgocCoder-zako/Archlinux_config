@@ -1,0 +1,468 @@
+#!/usr/bin/env python3
+"""
+dock-pin — Trình Quản Lý & Nâng Cấp macOS Dock Cho Hyprland (nwg-dock-hyprland)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sử dụng:
+  dock-pin                  # Mở giao diện chọn ứng dụng (Fuzzel GUI) để ghim vào Dock
+  dock-pin list             # Xem danh sách ứng dụng đã ghim, trạng thái chạy & đa nhiệm
+  dock-pin add <app>        # Ghim ứng dụng theo tên (VD: 'code', 'idea', 'dbeaver')
+  dock-pin remove [app]     # Bỏ ghim ứng dụng khỏi Dock (hoặc chọn qua Fuzzel)
+  dock-pin toggle           # Ẩn / Hiện thanh Dock ngay lập tức (phím tắt Super+D)
+  dock-pin show             # Hiện Dock
+  dock-pin hide             # Ẩn Dock
+  dock-pin edit             # Mở file danh sách ghim trong text editor để sắp xếp thứ tự
+  dock-pin reload           # Khởi động lại service Dock ngay lập tức
+  dock-pin status           # Kiểm tra trạng thái service và tiến trình Dock
+"""
+import glob
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+
+CACHE_PINNED = os.path.expanduser("~/.cache/nwg-dock-pinned")
+CONFIG_PINNED = os.path.expanduser("~/.config/nwg-dock-hyprland/pinned")
+DOTFILES_PINNED = os.path.expanduser("~/Archlinux_config/dotfiles/nwg-dock-hyprland/pinned")
+
+APP_DIRS = [
+    "/usr/share/applications",
+    os.path.expanduser("~/.local/share/applications"),
+    "/var/lib/flatpak/exports/share/applications",
+    os.path.expanduser("~/.local/share/flatpak/exports/share/applications"),
+]
+
+def get_dock_pids():
+    """Lấy danh sách PID của nwg-dock-hyprland đang chạy."""
+    try:
+        out = subprocess.check_output(["pgrep", "-f", "nwg-dock-hyprland"], text=True)
+        return [int(p.strip()) for p in out.splitlines() if p.strip()]
+    except subprocess.CalledProcessError:
+        return []
+
+def signal_dock(sig_num):
+    """Gửi signal RTMIN tới nwg-dock-hyprland."""
+    pids = get_dock_pids()
+    if not pids:
+        # Nếu service chưa chạy thì start nó
+        subprocess.run(["systemctl", "--user", "start", "nwg-dock.service"], capture_output=True)
+        time.sleep(0.3)
+        pids = get_dock_pids()
+
+    for pid in pids:
+        try:
+            os.kill(pid, sig_num)
+        except ProcessLookupError:
+            pass
+
+def toggle_dock():
+    """Toggle ẩn/hiện dock (SIGRTMIN+1 / 35)."""
+    signal_dock(signal.SIGRTMIN + 1)
+
+def show_dock():
+    """Hiện dock (SIGRTMIN+2 / 36)."""
+    signal_dock(signal.SIGRTMIN + 2)
+
+def hide_dock():
+    """Ẩn dock (SIGRTMIN+3 / 37)."""
+    signal_dock(signal.SIGRTMIN + 3)
+
+def reload_dock():
+    """Khởi động lại nwg-dock-hyprland service mượt mà."""
+    try:
+        subprocess.run(["systemctl", "--user", "restart", "nwg-dock.service"], check=True, capture_output=True)
+        print("⚡ Dock đã được reload thành công (systemd nwg-dock.service).")
+    except Exception:
+        # Fallback chạy trực tiếp nếu systemd không khả dụng
+        pids = get_dock_pids()
+        for p in pids:
+            try:
+                os.kill(p, signal.SIGKILL)
+            except Exception:
+                pass
+        time.sleep(0.2)
+        subprocess.Popen(
+            ["nwg-dock-hyprland", "-d", "-p", "bottom", "-i", "48", "-mb", "10", "-hd", "0", "-a", "center", "-c", "caelestia shell drawers toggle launcher"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        print("⚡ Dock đã được khởi động lại trực tiếp.")
+
+def get_running_clients():
+    """Lấy danh sách các cửa sổ Hyprland đang chạy theo Class."""
+    try:
+        out = subprocess.check_output(["hyprctl", "clients", "-j"], text=True)
+        clients = json.loads(out)
+        running = {}
+        for c in clients:
+            cls = c.get("class", "").strip()
+            if not cls:
+                continue
+            if cls not in running:
+                running[cls] = []
+            running[cls].append({
+                "title": c.get("title", ""),
+                "ws": c.get("workspace", {}).get("name", ""),
+                "pid": c.get("pid", 0),
+                "address": c.get("address", "")
+            })
+        return running
+    except Exception:
+        return {}
+
+def scan_installed_apps():
+    """Quét các file .desktop và trích xuất metadata."""
+    apps = {}
+    for d in APP_DIRS:
+        if not os.path.isdir(d):
+            continue
+        for f in sorted(glob.glob(os.path.join(d, "*.desktop"))):
+            fname = os.path.basename(f)
+            if any(x in fname for x in ["mimeinfo", "avahi", "bvnc", "bssh", "qvidcap", "qv4l2"]):
+                continue
+            name, exec_cmd, icon, wm_class = "", "", "", ""
+            no_display = False
+            try:
+                with open(f, "r", encoding="utf-8", errors="ignore") as fp:
+                    for line in fp:
+                        if line.startswith("Name=") and not name:
+                            name = line.strip().split("=", 1)[1]
+                        elif line.startswith("Exec=") and not exec_cmd:
+                            exec_cmd = line.strip().split("=", 1)[1]
+                        elif line.startswith("Icon=") and not icon:
+                            icon = line.strip().split("=", 1)[1]
+                        elif line.startswith("StartupWMClass=") and not wm_class:
+                            wm_class = line.strip().split("=", 1)[1]
+                        elif line.strip() == "NoDisplay=true":
+                            no_display = True
+            except Exception:
+                pass
+            if name and not no_display:
+                base = fname[:-8] if fname.endswith(".desktop") else fname
+                # Xác định app_id chuẩn nhất cho nwg-dock
+                # Nếu có StartupWMClass khác base, lưu cả hai
+                pin_id = wm_class if wm_class else base
+                apps[fname] = {
+                    "name": name,
+                    "exec": exec_cmd,
+                    "icon": icon,
+                    "wm_class": wm_class,
+                    "path": f,
+                    "base": base,
+                    "pin_id": pin_id,
+                }
+    return apps
+
+def ensure_desktop_symlink(pin_id, app_info):
+    """Đảm bảo file .desktop tồn tại cho pin_id để nwg-dock tìm thấy icon & exec."""
+    local_apps = os.path.expanduser("~/.local/share/applications")
+    os.makedirs(local_apps, exist_ok=True)
+    target_desktop = os.path.join(local_apps, f"{pin_id}.desktop")
+    if not os.path.exists(target_desktop) and os.path.exists(app_info["path"]):
+        try:
+            os.symlink(app_info["path"], target_desktop)
+        except Exception:
+            pass
+
+def read_pinned():
+    """Đọc danh sách pinned từ ~/.cache hoặc ~/.config."""
+    path = CACHE_PINNED if os.path.exists(CACHE_PINNED) else CONFIG_PINNED
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        # Chuẩn hóa: loại bỏ .desktop thừa nếu có
+        lines = []
+        for line in f:
+            item = line.strip()
+            if item and not item.startswith("#"):
+                if item.endswith(".desktop"):
+                    item = item[:-8]
+                lines.append(item)
+        return lines
+
+def write_pinned(items):
+    """Ghi danh sách pinned đồng bộ cả cache, config và dotfiles."""
+    # Chuẩn hóa không lưu đuôi .desktop
+    clean_items = []
+    for it in items:
+        clean = it.strip()
+        if clean.endswith(".desktop"):
+            clean = clean[:-8]
+        if clean and clean not in clean_items:
+            clean_items.append(clean)
+
+    for p in [CACHE_PINNED, CONFIG_PINNED, DOTFILES_PINNED]:
+        try:
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                for item in clean_items:
+                    f.write(f"{item}\n")
+        except Exception:
+            pass
+
+def list_pinned():
+    """Hiển thị danh sách ứng dụng đã ghim kèm trạng thái đa nhiệm."""
+    pinned = read_pinned()
+    apps = scan_installed_apps()
+    running = get_running_clients()
+
+    # Tạo map từ pin_id/base/wm_class sang app
+    id_to_app = {}
+    for fn, info in apps.items():
+        id_to_app[info["pin_id"]] = info
+        id_to_app[info["base"]] = info
+        if info["wm_class"]:
+            id_to_app[info["wm_class"]] = info
+
+    pids = get_dock_pids()
+    status_str = f"🟢 Đang chạy (PID {pids[0]})" if pids else "🔴 Đang dừng"
+
+    print("\n╔═══════════════════════════════════════════════════════════════════════════╗")
+    print(f"║   🍎 macOS Floating Dock — Quản Lý Đa Nhiệm & Ứng Dụng Đã Ghim            ║")
+    print(f"║   Trạng thái service: {status_str:<51} ║")
+    print("╚═══════════════════════════════════════════════════════════════════════════╝")
+    print("\n📌 CÁC ỨNG DỤNG ĐÃ GHIM TRÊN DOCK:")
+    print("─────────────────────────────────────────────────────────────────────────────")
+    if not pinned:
+        print("  (Chưa có ứng dụng nào được ghim)")
+    for i, p in enumerate(pinned, 1):
+        app = id_to_app.get(p)
+        name = app["name"] if app else p
+        is_running = p in running or (app and app["wm_class"] in running) or (app and app["base"] in running)
+        
+        if is_running:
+            instances = running.get(p) or (app and running.get(app["wm_class"])) or (app and running.get(app["base"])) or []
+            count = len(instances)
+            details = f"🟢 Đang chạy ({count} cửa sổ: WS {instances[0]['ws']})"
+        else:
+            details = "⚪ Đã ghim (Chờ mở)"
+
+        print(f"  {i:2d}. {name:<26} [{p:<18}] {details}")
+
+    # Tìm ứng dụng đang mở mà CHƯA ghim
+    unpinned_running = []
+    for cls, instances in running.items():
+        if cls in ["floating-term", "cava-term", "com.asus.tuf.control", "fuzzel"]:
+            continue
+        # Kiểm tra xem có trong pinned không
+        if cls not in pinned and not any(id_to_app.get(p) and id_to_app[p]["wm_class"] == cls for p in pinned):
+            app = id_to_app.get(cls)
+            name = app["name"] if app else cls
+            unpinned_running.append((name, cls, len(instances), instances[0]["ws"]))
+
+    if unpinned_running:
+        print("\n⚡ CỬA SỔ ĐANG MỞ (CHƯA GHIM VÀO DOCK):")
+        print("─────────────────────────────────────────────────────────────────────────────")
+        for nm, cls, cnt, ws in unpinned_running:
+            print(f"  ✦ {nm:<26} [{cls:<18}] WS {ws} ({cnt} cửa sổ) → Ghim: dock-pin add {cls}")
+
+    print("\n💡 Phím tắt nhanh: Super + D (hoặc Super+Alt+D) để Ẩn/Hiện Dock")
+    print("💡 Thao tác Dock: Chuột phải vào biểu tượng trên Dock để Ghim / Đổi Desktop / Đóng")
+    print("💡 Lệnh: dock-pin add <tên> | dock-pin remove [tên] | dock-pin reload\n")
+
+def add_app(query=None):
+    """Ghim ứng dụng vào Dock."""
+    apps = scan_installed_apps()
+    pinned = read_pinned()
+    running = get_running_clients()
+
+    target_pin_id = None
+    target_app_info = None
+
+    if query:
+        q = query.lower().strip()
+        if q.endswith(".desktop"):
+            q = q[:-8]
+
+        # 1. Tìm khớp trực tiếp pin_id hoặc base
+        for fn, info in apps.items():
+            if q == info["base"].lower() or q == info["pin_id"].lower() or q == info["wm_class"].lower():
+                target_pin_id = info["pin_id"]
+                target_app_info = info
+                break
+
+        # 2. Tìm gần đúng (fuzzy / contains)
+        if not target_pin_id:
+            matches = []
+            for fn, info in apps.items():
+                if q in info["name"].lower() or q in info["base"].lower() or q in info["wm_class"].lower():
+                    matches.append(info)
+            if len(matches) == 1:
+                target_pin_id = matches[0]["pin_id"]
+                target_app_info = matches[0]
+            elif len(matches) > 1:
+                print(f"🔍 Tìm thấy {len(matches)} ứng dụng khớp với '{query}':")
+                for i, m in enumerate(matches, 1):
+                    print(f"  {i}. {m['name']} [{m['pin_id']}]")
+                print("Vui lòng chỉ định rõ ID (ví dụ: dock-pin add idea)")
+                return
+            else:
+                # Nếu không thấy trong app .desktop nhưng đang chạy trong hyprctl
+                if query in running:
+                    target_pin_id = query
+                else:
+                    print(f"❌ Không tìm thấy ứng dụng nào khớp với '{query}'.")
+                    return
+    else:
+        # Fuzzel GUI Picker
+        # Ưu tiên các app đang chạy mà chưa ghim lên đầu menu!
+        choices = []
+        already_added_bases = set()
+
+        # Phần 1: Đang chạy chưa ghim
+        for cls, instances in running.items():
+            if cls in ["floating-term", "cava-term", "fuzzel"]:
+                continue
+            if cls not in pinned:
+                app_info = None
+                for fn, info in apps.items():
+                    if info["pin_id"] == cls or info["wm_class"] == cls or info["base"] == cls:
+                        app_info = info
+                        break
+                display_name = app_info["name"] if app_info else cls
+                choices.append(f"⚡ [ĐANG MỞ] {display_name:<28} | {cls}")
+                already_added_bases.add(cls)
+
+        # Phần 2: Tất cả app đã cài đặt
+        for fn, info in sorted(apps.items(), key=lambda x: x[1]["name"].lower()):
+            pid = info["pin_id"]
+            if pid in already_added_bases:
+                continue
+            badge = " [ĐÃ GHIM]" if pid in pinned or info["base"] in pinned else ""
+            choices.append(f"   {info['name']:<32}{badge} | {pid}")
+
+        try:
+            res = subprocess.run(
+                ["fuzzel", "-d", "-p", "📌 Chọn ứng dụng GHIM vào Dock: ", "-w", "56", "-l", "16"],
+                input="\n".join(choices), text=True, capture_output=True
+            )
+            selected = res.stdout.strip()
+            if not selected:
+                return
+            target_pin_id = selected.split("|")[1].strip()
+            for fn, info in apps.items():
+                if info["pin_id"] == target_pin_id or info["base"] == target_pin_id:
+                    target_app_info = info
+                    break
+        except FileNotFoundError:
+            print("❌ Cần cài fuzzel để mở giao diện GUI.")
+            return
+
+    if target_pin_id:
+        if target_pin_id in pinned:
+            print(f"ℹ️ '{target_pin_id}' đã có sẵn trong danh sách ghim.")
+            return
+
+        if target_app_info:
+            ensure_desktop_symlink(target_pin_id, target_app_info)
+
+        pinned.append(target_pin_id)
+        write_pinned(pinned)
+        app_name = target_app_info["name"] if target_app_info else target_pin_id
+        print(f"✅ Đã ghim thành công '{app_name}' [{target_pin_id}] vào Dock.")
+        reload_dock()
+
+def remove_app(query=None):
+    """Bỏ ghim ứng dụng khỏi Dock."""
+    pinned = read_pinned()
+    apps = scan_installed_apps()
+
+    if not pinned:
+        print("ℹ️ Dock hiện chưa có ứng dụng nào được ghim.")
+        return
+
+    id_to_app = {}
+    for fn, info in apps.items():
+        id_to_app[info["pin_id"]] = info
+        id_to_app[info["base"]] = info
+
+    target = None
+
+    if query:
+        q = query.lower().strip()
+        if q.endswith(".desktop"):
+            q = q[:-8]
+        for p in pinned:
+            app = id_to_app.get(p)
+            name = app["name"].lower() if app else ""
+            if q == p.lower() or q == name:
+                target = p
+                break
+        if not target:
+            print(f"❌ Không tìm thấy '{query}' trong danh sách ghim.")
+            return
+    else:
+        # Fuzzel GUI Picker
+        choices = []
+        for p in pinned:
+            app = id_to_app.get(p)
+            name = app["name"] if app else p
+            choices.append(f"🗑️ {name:<30} | {p}")
+
+        try:
+            res = subprocess.run(
+                ["fuzzel", "-d", "-p", "🗑️ Chọn ứng dụng BỎ GHIM khỏi Dock: ", "-w", "50", "-l", "12"],
+                input="\n".join(choices), text=True, capture_output=True
+            )
+            selected = res.stdout.strip()
+            if not selected:
+                return
+            target = selected.split("|")[1].strip()
+        except Exception:
+            return
+
+    if target and target in pinned:
+        pinned.remove(target)
+        write_pinned(pinned)
+        app = id_to_app.get(target)
+        name = app["name"] if app else target
+        print(f"🗑️ Đã bỏ ghim '{name}' [{target}] khỏi Dock.")
+        reload_dock()
+
+def edit_pinned():
+    """Mở file pinned trong editor."""
+    editor = os.environ.get("EDITOR", "micro")
+    for candidate in ["micro", "nano", "vim", "gedit", "codium", "code"]:
+        if subprocess.run(["which", candidate], capture_output=True).returncode == 0:
+            editor = candidate
+            break
+    subprocess.run([editor, CONFIG_PINNED])
+    # Đọc lại và đồng bộ
+    items = read_pinned()
+    write_pinned(items)
+    reload_dock()
+
+def show_status():
+    """Xem trạng thái service dock."""
+    subprocess.run(["systemctl", "--user", "status", "nwg-dock.service", "--no-pager"])
+
+def main():
+    if len(sys.argv) < 2:
+        add_app()
+    elif sys.argv[1] in ["list", "ls", "-l"]:
+        list_pinned()
+    elif sys.argv[1] in ["add", "pin", "-a"]:
+        q = sys.argv[2] if len(sys.argv) > 2 else None
+        add_app(q)
+    elif sys.argv[1] in ["remove", "rm", "unpin", "-r"]:
+        q = sys.argv[2] if len(sys.argv) > 2 else None
+        remove_app(q)
+    elif sys.argv[1] in ["toggle", "-t"]:
+        toggle_dock()
+    elif sys.argv[1] in ["show", "-s"]:
+        show_dock()
+    elif sys.argv[1] in ["hide", "-h"]:
+        hide_dock()
+    elif sys.argv[1] in ["reload", "restart"]:
+        reload_dock()
+    elif sys.argv[1] in ["edit", "-e"]:
+        edit_pinned()
+    elif sys.argv[1] in ["status"]:
+        show_status()
+    elif sys.argv[1] in ["help", "--help"]:
+        print(__doc__)
+    else:
+        add_app(sys.argv[1])
+
+if __name__ == "__main__":
+    main()
