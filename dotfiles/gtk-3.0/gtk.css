@@ -82,8 +82,12 @@
   caret-color: @accent_color;
 }
 
-window {
+window.csd, window.ssd, dialog {
   background: @window_bg_color;
+}
+
+window {
+  background: transparent;
 }
 
 /* =============================================================================

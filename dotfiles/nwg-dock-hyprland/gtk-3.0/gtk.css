@@ -1,8 +1,0 @@
-/* Isolated user-level GTK override for nwg-dock to eliminate rectangular corner artifacts */
-window,
-window.background {
-    background-color: rgba(0, 0, 0, 0);
-    background: none;
-    border: none;
-    box-shadow: none;
-}
