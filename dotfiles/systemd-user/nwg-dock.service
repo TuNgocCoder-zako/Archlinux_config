@@ -5,6 +5,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
+Environment="LAUNCHED_FROM_DOCK=1"
 ExecStart=/usr/bin/nwg-dock-hyprland -d -p bottom -i 48 -mb 10 -hd 0 -a center -c "caelestia shell drawers toggle launcher"
 Restart=on-failure
 RestartSec=1s

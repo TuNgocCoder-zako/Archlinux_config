@@ -150,7 +150,24 @@ end)
 create_bind(vars.kbPinWindow, hl.dsp.window.pin())
 create_bind(vars.kbWindowFullscreen, hl.dsp.window.fullscreen({ mode = "fullscreen" }))
 create_bind(vars.kbWindowBorderedFullscreen, hl.dsp.window.fullscreen({ mode = "maximized" }))
-create_bind(vars.kbToggleWindowFloating, hl.dsp.window.float())
+create_bind(vars.kbToggleWindowFloating, function()
+    local win = hl.get_active_window()
+    if not win then return end
+
+    if not win.floating then
+        -- Đang chia màn hình -> Chuyển sang nổi + phóng to trượt ra giữa
+        hl.dispatch(hl.dsp.window.float())
+        local sz = fn.resize_by_screen(88, 86)
+        if sz then
+            hl.dispatch(hl.dsp.window.resize(sz))
+        end
+        hl.dispatch(hl.dsp.window.center())
+        hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top" }))
+    else
+        -- Đang nổi -> Hút ngược lại vào lưới chia màn hình (tiling)
+        hl.dispatch(hl.dsp.window.float())
+    end
+end)
 create_bind(vars.kbCloseWindow, hl.dsp.window.close())
 
 -- Special workspace toggles
