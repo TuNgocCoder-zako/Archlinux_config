@@ -1,3 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 export LAUNCHED_FROM_DOCK=1
-exec /usr/bin/nwg-dock-hyprland "$@"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+re="command: '([^']+)'.*args: \[(.*)\]"
+
+# Execute nwg-dock-hyprland with line-buffering and monitor launch commands in real time
+stdbuf -oL -eL /usr/bin/nwg-dock-hyprland "$@" 2>&1 | while IFS= read -r line; do
+    echo "$line"
+    if [[ "$line" =~ $re ]]; then
+        cmd="${BASH_REMATCH[1]}"
+        args="${BASH_REMATCH[2]}"
+        echo "$(date +%s) $cmd $args" > "$RUNTIME_DIR/nwg_dock_last_launch"
+    fi
+done
