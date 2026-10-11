@@ -28,6 +28,12 @@ Item {
 
     ListModel { id: dockModel }
 
+    function formatWindowTarget(addr): string {
+        if (!addr) return "";
+        const cleanAddr = addr.toString().replace(/^0x/, "");
+        return "address:0x" + cleanAddr;
+    }
+
     function saveNewOrder(): void {
         const newArr = [];
         const newFavs = [];
@@ -198,10 +204,12 @@ Item {
 
                         onEntered: {
                             if (bar.popouts.hasCurrent && bar.popouts.currentName === "dockcontext") return;
-                            bar.popouts.currentName = "dockhover";
-                            bar.popouts.currentCenter = bar.isHorizontal ? delegateItem.mapToItem(null, delegateItem.width / 2, 0).x : (delegateItem.mapToItem(null, 0, delegateItem.height / 2).y ?? 0);
-                            bar.popouts.dockModel = modelData;
-                            bar.popouts.hasCurrent = true;
+                            if (bar.popouts.dockModel !== modelData || bar.popouts.currentName !== "dockhover") {
+                                bar.popouts.currentName = "dockhover";
+                                bar.popouts.currentCenter = bar.isHorizontal ? delegateItem.mapToItem(null, delegateItem.width / 2, 0).x : (delegateItem.mapToItem(null, 0, delegateItem.height / 2).y ?? 0);
+                                bar.popouts.dockModel = modelData;
+                                bar.popouts.hasCurrent = true;
+                            }
                         }
                     }
 
@@ -227,21 +235,44 @@ Item {
                                     bounceAnim.start();
                                 }
                                 
-                                if (modelData?.toplevels.length > 0) {
-                                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData?.toplevels[0].address}" })` : `focuswindow address:0x${modelData?.toplevels[0].address}`);
+                                const toplevels = modelData?.toplevels || [];
+                                if (toplevels.length > 0) {
+                                    const activeTop = Hyprland.activeToplevel;
+                                    if (toplevels.length === 1) {
+                                        const target = root.formatWindowTarget(toplevels[0].address);
+                                        if (Hypr.usingLua) {
+                                            Hypr.dispatch(`hl.dsp.focus({ window = "${target}" })`);
+                                        } else {
+                                            Hypr.dispatch(`focuswindow ${target}`);
+                                        }
+                                    } else {
+                                        let activeIdx = -1;
+                                        if (activeTop && activeTop.address) {
+                                            for (let i = 0; i < toplevels.length; ++i) {
+                                                if (toplevels[i].address === activeTop.address || root.formatWindowTarget(toplevels[i].address) === root.formatWindowTarget(activeTop.address)) {
+                                                    activeIdx = i;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        const nextIdx = (activeIdx >= 0) ? ((activeIdx + 1) % toplevels.length) : 0;
+                                        const nextTarget = root.formatWindowTarget(toplevels[nextIdx].address);
+                                        if (Hypr.usingLua) {
+                                            Hypr.dispatch(`hl.dsp.focus({ window = "${nextTarget}" })`);
+                                        } else {
+                                            Hypr.dispatch(`focuswindow ${nextTarget}`);
+                                        }
+                                    }
                                 } else if (modelData?.entry) {
-                                    // Mark as launching
-                                    let newLaunching = Object.assign({}, root.launchingApps);
-                                    newLaunching[modelData?.appClass || modelData?.id] = true;
-                                    root.launchingApps = newLaunching;
-                                    
-                                    const subCmd = modelData?.entry.runInTerminal
-                                        ? [...GlobalConfig.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...modelData?.entry.command]
-                                        : modelData?.entry.command;
-                                    Quickshell.execDetached({
-                                        command: subCmd,
-                                        workingDirectory: modelData?.entry.workingDirectory
-                                    });
+                                    bounceAnim.start();
+                                    if (modelData?.entry.runInTerminal) {
+                                        Quickshell.execDetached({
+                                            command: [...GlobalConfig.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...modelData?.entry.command],
+                                            workingDirectory: modelData?.entry.workingDirectory
+                                        });
+                                    } else {
+                                        modelData?.entry.execute();
+                                    }
                                 }
                             } else if (mouse.button === Qt.RightButton) {
                                 bar.popouts.currentName = "dockcontext";
@@ -276,19 +307,22 @@ Item {
                     ]
 
                     property bool isActive: {
-                        const activeTop = Hyprland.activeToplevel;
+                        const activeTop = root.activeTop || Hyprland.activeToplevel;
                         if (!activeTop) return false;
-                        
+
+                        const tops = modelData?.toplevels || [];
+                        for (const top of tops) {
+                            if (top.address && (top.address === activeTop.address || root.formatWindowTarget(top.address) === root.formatWindowTarget(activeTop.address))) {
+                                return true;
+                            }
+                        }
+
                         if (activeTop.lastIpcObject && modelData?.appClass) {
                             const activeClass = (activeTop.lastIpcObject.class || activeTop.lastIpcObject.initialClass || "").toLowerCase();
                             const appId = modelData?.appClass.toLowerCase();
                             if (activeClass && (activeClass === appId || activeClass.includes(appId) || appId.includes(activeClass))) {
                                 return true;
                             }
-                        }
-                        
-                        for (const top of modelData?.toplevels || []) {
-                            if (top.address && top.address === activeTop.address) return true;
                         }
                         return false;
                     }
@@ -333,9 +367,9 @@ Item {
                     Loader {
                         anchors.fill: icon
                         anchors.margins: -Tokens.padding.small
-                        active: root.launchingApps[modelData?.appClass || modelData?.id] || false
+                        active: false
                         sourceComponent: CircularIndicator {
-                            running: true
+                            running: false
                             strokeWidth: 2
                         }
                     }
@@ -414,15 +448,18 @@ Item {
         const index = Math.floor(adjustedPos / itemWidthWithSpacing);
         
         if (index >= 0 && index < modelDataArray.length) {
-            bar.popouts.currentName = "dockhover";
+            const targetModel = modelDataArray[index];
             const centerOffset = index * itemWidthWithSpacing + itemSize / 2;
             const absoluteCenter = isHorizontal 
                 ? container.mapToItem(null, padding + centerOffset, 0).x 
                 : container.mapToItem(null, 0, padding + centerOffset).y;
             
-            bar.popouts.currentCenter = absoluteCenter;
-            bar.popouts.dockModel = modelDataArray[index];
-            bar.popouts.hasCurrent = true;
+            if (bar.popouts.dockModel !== targetModel || bar.popouts.currentName !== "dockhover") {
+                bar.popouts.currentName = "dockhover";
+                bar.popouts.currentCenter = absoluteCenter;
+                bar.popouts.dockModel = targetModel;
+                bar.popouts.hasCurrent = true;
+            }
         }
     }
 
@@ -460,13 +497,31 @@ Item {
             const appClass = ipc.class || ipc.initialClass;
             if (!appClass) continue;
             
+            const isDialog = (ipc.title && (ipc.title.includes("Open") || ipc.title.includes("Save") || ipc.title.includes("Select") || ipc.title.includes("Properties"))) || false;
+            const isUtility = ["pavucontrol", "blueman-manager", "nm-connection-editor", "hyprpicker"].includes((appClass || "").toLowerCase());
+
+            const wsName = (ipc.workspace?.name || (toplevel.workspace?.name) || "").toString();
+            const wsId = ipc.workspace?.id ?? toplevel.workspace?.id ?? -1;
+            const topAddr = (toplevel.address || "").toString();
+
+            const safeTop = {
+                address: topAddr,
+                title: (toplevel.title || "").toString(),
+                workspaceName: wsName,
+                workspaceId: wsId,
+                floating: ipc.floating ?? false,
+                isDialog: isDialog,
+                isUtility: isUtility,
+                appClass: appClass
+            };
+
             let found = false;
             for (const app of apps) {
                 const isToplevelSteamGame = appClass.toLowerCase().startsWith("steam_app_");
                 
                 if (isToplevelSteamGame) {
                     if (app.appClass.toLowerCase() === appClass.toLowerCase()) {
-                        app.toplevels.push(toplevel);
+                        app.toplevels.push(safeTop);
                         found = true;
                         break;
                     }
@@ -478,7 +533,7 @@ Item {
                     if (app.appClass.toLowerCase() === appClass.toLowerCase() || 
                         app.id.toLowerCase().includes(appClass.toLowerCase()) || 
                         appClass.toLowerCase().includes(baseId)) {
-                        app.toplevels.push(toplevel);
+                        app.toplevels.push(safeTop);
                         found = true;
                         break;
                     }
@@ -509,7 +564,7 @@ Item {
                     id: appClass,
                     isPinned: false,
                     entry: entry,
-                    toplevels: [toplevel],
+                    toplevels: [safeTop],
                     appClass: appClass,
                     iconName: iconName
                 });
@@ -585,6 +640,16 @@ Item {
         
         root.modelDataArray = apps;
         root.modelUpdateTrigger += 1;
+
+        if (bar.popouts.hasCurrent && bar.popouts.currentName === "dockhover" && bar.popouts.dockModel) {
+            const currentId = bar.popouts.dockModel.id || bar.popouts.dockModel.appClass;
+            const freshApp = apps.find(a => (a.id === currentId || a.appClass === currentId));
+            if (freshApp) {
+                bar.popouts.dockModel = freshApp;
+            } else {
+                bar.popouts.hasCurrent = false;
+            }
+        }
     }
 
     property var _toplevels: Hyprland.toplevels.values
