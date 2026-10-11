@@ -64,7 +64,7 @@ hl.animation({ leaf = "fadeLayersOut",  enabled = true, speed = 2.2, bezier = "e
 -- Workspace Animations — Chuyển cảnh workspace mượt mà
 -- ══════════════════════════════════════════════════════════════
 
-hl.animation({ leaf = "workspaces",      enabled = true, speed = 3.4, bezier = "workspaces_bezier", style = "slidefade 20%" })
+hl.animation({ leaf = "workspaces",      enabled = true, speed = 3.6, bezier = "workspaces_bezier", style = "slide" })
 
 hl.animation({
     leaf    = "specialWorkspace",

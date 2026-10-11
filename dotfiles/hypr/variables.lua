@@ -16,7 +16,7 @@ return {
     touchpadDisableTyping      = true,
     touchpadScrollFactor       = 0.3,
     gestureFingers             = 3,
-    workspaceSwipeFingers      = 4,
+    workspaceSwipeFingers      = 3,
     gestureFingersMore         = 4,
 
     -- Blur (Tối ưu mượt mà cho 144Hz iGPU)

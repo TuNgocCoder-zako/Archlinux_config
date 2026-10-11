@@ -24,8 +24,8 @@ hl.config({
     },
 
     render = {
-        direct_scanout         = 0,
-        new_render_scheduling  = false,
+        direct_scanout         = 1,
+        new_render_scheduling  = true,
     },
 
     debug = {

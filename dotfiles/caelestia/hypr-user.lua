@@ -26,18 +26,11 @@ hl.on("hyprland.start", function()
 
     -- Bluetooth (nguồn được quản lý tự động theo sạc AC)
     hl.exec_cmd("blueman-applet")
-
-    -- macOS-style Bottom Dock (nwg-dock-hyprland systemd service)
-    hl.exec_cmd("systemctl --user start nwg-dock.service")
 end)
 
 --------------------------------------------------------------------------------
 -- 3. Custom Keybindings
 --------------------------------------------------------------------------------
--- macOS Dock Toggle (Super + D hoặc Super + Alt + D)
-hl.bind("SUPER + D", hl.dsp.exec_cmd(home .. "/.local/bin/dock-pin toggle"))
-hl.bind("SUPER + ALT + D", hl.dsp.exec_cmd(home .. "/.local/bin/dock-pin toggle"))
-
 -- Bluetooth Manager
 hl.bind("SUPER + B", hl.dsp.exec_cmd("blueman-manager"))
 hl.bind("ALT + B", hl.dsp.exec_cmd("blueman-manager"))

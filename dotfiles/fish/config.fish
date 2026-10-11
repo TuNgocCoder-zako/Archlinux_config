@@ -47,3 +47,5 @@ if status is-login
         exec start-hyprland
     end
 end
+
+set -gx PHP_INI_SCAN_DIR ":/home/tu/.config/php"

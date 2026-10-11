@@ -115,13 +115,17 @@ ColumnLayout {
 
                     onClicked: {
                         if (model.entry) {
-                            const subCmd = model.entry.runInTerminal
-                                ? [...GlobalConfig.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...model.entry.command]
-                                : model.entry.command;
-                            Quickshell.execDetached({
-                                command: subCmd,
-                                workingDirectory: model.entry.workingDirectory
-                            });
+                            const launchId = model.id || model.appClass || "";
+                            Quickshell.execDetached(["bash", "-c", `echo $(date +%s) ${launchId} > "\${XDG_RUNTIME_DIR:-/tmp}/dock_last_launch"`]);
+
+                            if (model.entry.runInTerminal) {
+                                Quickshell.execDetached({
+                                    command: [...GlobalConfig.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...model.entry.command],
+                                    workingDirectory: model.entry.workingDirectory
+                                });
+                            } else {
+                                model.entry.execute();
+                            }
                         }
                         root.popouts.hasCurrent = false;
                     }

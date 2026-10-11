@@ -196,7 +196,7 @@ Item {
 
                     TrayMenu {
                         popouts: root.popouts
-                        trayItem: trayMenu.modelData.menu // qmllint disable unresolved-type
+                        trayItem: trayMenu.modelData ? trayMenu.modelData.menu : null // qmllint disable unresolved-type
                     }
                 }
             }

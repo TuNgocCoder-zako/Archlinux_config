@@ -19,7 +19,11 @@ Singleton {
 
     readonly property HyprlandToplevel activeToplevel: {
         const t = Hyprland.activeToplevel;
-        return t?.workspace?.name.startsWith("special:") || Hyprland.focusedWorkspace?.toplevels.values.length > 0 ? t : null;
+        const ws = t ? t.workspace : null;
+        const wsName = ws ? ws.name : "";
+        const isSpecial = wsName.startsWith("special:") && wsName !== "special:minimized";
+        const hasToplevels = Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.toplevels && Hyprland.focusedWorkspace.toplevels.values.length > 0;
+        return (isSpecial || hasToplevels) ? t : null;
     }
     readonly property HyprlandWorkspace focusedWorkspace: Hyprland.focusedWorkspace
     readonly property HyprlandMonitor focusedMonitor: Hyprland.focusedMonitor
@@ -47,7 +51,7 @@ Singleton {
     }
 
     function cycleSpecialWorkspace(direction: string): void {
-        const openSpecials = workspaces.values.filter(w => w.name.startsWith("special:") && w.lastIpcObject.windows > 0);
+        const openSpecials = workspaces.values.filter(w => w.name.startsWith("special:") && w.name !== "special:minimized" && w.lastIpcObject.windows > 0);
 
         if (openSpecials.length === 0)
             return;
@@ -156,7 +160,7 @@ Singleton {
         function onLastIpcObjectChanged(): void {
             const specialName = root.focusedMonitor.lastIpcObject.specialWorkspace.name;
 
-            if (specialName && specialName.startsWith("special:")) {
+            if (specialName && specialName.startsWith("special:") && specialName !== "special:minimized") {
                 root.lastSpecialWorkspace = specialName;
             }
         }
@@ -207,7 +211,7 @@ Singleton {
         }
 
         function listSpecialWorkspaces(): string {
-            return root.workspaces.values.filter(w => w.name.startsWith("special:") && w.lastIpcObject.windows > 0).map(w => w.name).join("\n");
+            return root.workspaces.values.filter(w => w.name.startsWith("special:") && w.name !== "special:minimized" && w.lastIpcObject.windows > 0).map(w => w.name).join("\n");
         }
 
         target: "hypr"

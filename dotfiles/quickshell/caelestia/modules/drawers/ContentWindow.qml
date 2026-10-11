@@ -24,7 +24,10 @@ StyledWindow {
     readonly property ScreenState screenState: ShellState.forScreen(screen)
 
     readonly property HyprlandMonitor monitor: Hypr.monitorFor(screen)
-    readonly property bool hasSpecialWorkspace: (monitor?.lastIpcObject.specialWorkspace?.name.length ?? 0) > 0
+    readonly property bool hasSpecialWorkspace: {
+        const n = monitor?.lastIpcObject.specialWorkspace?.name ?? "";
+        return n.length > 0 && n !== "special:minimized";
+    }
     readonly property bool hasFullscreenOnNormalWs: monitor?.activeWorkspace?.toplevels.values.some(t => t.lastIpcObject.fullscreen > 1) ?? false
     readonly property bool hasFullscreen: {
         if (hasSpecialWorkspace) {
@@ -50,7 +53,8 @@ StyledWindow {
         if (focusGrab.active || panels.popouts.isDetached)
             return 0;
 
-        if (monitor?.lastIpcObject.specialWorkspace?.name || monitor?.activeWorkspace?.lastIpcObject.windows > 0)
+        const spName = monitor?.lastIpcObject.specialWorkspace?.name;
+        if ((spName && spName !== "special:minimized") || monitor?.activeWorkspace?.lastIpcObject.windows > 0)
             return 0;
 
         const thresholds = [];

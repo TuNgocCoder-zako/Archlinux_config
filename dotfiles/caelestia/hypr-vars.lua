@@ -1,11 +1,15 @@
 return {
-    -- Apps (Chỉ giữ lại Terminal, Web Browser, Thunar File Explorer)
+    -- Apps
     terminal                   = "kitty",
     browser                    = "firefox",
     fileExplorer               = "thunar",
 
-    -- Blur & Styling
-    blurEnabled                = true,
+    -- Touchpad
+    touchpadDisableTyping      = false,
+    workspaceSwipeFingers      = 3,
+
+    -- Blur
+    blurEnabled                = false,
     blurSpecialWs              = true,
     blurPopups                 = true,
     blurInputMethods           = true,
@@ -15,7 +19,7 @@ return {
 
     -- Shadow
     shadowEnabled              = true,
-    shadowRenderPower          = 2,
+    shadowRenderPower          = 3,
 
     -- Window styling
     windowOpacity              = 1,
@@ -25,21 +29,21 @@ return {
     -- Window Action
     kbCloseWindow              = { "SUPER + Q", "ALT + Q" },
 
-    -- Phím gán ứng dụng được giữ lại: Terminal, Web, Thunar
-    kbTerminal                 = { "SUPER + Return", "SUPER + T", "ALT + Return" },
-    kbBrowser                  = "SUPER + W",
-    kbFileExplorer             = { "SUPER + E", "ALT + E" },
-
-    -- Loại bỏ hoàn toàn các phím gán ứng dụng khác & ứng dụng gây xung đột/lỗi
-    kbEditor                   = "",
-    kbAudioSettings            = "",
+    -- Special workspaces toggles
     kbMusicWs                  = "",
     kbCommunicationWs          = "",
     kbTodoWs                   = "",
 
+    -- Apps (Keybinds)
+    kbTerminal                 = { "SUPER + Return", "SUPER + T", "ALT + Return" },
+    kbBrowser                  = "SUPER + W",
+    kbEditor                   = "",
+    kbFileExplorer             = { "SUPER + E", "ALT + E" },
+
     -- Misc (Keybinds)
     kbShowSidebar              = { "SUPER + N", "ALT + N" },
 
-    -- Caelestia Launcher
+    -- Custom
+    kbAudioSettings            = "",
     kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "ALT + D" },
 }
