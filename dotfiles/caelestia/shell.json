@@ -287,8 +287,8 @@
         "visualiserBars": 60
     },
     "shimeji": {
-        "autoHide": true,
-        "count": 2,
+        "autoHide": false,
+        "count": 4,
         "enabled": true,
         "path": "root:/assets/shimeji/pusheen",
         "scale": 1
