@@ -9,9 +9,9 @@
         "islands": false,
         "pitchBlack": false,
         "transparency": {
-            "base": 0.3351356907894737,
+            "base": 0.26279772782651073,
             "enabled": false,
-            "layers": 0.7853772615131579
+            "layers": 1
         }
     },
     "audio": {
@@ -29,7 +29,7 @@
             },
             "enabled": true,
             "invertColors": true,
-            "position": "top-center",
+            "position": "top-left",
             "scale": 1.1029373972039473,
             "shadow": {
                 "blur": 1.3760587993421052,
@@ -59,16 +59,20 @@
         "videoWallpaperPaused": false,
         "visualiser": {
             "autoHide": true,
-            "blur": false,
-            "enabled": true,
-            "rounding": 6.033871299342105,
-            "spacing": 0.3824527138157895
+            "blur": true,
+            "enabled": false,
+            "rounding": 0.381527549342105,
+            "spacing": 0.5311472039473685
         },
         "wallpaperEnabled": true,
         "wallpaperRecolor": false,
         "wallpaperRecolorStrength": 0
     },
     "bar": {
+        "activeWindow": {
+            "compact": false,
+            "showOnHover": false
+        },
         "clock": {
             "background": true,
             "showDate": true,
@@ -78,11 +82,12 @@
             "monitorCenter": true,
             "recolourIcons": false
         },
+        "dragThreshold": 30,
         "entries": {
             "center": [
                 {
                     "enabled": true,
-                    "id": "activeWindow"
+                    "id": "dock"
                 }
             ],
             "end": [
@@ -95,8 +100,12 @@
                     "id": "clock"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "id": "tray"
+                },
+                {
+                    "enabled": true,
+                    "id": "github"
                 },
                 {
                     "enabled": true,
@@ -111,20 +120,30 @@
                 {
                     "enabled": true,
                     "id": "workspaces"
+                },
+                {
+                    "enabled": true,
+                    "id": "spotify"
                 }
             ]
         },
         "github": {
-            "background": false
+            "background": true
         },
         "persistent": true,
-        "position": "right",
+        "popouts": {
+            "activeWindow": false,
+            "statusIcons": true,
+            "tray": true
+        },
+        "position": "bottom",
         "showOnHover": true,
         "spotify": {
             "autoHide": false,
             "background": true,
             "horizontalVolume": false,
-            "inverted": false
+            "inverted": false,
+            "maxTitleLength": 26
         },
         "statusIcons": [
             {
@@ -144,11 +163,11 @@
                 "id": "kbLayout"
             },
             {
-                "enabled": true,
+                "enabled": false,
                 "id": "network"
             },
             {
-                "enabled": true,
+                "enabled": false,
                 "id": "bluetooth"
             },
             {
@@ -165,22 +184,35 @@
             }
         ],
         "tray": {
-            "background": false,
+            "background": true,
             "compact": false,
             "recolour": false
+        },
+        "workspaces": {
+            "activeIndicator": true,
+            "activeTrail": true,
+            "occupiedBg": true,
+            "perMonitorWorkspaces": false,
+            "showWindows": true,
+            "showWindowsOnSpecialWorkspaces": true,
+            "shown": 5,
+            "useIcon": true
         }
     },
     "dashboard": {
         "colorizeMediaGif": false,
+        "dragThreshold": 30,
         "enabled": true,
         "profilePicShape": 0,
         "randomizeMediaShapeColors": false,
         "replaceMediaLyricsWithVisuals": false,
+        "showDashboard": true,
         "showHyprlandSplash": true,
         "showOnHover": true,
         "showPerformance": true,
+        "showTerminal": false,
         "showWeather": true,
-        "syncMediaShapesToBeat": false,
+        "syncMediaShapesToBeat": true,
         "useMediaShapes": false
     },
     "general": {
@@ -211,10 +243,13 @@
             "thunar",
             "kitty",
             "spotify",
+            "code",
             "firefox",
             "idea",
             "io.dbeaver.DBeaver",
-            "postman"
+            "postman",
+            "onlyoffice-desktopeditors",
+            "zalo"
         ],
         "hiddenApps": [
             "org.pulseaudio.pavucontrol",
@@ -241,19 +276,25 @@
     },
     "services": {
         "audioIncrement": 0.05,
+        "bluetoothAutoReconnectDevices": [
+            "A9:2B:1B:AA:5E:E4"
+        ],
         "gpuType": "NVIDIA",
         "lyricsBackend": "Auto",
         "pipPaused": false,
         "smartScheme": true,
         "useFahrenheit": false,
-        "visualiserBars": 80
+        "visualiserBars": 60
     },
     "shimeji": {
-        "autoHide": false,
-        "count": 1,
-        "enabled": false
+        "autoHide": true,
+        "count": 2,
+        "enabled": false,
+        "path": "root:/assets/shimeji/pusheen",
+        "scale": 1
     },
     "sidebar": {
+        "dragThreshold": 50,
         "enabled": true,
         "showNews": false
     },

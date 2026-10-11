@@ -5,6 +5,7 @@ import qs.modules.nexus.common
 
 PageBase {
     id: root
+
     title: qsTr("Shimeji characters")
     isSubPage: true
 
@@ -47,9 +48,23 @@ PageBase {
             enabled: root.targetConfig.shimeji.enabled
         }
 
+        SliderRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            configNode: root.targetConfig.shimeji
+            propertyName: "scale"
+            label: qsTr("Size")
+            value: ((root.targetConfig.shimeji.scale || 1.0) - 0.5) / 1.5
+            valueLabel: Math.round((root.targetConfig.shimeji.scale || 1.0) * 100) + "%"
+            onMoved: v => {
+                root.targetConfig.shimeji.scale = 0.5 + v * 1.5;
+                root.targetConfig.save();
+            }
+            enabled: root.targetConfig.shimeji.enabled
+        }
+
         StepperRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
-            last: true
             Layout.fillWidth: true
             label: qsTr("Shimeji count per screen")
             configNode: root.targetConfig.shimeji
@@ -60,6 +75,23 @@ PageBase {
             value: root.targetConfig.shimeji.count
             onMoved: v => {
                 root.targetConfig.shimeji.count = v;
+                root.targetConfig.save();
+            }
+            enabled: root.targetConfig.shimeji.enabled
+        }
+
+        TextFieldRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            last: true
+            Layout.fillWidth: true
+            configNode: root.targetConfig.shimeji
+            propertyName: "path"
+            label: qsTr("Character pack path")
+            subtext: qsTr("Folder or .zip (default: Pusheen cat)")
+            placeholderText: "root:/assets/shimeji/pusheen"
+            value: root.targetConfig.shimeji.path || ""
+            onEditingFinished: text => {
+                root.targetConfig.shimeji.path = text;
                 root.targetConfig.save();
             }
             enabled: root.targetConfig.shimeji.enabled

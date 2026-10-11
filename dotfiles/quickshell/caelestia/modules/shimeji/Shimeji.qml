@@ -3,9 +3,8 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import Caelestia.Config
-import Caelestia.Internal
-import qs.components.containers
 import qs.components
+import qs.components.containers
 import qs.services
 import qs.utils
 
@@ -29,18 +28,26 @@ StyledWindow {
 
     readonly property real borderThickness: modelData ? contentItem.Config.border.thickness : 0
 
-    readonly property var barWrapper: (() => {
-        let name = root.screen ? root.screen.name : undefined;
-        let bar = name ? Visibilities.bars.get(name) : undefined;
-        return bar;
-    })()
+    readonly property real shimejiScale: contentItem.Config.shimeji.scale || 1.0
 
-    readonly property real floorOffset: Config.bar.position === "bottom" ? (barWrapper?.exclusiveZone ?? (Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness))) : 0
+    readonly property var barWrapper: root.screen ? Visibilities.bars.get(root.screen.name) : undefined
+
+    readonly property real barExclusiveZone: barWrapper?.exclusiveZone ?? (contentItem.Tokens.sizes.bar.innerWidth + Math.max(contentItem.Tokens.padding.small, contentItem.Config.border.thickness))
+
+    readonly property real floorOffset: contentItem.Config.bar.position === "bottom" ? barExclusiveZone : 0
+    readonly property real ceilingOffset: contentItem.Config.bar.position === "top" ? barExclusiveZone : 0
+    readonly property real leftOffset: contentItem.Config.bar.position === "left" ? barExclusiveZone : 0
+    readonly property real rightOffset: contentItem.Config.bar.position === "right" ? barExclusiveZone : 0
+
+    property list<Region> spriteMasks: []
 
     function getImgPath(): string {
         if (!modelData)
             return "";
-        let path = Paths.absolutePath(String(contentItem.Config.shimeji.path));
+        let rawPath = String(contentItem.Config.shimeji.path || "");
+        if (!rawPath || rawPath.length === 0)
+            rawPath = "root:/assets/shimeji/pusheen";
+        let path = Paths.absolutePath(rawPath);
         if (!path)
             return "";
 
@@ -57,11 +64,24 @@ StyledWindow {
         return path.replace(/\/?$/, "/");
     }
 
+    function registerSpriteMask(region: Region): void {
+        if (!root.spriteMasks.includes(region))
+            root.spriteMasks = [...root.spriteMasks, region];
+    }
+
+    function unregisterSpriteMask(region: Region): void {
+        root.spriteMasks = root.spriteMasks.filter(m => m !== region);
+    }
+
+    mask: Region {
+        regions: root.spriteMasks
+    }
+
     screen: modelData
     visible: shouldBeVisible
 
     name: "shimeji"
-    WlrLayershell.layer: WlrLayer.Bottom
+    WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     surfaceFormat.opaque: false
@@ -71,24 +91,23 @@ StyledWindow {
     anchors.left: true
     anchors.right: true
 
-    Component.onCompleted: {
-        Qt.callLater(() => {
-            extractor.running = false;
-        });
-    }
-
     Item {
         anchors.fill: parent
 
         Repeater {
             id: spriteRepeater
 
-            model: root.shimejiCount > 0 ? root.shimejiCount : 1
+            model: Math.max(1, root.shimejiCount)
 
             ShimejiSprite {
+                maskHost: root
                 screenSize: Qt.size(shimejiScreen.width, shimejiScreen.height)
                 borderThickness: root.borderThickness
+                sizeScale: root.shimejiScale
                 floorOffset: root.floorOffset
+                ceilingOffset: root.ceilingOffset
+                leftOffset: root.leftOffset
+                rightOffset: root.rightOffset
                 imgPath: root.getImgPath()
             }
         }
