@@ -36,9 +36,22 @@ hl.bind("SUPER + B", hl.dsp.exec_cmd("blueman-manager"))
 hl.bind("ALT + B", hl.dsp.exec_cmd("blueman-manager"))
 
 -- ASUS TUF fan profile switching
-hl.bind("XF86Launch4", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
+hl.bind("XF86Launch4", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"), { locked = true })
+hl.bind("XF86Launch1", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"), { locked = true })
 hl.bind("SUPER + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("ALT + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
+hl.bind("SUPER + 5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
+hl.bind("ALT + 5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
+
+-- ASUS TUF Keyboard RGB Aura & Backlight
+hl.bind("SUPER + F6", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
+hl.bind("ALT + F6", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
+hl.bind("SUPER + 6", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
+hl.bind("SUPER + F7", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle brightness"))
+hl.bind("ALT + F7", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle brightness"))
+hl.bind("SUPER + 7", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle brightness"))
+hl.bind("XF86KbdBrightnessUp", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle up"), { locked = true })
+hl.bind("XF86KbdBrightnessDown", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle down"), { locked = true })
 
 -- Screenshots
 hl.bind("ALT + S", hl.dsp.exec_cmd('grim -g "$(slurp -d)" - | wl-copy && notify-send "📸 Screenshot" "Đã copy vào clipboard"'))
