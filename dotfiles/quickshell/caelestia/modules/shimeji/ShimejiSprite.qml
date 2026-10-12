@@ -46,6 +46,8 @@ Item {
     property real dragVx: 0
     property real dragVy: 0
     property int walkTarget: -1
+    property bool wasDropped: false
+    property real dropHeight: 0
 
     property string currentAnim: "idle"
     property int frameIndex: 0
@@ -299,6 +301,10 @@ Item {
 
         if (root.y > floorY) {
             root.y = floorY;
+            if ((wasDropped && dropHeight > 25) || (Math.abs(vy) > 7 && !onGround)) {
+                bloodSplatter.trigger();
+                wasDropped = false;
+            }
             if (Math.abs(vy) > 3) {
                 // Bounce, shedding half the speed each hit (always terminates)
                 vy = -Math.abs(vy) * 0.5;
@@ -414,7 +420,100 @@ Item {
             }
         }
 
-        onReleased: dragging = false
+        onReleased: {
+            if (dragging && root.y < floorY - 20) {
+                wasDropped = true;
+                dropHeight = floorY - root.y;
+            }
+            dragging = false;
+        }
+    }
+
+    Item {
+        id: bloodSplatter
+
+        z: -1
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: -4
+        width: 170
+        height: 60
+        opacity: 0
+        visible: opacity > 0
+
+        signal spurt()
+
+        Image {
+            id: bloodImg
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectFit
+            source: "file://" + root.imgPath + "blood_splat.png"
+            transformOrigin: Item.Center
+            scale: 0.1
+        }
+
+        Repeater {
+            model: 8
+            Rectangle {
+                id: drop
+                width: index % 2 === 0 ? 5 : 4
+                height: width
+                radius: width / 2
+                color: "#b80512"
+                x: bloodSplatter.width / 2
+                y: bloodSplatter.height / 2
+                opacity: bloodSplatter.opacity
+
+                readonly property real targetX: (bloodSplatter.width / 2) + Math.cos(index * 0.785) * (35 + index * 6)
+                readonly property real targetY: (bloodSplatter.height / 2) + Math.sin(index * 0.785) * (15 + index * 3) - 15
+
+                NumberAnimation on x {
+                    id: dropXAnim
+                    running: false
+                    from: bloodSplatter.width / 2
+                    to: drop.targetX
+                    duration: 250
+                    easing.type: Easing.OutQuad
+                }
+                NumberAnimation on y {
+                    id: dropYAnim
+                    running: false
+                    from: bloodSplatter.height / 2
+                    to: drop.targetY
+                    duration: 250
+                    easing.type: Easing.OutQuad
+                }
+
+                Connections {
+                    target: bloodSplatter
+                    function onSpurt() {
+                        dropXAnim.restart();
+                        dropYAnim.restart();
+                    }
+                }
+            }
+        }
+
+        SequentialAnimation {
+            id: bloodSeqAnim
+
+            // Phase 1: Máu xịt & loang rộng ra (0ms -> 250ms)
+            ParallelAnimation {
+                NumberAnimation { target: bloodSplatter; property: "opacity"; from: 0; to: 1.0; duration: 50 }
+                NumberAnimation { target: bloodImg; property: "scale"; from: 0.15; to: 1.0; duration: 250; easing.type: Easing.OutBack }
+            }
+
+            // Phase 2: Vũng máu đọng loang trên sàn (250ms -> 1450ms)
+            PauseAnimation { duration: 1200 }
+
+            // Phase 3: Mờ dần rồi tự mất (1450ms -> 2000ms = đúng 2 giây)
+            NumberAnimation { target: bloodSplatter; property: "opacity"; from: 1.0; to: 0.0; duration: 550; easing.type: Easing.InQuad }
+        }
+
+        function trigger() {
+            spurt();
+            bloodSeqAnim.restart();
+        }
     }
 
     Image {

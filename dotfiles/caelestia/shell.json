@@ -6,7 +6,7 @@
         "ollamaHistoryJson": ""
     },
     "appearance": {
-        "islands": true,
+        "islands": false,
         "pitchBlack": false,
         "transparency": {
             "base": 0.26279772782651073,
