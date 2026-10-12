@@ -57,11 +57,11 @@ if [ ! -f "$TIMESHIFT_JSON" ]; then
   "schedule_daily" : "true",
   "schedule_hourly" : "false",
   "schedule_boot" : "true",
-  "count_monthly" : "2",
-  "count_weekly" : "3",
-  "count_daily" : "3",
-  "count_hourly" : "6",
-  "count_boot" : "2",
+  "count_monthly" : "0",
+  "count_weekly" : "0",
+  "count_daily" : "1",
+  "count_hourly" : "0",
+  "count_boot" : "1",
   "snapshot_type" : "RSYNC",
   "date_format" : "%Y-%m-%d %H:%M:%S",
   "exclude" : [
@@ -73,13 +73,15 @@ if [ ! -f "$TIMESHIFT_JSON" ]; then
   "exclude-apps" : []
 }
 EOF
-    echo -e "${GREEN}[OK]${NC} Đã tạo cấu hình chuẩn: Giữ 3 bản daily + 2 bản boot (bảo vệ root & configs, loại trừ downloads/videos nặng)."
+    echo -e "${GREEN}[OK]${NC} Đã tạo cấu hình chuẩn: Giới hạn lưu đúng 1 bản snapshot duy nhất."
 fi
 
 # 4. Hướng dẫn cài đặt hook autosnap
 echo -e "\n${BLUE}>>> [2/3] Cấu hình pacman hook tự động tạo snapshot trước khi nâng cấp hệ thống...${NC}"
 HOOK_DIR="/etc/pacman.d/hooks"
 mkdir -p "$HOOK_DIR"
+cp /home/tu/Archlinux_config/scripts/timeshift-autosnap-single.sh /usr/local/bin/timeshift-autosnap-single
+chmod +x /usr/local/bin/timeshift-autosnap-single
 
 cat << 'EOF' > "${HOOK_DIR}/00-timeshift-autosnap.hook"
 [Trigger]
@@ -88,9 +90,9 @@ Type = Package
 Target = *
 
 [Action]
-Description = [Timeshift Autosnap] Đang tạo bản snapshot hệ thống trước khi nâng cấp pacman...
+Description = [Timeshift Autosnap] Đang tạo snapshot và chỉ giữ 1 bản gần nhất...
 When = PreTransaction
-Exec = /usr/bin/timeshift --create --comments "Pre-pacman-update auto snapshot" --scripted
+Exec = /usr/local/bin/timeshift-autosnap-single
 AbortOnFail
 EOF
 echo -e "${GREEN}[OK]${NC} Đã kích hoạt hook: /etc/pacman.d/hooks/00-timeshift-autosnap.hook"
