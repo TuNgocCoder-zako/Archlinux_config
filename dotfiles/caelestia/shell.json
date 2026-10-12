@@ -288,8 +288,8 @@
     },
     "shimeji": {
         "autoHide": false,
-        "count": 4,
-        "enabled": true,
+        "count": 2,
+        "enabled": false,
         "path": "root:/assets/shimeji/pusheen",
         "scale": 1
     },

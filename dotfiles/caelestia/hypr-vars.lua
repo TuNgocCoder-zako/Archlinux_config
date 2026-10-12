@@ -5,6 +5,8 @@ return {
     fileExplorer               = "thunar",
 
     -- Touchpad
+    touchpadSensitivity        = 0.35,
+    touchpadScrollFactor       = 0.65,
     touchpadDisableTyping      = false,
     workspaceSwipeFingers      = 3,
 

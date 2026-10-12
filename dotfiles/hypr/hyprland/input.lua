@@ -7,11 +7,12 @@ hl.config({
         repeat_delay       = 250,
         repeat_rate        = 35,
         focus_on_close     = 1,
+        sensitivity        = vars.touchpadSensitivity or 0.35,
 
         touchpad           = {
             natural_scroll       = true,
             disable_while_typing = vars.touchpadDisableTyping,
-            scroll_factor        = vars.touchpadScrollFactor,
+            scroll_factor        = vars.touchpadScrollFactor or 0.6,
         },
     },
 
@@ -24,4 +25,13 @@ hl.config({
         no_hardware_cursors = false,
         enable_hyprcursor   = false,
     },
+})
+
+hl.device({
+    name        = "elan1203:00-04f3:307a-touchpad",
+    sensitivity = vars.touchpadSensitivity or 0.35,
+})
+hl.device({
+    name        = "elan1203:00-04f3:307a-mouse",
+    sensitivity = vars.touchpadSensitivity or 0.35,
 })

@@ -13,8 +13,9 @@ return {
     audioSettings              = "pwvucontrol",
 
     -- Touchpad
-    touchpadDisableTyping      = true,
-    touchpadScrollFactor       = 0.3,
+    touchpadSensitivity        = 0.35,
+    touchpadDisableTyping      = false,
+    touchpadScrollFactor       = 0.65,
     gestureFingers             = 3,
     workspaceSwipeFingers      = 3,
     gestureFingersMore         = 4,
