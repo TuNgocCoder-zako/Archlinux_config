@@ -433,15 +433,17 @@ Item {
         id: bloodSplatter
 
         z: -1
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: -4
         width: 170
         height: 60
         opacity: 0
         visible: opacity > 0
 
         signal spurt()
+
+        Component.onCompleted: {
+            if (root.parent)
+                parent = root.parent;
+        }
 
         Image {
             id: bloodImg
@@ -511,6 +513,10 @@ Item {
         }
 
         function trigger() {
+            if (parent !== root.parent && root.parent)
+                parent = root.parent;
+            x = root.x + (root.size - width) / 2;
+            y = root.floorY + root.size - height - 4;
             spurt();
             bloodSeqAnim.restart();
         }
