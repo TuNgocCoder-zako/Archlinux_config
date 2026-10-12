@@ -35,23 +35,72 @@ end)
 hl.bind("SUPER + B", hl.dsp.exec_cmd("blueman-manager"))
 hl.bind("ALT + B", hl.dsp.exec_cmd("blueman-manager"))
 
--- ASUS TUF fan profile switching
+-- ASUS TUF Keyboard — Function Keys F1-F12 (Khớp 100% biểu tượng in trên bàn phím)
+-- F1: Mute Audio
+hl.bind("SUPER + F1", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"))
+
+-- F2: Volume Down
+hl.bind("SUPER + F2", hl.dsp.exec_cmd("wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%-"))
+
+-- F3: Volume Up
+hl.bind("SUPER + F3", hl.dsp.exec_cmd("wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"))
+
+-- F4: Mic Mute
+hl.bind("SUPER + F4", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"))
+
+-- F5 (Biểu tượng Cánh quạt ASUS Fan): Quạt tản nhiệt & Chế độ hiệu năng
 hl.bind("XF86Launch4", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"), { locked = true })
-hl.bind("XF86Launch1", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"), { locked = true })
 hl.bind("SUPER + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("ALT + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("SUPER + 5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("ALT + 5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 
--- ASUS TUF Keyboard RGB Aura & Backlight
-hl.bind("SUPER + F6", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
-hl.bind("ALT + F6", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
-hl.bind("SUPER + 6", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
-hl.bind("SUPER + F7", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle brightness"))
-hl.bind("ALT + F7", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle brightness"))
-hl.bind("SUPER + 7", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle brightness"))
+-- F6 (Biểu tượng Snipping Tool / Kéo cắt ảnh): Chụp vùng màn hình & Chỉnh sửa
+hl.bind("XF86Launch1", hl.dsp.exec_cmd('grim -g "$(slurp -d)" - | swappy -f -'), { locked = true })
+hl.bind("XF86SelectiveScreenshot", hl.dsp.exec_cmd('grim -g "$(slurp -d)" - | swappy -f -'), { locked = true })
+hl.bind("SUPER + F6", hl.dsp.exec_cmd('grim -g "$(slurp -d)" - | swappy -f -'))
+hl.bind("ALT + F6", hl.dsp.exec_cmd('grim -g "$(slurp -d)" - | swappy -f -'))
+
+-- F7 (Biểu tượng Mặt trời nhỏ): Giảm độ sáng màn hình
+hl.bind("SUPER + F7", hl.dsp.exec_cmd("brightnessctl s 5%-"))
+hl.bind("ALT + F7", hl.dsp.exec_cmd("brightnessctl s 5%-"))
+
+-- F8 (Biểu tượng Mặt trời lớn): Tăng độ sáng màn hình
+hl.bind("SUPER + F8", hl.dsp.exec_cmd("brightnessctl s 5%+"))
+hl.bind("ALT + F8", hl.dsp.exec_cmd("brightnessctl s 5%+"))
+
+-- F9 (Biểu tượng Màn hình chiếu Project): Quản lý / Xuất màn hình ngoài
+hl.bind("XF86Display", hl.dsp.exec_cmd(home .. "/.local/bin/display-toggle"), { locked = true })
+hl.bind("SUPER + F9", hl.dsp.exec_cmd(home .. "/.local/bin/display-toggle"))
+hl.bind("ALT + F9", hl.dsp.exec_cmd(home .. "/.local/bin/display-toggle"))
+
+-- F10 (Biểu tượng Touchpad có gạch chéo): Bật / Khóa bàn di chuột
+hl.bind("XF86TouchpadToggle", hl.dsp.exec_cmd(home .. "/.local/bin/touchpad-toggle"), { locked = true })
+hl.bind("SUPER + F10", hl.dsp.exec_cmd(home .. "/.local/bin/touchpad-toggle"))
+hl.bind("ALT + F10", hl.dsp.exec_cmd(home .. "/.local/bin/touchpad-toggle"))
+
+-- F11 (Biểu tượng Trăng khuyết Zzz): Chế độ ngủ (Sleep / Suspend)
+hl.bind("XF86Sleep", hl.dsp.exec_cmd("systemctl suspend"), { locked = true })
+hl.bind("SUPER + F11", hl.dsp.exec_cmd("systemctl suspend"))
+hl.bind("ALT + F11", hl.dsp.exec_cmd("systemctl suspend"))
+
+-- F12 (Biểu tượng Máy bay): Bật / Tắt chế độ máy bay (Airplane mode)
+hl.bind("XF86RFKill", hl.dsp.exec_cmd(home .. "/.local/bin/airplane-mode-toggle"), { locked = true })
+hl.bind("SUPER + F12", hl.dsp.exec_cmd(home .. "/.local/bin/airplane-mode-toggle"))
+hl.bind("ALT + F12", hl.dsp.exec_cmd(home .. "/.local/bin/airplane-mode-toggle"))
+
+-- Phím mũi tên (Arrow keys): Đèn bàn phím & Aura RGB (Khớp biểu tượng trên phím)
+-- Fn + Up / Down (Icon bóng đèn): Tăng / Giảm độ sáng đèn nền bàn phím
 hl.bind("XF86KbdBrightnessUp", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle up"), { locked = true })
 hl.bind("XF86KbdBrightnessDown", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle down"), { locked = true })
+hl.bind("SUPER + ALT + Up", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle up"))
+hl.bind("SUPER + ALT + Down", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle down"))
+
+-- Fn + Left / Right (Icon AURA): Chuyển đổi chế độ màu Aura RGB
+hl.bind("XF86Launch3", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"), { locked = true })
+hl.bind("XF86Launch2", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"), { locked = true })
+hl.bind("SUPER + ALT + Left", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
+hl.bind("SUPER + ALT + Right", hl.dsp.exec_cmd(home .. "/.local/bin/asus-kbd-toggle mode"))
 
 -- Screenshots
 hl.bind("ALT + S", hl.dsp.exec_cmd('grim -g "$(slurp -d)" - | wl-copy && notify-send "📸 Screenshot" "Đã copy vào clipboard"'))
