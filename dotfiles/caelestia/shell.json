@@ -6,7 +6,7 @@
         "ollamaHistoryJson": ""
     },
     "appearance": {
-        "islands": false,
+        "islands": true,
         "pitchBlack": false,
         "transparency": {
             "base": 0.26279772782651073,
@@ -25,7 +25,7 @@
             "background": {
                 "blur": true,
                 "enabled": true,
-                "opacity": 0.12501541940789473
+                "opacity": 0.07501541940789473
             },
             "enabled": true,
             "invertColors": true,
@@ -288,9 +288,9 @@
     },
     "shimeji": {
         "autoHide": false,
-        "count": 2,
-        "enabled": false,
-        "path": "root:/assets/shimeji/pusheen",
+        "count": 1,
+        "enabled": true,
+        "path": "root:/assets/shimeji/tu_chibi",
         "scale": 1
     },
     "sidebar": {
