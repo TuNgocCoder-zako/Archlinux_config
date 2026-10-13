@@ -249,22 +249,36 @@ def configure_hyprland_effects(ac_online: bool):
 def reload_caelestia():
     """Reliably restart QuickShell using Hyprland's native dispatcher with Intel Mesa isolation."""
     ensure_hyprland_env()
-    # Clean any hung IPC callers first
-    subprocess.run(["pkill", "-9", "-f", "qs -c caelestia ipc"], capture_output=True)
-    subprocess.run(["qs", "-c", "caelestia", "kill"], capture_output=True, timeout=3)
-    for _ in range(10):
+    try:
+        my_pid = os.getpid()
+        # 1. Kill any existing quickshell caelestia processes by PID directly (never hang on IPC)
         res = subprocess.run(["pgrep", "-f", "qs -c caelestia"], capture_output=True, text=True)
-        if not res.stdout.strip():
-            break
-        time.sleep(0.1)
-    # Force kill if still hung
-    subprocess.run(["pkill", "-9", "-f", "qs -c caelestia"], capture_output=True)
-    subprocess.run(["pkill", "-9", "-f", "caelestia shell"], capture_output=True)
-    time.sleep(0.3)
-    subprocess.run(
-        ["hyprctl", "eval", 'hl.dispatch(hl.dsp.exec_cmd("caelestia-intel"))'],
-        capture_output=True, timeout=5
-    )
+        for p in res.stdout.strip().split():
+            if p.isdigit() and int(p) != my_pid:
+                try:
+                    os.kill(int(p), 9)
+                except OSError:
+                    pass
+
+        # 2. Kill any hung caelestia CLI/IPC wrappers
+        res2 = subprocess.run(["pgrep", "-f", "caelestia shell"], capture_output=True, text=True)
+        for p in res2.stdout.strip().split():
+            if p.isdigit() and int(p) != my_pid:
+                try:
+                    os.kill(int(p), 9)
+                except OSError:
+                    pass
+
+        time.sleep(0.3)
+
+        # 3. Launch fresh instance on Intel Iris Xe
+        subprocess.run(
+            ["hyprctl", "eval", 'hl.dispatch(hl.dsp.exec_cmd("caelestia-intel"))'],
+            capture_output=True, timeout=5
+        )
+        print("[AutoPower] Caelestia shell relaunched successfully via Intel Mesa", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] reload_caelestia error: {e}", file=sys.stderr, flush=True)
 
 def set_keyboard_backlight(level: str):
     """Control ASUS TUF keyboard RGB backlight (off, low, med, high)."""
@@ -274,7 +288,7 @@ def set_keyboard_backlight(level: str):
     except Exception as e:
         print(f"[AutoPower] Keyboard backlight error: {e}", file=sys.stderr, flush=True)
 
-def configure_caelestia(ac_online: bool):
+def configure_caelestia(ac_online: bool, force_reload: bool = False):
     """
     Dynamically tune Caelestia Shell:
     - Khi CẮM SẠC (AC): Bật đầy đủ hiệu ứng (Thanh Taskbar/Dock, Hình nền, Cava sóng nhạc nền,
@@ -346,10 +360,20 @@ def configure_caelestia(ac_online: bool):
             bar["showOnHover"] = False
             changed = True
 
-        target_excluded_screens = [] if ac_online else ["^.*$"]
+        target_excluded_screens = [] if ac_online else ["eDP-1", "^.*$"]
         if bar.get("excludedScreens") != target_excluded_screens:
             bar["excludedScreens"] = target_excluded_screens
             changed = True
+
+        # Đồng bộ cấu hình screens riêng nếu có
+        for s_name, s_conf in data.get("screens", {}).items():
+            if isinstance(s_conf, dict) and "bar" in s_conf:
+                if s_conf["bar"].get("persistent") != target_bar_persistent:
+                    s_conf["bar"]["persistent"] = target_bar_persistent
+                    changed = True
+                if s_conf["bar"].get("excludedScreens") != target_excluded_screens:
+                    s_conf["bar"]["excludedScreens"] = target_excluded_screens
+                    changed = True
 
         # Widgets phụ trên bar (Spotify, GitHub): Bật khi AC, Tắt khi pin
         entries = bar.setdefault("entries", {})
@@ -383,7 +407,7 @@ def configure_caelestia(ac_online: bool):
             launcher["enabled"] = True
             changed = True
 
-        if changed:
+        if changed or force_reload:
             with open(SHELL_CONFIG_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
             mode_str = "AC (Hiệu ứng & Shimeji: BẬT)" if ac_online else "BATTERY (Hiệu ứng & Shimeji: TẮT, Tiết kiệm pin)"
@@ -620,7 +644,7 @@ def on_power_state_change(ac_online):
         configure_hyprland_effects(False)
 
         # 3. Caelestia: Chế độ siêu nhẹ (tắt hover dashboard/taskbar, tắt visualiser/lyrics, giữ Utilities & Launcher)
-        configure_caelestia(False)
+        configure_caelestia(False, force_reload=True)
 
         # 4. CPU profile: power-saver (intel_pstate tiết kiệm tối đa, EPP: power, CPU idle ~800MHz)
         try:
@@ -650,11 +674,14 @@ def on_power_state_change(ac_online):
         set_brightness_percent(BATTERY_BRIGHTNESS_PERCENT)
 
         # 10. Thông báo người dùng
-        subprocess.run([
-            "notify-send", "-u", "normal", "-i", "battery-good",
-            "🔋 Chế độ Pin — Tiết Kiệm Tối Đa",
-            "60Hz • Tắt Taskbar & Hình nền • Tắt Cava/Shimeji • Quạt 0 RPM • dGPU 0W"
-        ], capture_output=True)
+        try:
+            subprocess.run([
+                "notify-send", "-u", "normal", "-i", "battery-good",
+                "🔋 Chế độ Pin — Tiết Kiệm Tối Đa",
+                "60Hz • Tắt Taskbar & Hình nền • Tắt Cava/Shimeji • Quạt 0 RPM • dGPU 0W"
+            ], capture_output=True, timeout=2)
+        except Exception:
+            pass
 
     else:
         # ════════════════════════════════
@@ -668,8 +695,8 @@ def on_power_state_change(ac_online):
         # 2. Hyprland: Khôi phục hiệu ứng đầy đủ (Shadow ON, Blur passes = 2, Animations ON)
         configure_hyprland_effects(True)
 
-        # 3. Caelestia: Khôi phục giao diện đầy đủ (Dashboard, Taskbar hover, Visualiser, Sidebar)
-        configure_caelestia(True)
+        # 3. Caelestia: Khôi phục giao diện đầy đủ (Taskbar cố định, Hình nền, Visualiser, Shimeji con mèo, Sidebar)
+        configure_caelestia(True, force_reload=True)
 
         # 4. Performance CPU profile on AC (Tối đa độ nhạy, Intel Turbo boost tức thì, 0 micro-stutter)
         try:
@@ -694,11 +721,14 @@ def on_power_state_change(ac_online):
         set_notifications(True)
 
         # 10. Thông báo người dùng
-        subprocess.run([
-            "notify-send", "-u", "low", "-i", "ac-adapter",
-            "⚡ Đã cắm sạc — Performance 144Hz",
-            "144Hz • Hiệu năng tối đa • Khôi phục toàn bộ giao diện & AI"
-        ], capture_output=True)
+        try:
+            subprocess.run([
+                "notify-send", "-u", "low", "-i", "ac-adapter",
+                "⚡ Đã cắm sạc — Performance 144Hz",
+                "144Hz • Hiệu năng tối đa • Khôi phục toàn bộ giao diện & AI"
+            ], capture_output=True, timeout=2)
+        except Exception:
+            pass
 
 # ──────────────────────────────────────────────────────────────
 # Main loop
