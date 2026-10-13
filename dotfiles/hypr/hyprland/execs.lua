@@ -25,8 +25,8 @@ hl.on("hyprland.start", function()
     -- Forward bluetooth media commands to MPRIS
     hl.exec_cmd("mpris-proxy")
 
-    -- Start shell
-    hl.exec_cmd("caelestia shell -d")
+    -- Start shell (strictly isolated on Intel Iris Xe to keep NVIDIA dGPU suspended)
+    hl.exec_cmd("caelestia-intel")
 end)
 
 -- Resizer listeners

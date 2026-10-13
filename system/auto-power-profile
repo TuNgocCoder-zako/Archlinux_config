@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
-# Auto Power Profile & Hardware Optimization Dispatcher
-# Max performance on AC, optimal energy efficiency on Battery
+# ==============================================================================
+# Auto Power Profile & Hardware Optimization Dispatcher (Balanced Smooth)
+# ASUS TUF FX506HC: Intel TigerLake GT1 + RTX 3050 + MediaTek MT7921
+# ==============================================================================
+
+exec 200>/run/lock/auto-power-profile.lock
+flock -n 200 || exit 0
+sleep 0.2
 
 is_ac_online() {
     if [ -f /sys/class/power_supply/ACAD/online ]; then
@@ -22,55 +28,54 @@ WIFI_IFACE=$(iw dev 2>/dev/null | awk '$1=="Interface"{print $2}' | head -n 1)
 
 if is_ac_online; then
     # ─── ĐANG CẮM SẠC (AC POWER: MAX PERFORMANCE) ───
-    # 1. Chuyển power-profiles-daemon sang performance
+    echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || true
     powerprofilesctl set performance >/dev/null 2>&1 || true
-
-    # 2. Ép tất cả CPU cores sang Energy-Performance Preference: performance
     for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
         [ -f "$epp" ] && echo "performance" > "$epp" 2>/dev/null || true
     done
 
-    # 3. Tắt WiFi Power Save để giảm ping jitter, triệt tiêu độ trễ mạng
     [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save off >/dev/null 2>&1 || true
-
-    # 4. Bật Bluetooth sẵn sàng
     rfkill unblock bluetooth >/dev/null 2>&1 || true
     bluetoothctl power on >/dev/null 2>&1 || true
 
-    # 5. Nâng xung tối thiểu của Intel iGPU lên 800MHz (đáp ứng 144Hz tức thì, triệt tiêu micro-stutter khi cắm sạc)
     for c in /sys/class/drm/card[0-9]*; do
         if [ -f "$c/gt_min_freq_mhz" ] && [ -f "$c/device/vendor" ] && [ "$(cat "$c/device/vendor" 2>/dev/null)" = "0x8086" ]; then
             echo 800 > "$c/gt_min_freq_mhz" 2>/dev/null || true
         fi
     done
 
+    command -v docker >/dev/null 2>&1 && docker unpause local_mysql local_phpmyadmin >/dev/null 2>&1 || true
     logger -t auto-power-profile "Switched to AC Performance Mode (CPU: max, iGPU min: 800MHz, WiFi PS: off, BT: on)"
 else
-    # ─── ĐANG DÙNG PIN (BATTERY: ENERGY SAVING & FLUIDITY) ───
-    # 1. Chuyển power-profiles-daemon sang balanced để vừa mát vừa mượt
+    # ─── ĐANG DÙNG PIN (BATTERY: ENERGY SAVING & SMOOTH 60HZ) ───
+    # 1. CPU sang balanced, EPP balance_performance để phản hồi tức thì 0ms không lag phím
+    echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || true
     powerprofilesctl set balanced >/dev/null 2>&1 || true
-
-    # 2. Chuyển CPU sang balance_power (tiết kiệm điện năng tối đa khi nhàn rỗi)
+    sleep 0.1
     for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
-        [ -f "$epp" ] && echo "balance_power" > "$epp" 2>/dev/null || true
+        [ -f "$epp" ] && echo "balance_performance" > "$epp" 2>/dev/null || true
     done
 
-    # 3. Bật WiFi Power Save để tiết kiệm pin
-    [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save on >/dev/null 2>&1 || true
+    # 2. Wi-Fi: Tắt power_save cho chip MediaTek MT7921 để chống rớt gói/lag mạng
+    [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save off >/dev/null 2>&1 || true
 
-    # 4. Kiểm tra nếu không có thiết bị Bluetooth nào đang kết nối thì tắt Bluetooth
-    CONNECTED_BT=$(bluetoothctl devices Connected 2>/dev/null)
-    if [ -z "$CONNECTED_BT" ]; then
-        bluetoothctl power off >/dev/null 2>&1 || true
-        rfkill block bluetooth >/dev/null 2>&1 || true
-    fi
-
-    # 5. Hạ xung tối thiểu của Intel iGPU về 350MHz (tiết kiệm pin tối đa khi dùng pin)
+    # 3. Intel iGPU: Giữ sàn 800MHz phản hồi 0ms
     for c in /sys/class/drm/card[0-9]*; do
         if [ -f "$c/gt_min_freq_mhz" ] && [ -f "$c/device/vendor" ] && [ "$(cat "$c/device/vendor" 2>/dev/null)" = "0x8086" ]; then
-            echo 350 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            echo 800 > "$c/gt_min_freq_mhz" 2>/dev/null || true
         fi
     done
 
-    logger -t auto-power-profile "Switched to Battery Mode (CPU: balance_power, iGPU min: 350MHz, WiFi PS: on, BT: smart-off)"
+    # 4. Tắt Ollama & pause dev containers khi dùng pin
+    if command -v docker >/dev/null 2>&1; then
+        docker stop ollama >/dev/null 2>&1 || true
+        docker pause local_mysql local_phpmyadmin >/dev/null 2>&1 || true
+    fi
+
+    # 5. NVIDIA PCIe Runtime PM auto (cho phép ngủ sâu D3cold)
+    for pci in /sys/bus/pci/devices/0000:01:00.*/power/control; do
+        [ -f "$pci" ] && echo "auto" > "$pci" 2>/dev/null || true
+    done
+
+    logger -t auto-power-profile "Switched to Battery Mode (CPU: balance_performance, iGPU: 800MHz, dGPU: D3cold)"
 fi
