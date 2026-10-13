@@ -137,7 +137,7 @@
             "tray": true
         },
         "position": "bottom",
-        "showOnHover": true,
+        "showOnHover": false,
         "spotify": {
             "autoHide": false,
             "background": true,
