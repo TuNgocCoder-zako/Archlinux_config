@@ -60,7 +60,7 @@
         "visualiser": {
             "autoHide": true,
             "blur": true,
-            "enabled": false,
+            "enabled": true,
             "rounding": 0.381527549342105,
             "spacing": 0.5311472039473685
         },
