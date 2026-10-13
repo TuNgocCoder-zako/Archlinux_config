@@ -249,6 +249,7 @@
             "code",
             "firefox",
             "idea",
+            "docker-desktop",
             "io.dbeaver.DBeaver",
             "postman",
             "onlyoffice-desktopeditors",
@@ -291,7 +292,7 @@
     },
     "shimeji": {
         "autoHide": false,
-        "count": 4,
+        "count": 1,
         "enabled": true,
         "path": "root:/assets/shimeji/pusheen",
         "scale": 1

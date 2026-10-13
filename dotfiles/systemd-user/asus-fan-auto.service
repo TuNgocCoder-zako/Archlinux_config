@@ -1,0 +1,12 @@
+[Unit]
+Description=ASUS TUF Dynamic Fan & Thermal Profile Auto Daemon
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/home/tu/.local/bin/asus-fan-daemon
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

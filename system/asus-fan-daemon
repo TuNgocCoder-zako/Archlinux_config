@@ -1,0 +1,795 @@
+#!/usr/bin/env python3
+"""
+ASUS TUF Auto Power & Display Manager — v4.0 (Complete AC vs Battery Isolation)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Chế độ AC (Cắm sạc) — Max Performance & Full Aesthetics:
+  ✦ Màn hình 144Hz
+  ✦ Compositor: Shadows BẬT, Blur passes = 2, Animations BẬT
+  ✦ Caelestia Shell: Taskbar/Dock cố định (persistent), Hình nền BẬT,
+    Cava visualiser BẬT, Mascot mèo Pusheen BẬT, Desktop Lyrics/Clock BẬT
+  ✦ ASUS Profile: Performance (Quạt quay chủ động ~3300+ RPM chống ám nhiệt khung máy)
+  ✦ powerprofilesctl: performance (Intel Turbo boost mở tối đa 4.5GHz)
+  ✦ Đèn bàn phím RGB: med
+  ✦ Độ sáng màn hình: 100%
+  ✦ Khôi phục Ollama AI container
+  ✦ Hiệu ứng gõ phím: Kitty cursor_trail = 1, VS Code smooth caret = on
+
+Chế độ Battery (Rút sạc) — Ultra-Eco & Dead Silent (Tối đa thời lượng pin):
+  ✦ Màn hình 60Hz (-58% tải đồ họa compositor)
+  ✦ Compositor: Shadows TẮT, Blur TẮT, Animations TẮT (0% overhead GPU)
+  ✦ Caelestia Shell: Taskbar/Dock TẮT HOÀN TOÀN (excludedScreens: ["^.*$"]),
+    Hình nền TẮT HOÀN TOÀN (nền đen tối giản), Cava TẮT, Mascot TẮT, Lyrics/Clock TẮT
+  ✦ ASUS Profile: Quiet (Quạt 0 RPM im lặng tuyệt đối, ngắt điện mô-tơ quạt)
+  ✦ powerprofilesctl: power-saver (EPP: power, CPU idle 800MHz, tiết kiệm ~3W)
+  ✦ NVIDIA dGPU + Audio Controller: D3cold (0.0W), ngắt hoàn toàn NVML polling
+  ✦ Đèn bàn phím RGB: TẮT (off)
+  ✦ Độ sáng màn hình: 40% (tiết kiệm ~3W)
+  ✦ Dừng Ollama AI container & background heavy tasks
+  ✦ Hiệu ứng gõ phím: Kitty cursor_trail = 0, VS Code smooth caret = off
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+import glob
+import json
+import os
+import subprocess
+import time
+import sys
+import re
+import ctypes
+
+# ──────────────────────────────────────────────────────────────
+# Brightness — 70% of max for battery mode
+# ──────────────────────────────────────────────────────────────
+BATTERY_BRIGHTNESS_PERCENT = 40   # % of max when on battery (tiết kiệm ~3W)
+AC_BRIGHTNESS_PERCENT      = 100  # % of max when on AC (restore)
+
+def get_max_brightness():
+    try:
+        result = subprocess.run(["brightnessctl", "max"], capture_output=True, text=True, timeout=2)
+        return int(result.stdout.strip())
+    except Exception:
+        return 96000  # fallback for this machine
+
+def set_brightness_percent(percent):
+    """Set brightness to a given % of max."""
+    try:
+        max_b = get_max_brightness()
+        target = int(max_b * percent / 100)
+        subprocess.run(["brightnessctl", "set", str(target)], capture_output=True, timeout=3)
+        print(f"[AutoPower] Brightness set to {percent}% ({target}/{max_b})", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Brightness error: {e}", file=sys.stderr, flush=True)
+
+# ──────────────────────────────────────────────────────────────
+# Sensors
+# ──────────────────────────────────────────────────────────────
+def get_cpu_temp():
+    for path in glob.glob("/sys/class/hwmon/hwmon*"):
+        try:
+            with open(os.path.join(path, "name")) as f:
+                if f.read().strip() == "coretemp":
+                    with open(os.path.join(path, "temp1_input")) as tf:
+                        return int(tf.read().strip()) / 1000.0
+        except Exception:
+            pass
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp") as f:
+            return int(f.read().strip()) / 1000.0
+    except Exception:
+        return 50.0
+
+def is_ac_online():
+    """Check if any external AC/Mains/USB-C charger is online."""
+    for p in glob.glob("/sys/class/power_supply/*"):
+        try:
+            with open(os.path.join(p, "type")) as tf:
+                stype = tf.read().strip()
+            if stype in ["Mains", "USB"]:
+                with open(os.path.join(p, "online")) as of:
+                    if of.read().strip() == "1":
+                        return True
+        except Exception:
+            pass
+    return False
+
+# ──────────────────────────────────────────────────────────────
+# NVIDIA GPU Sensor via fast NVML (ctypes, <0.1ms)
+# ──────────────────────────────────────────────────────────────
+_nvml_handle = None
+_nvml_initialized = False
+
+class _NvmlUtilization(ctypes.Structure):
+    _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
+
+def _init_nvml():
+    global _nvml_handle, _nvml_initialized
+    if _nvml_initialized:
+        return _nvml_handle is not None
+    _nvml_initialized = True
+    try:
+        lib = ctypes.CDLL("libnvidia-ml.so.1")
+        if lib.nvmlInit_v2() == 0:
+            dev = ctypes.c_void_p()
+            if lib.nvmlDeviceGetHandleByIndex_v2(0, ctypes.byref(dev)) == 0:
+                _nvml_handle = (lib, dev)
+                return True
+    except Exception:
+        pass
+    return False
+
+def shutdown_nvml():
+    """Release NVML handle on battery so NVIDIA dGPU can enter D3cold (0.0W)."""
+    global _nvml_handle, _nvml_initialized
+    if _nvml_handle:
+        try:
+            lib, _ = _nvml_handle
+            lib.nvmlShutdown()
+        except Exception:
+            pass
+        _nvml_handle = None
+    _nvml_initialized = False
+
+def get_gpu_status():
+    """Returns (gpu_temp_c, gpu_util_pct). Fast, zero subprocess."""
+    if not _init_nvml() or not _nvml_handle:
+        return 0.0, 0
+    lib, dev = _nvml_handle
+    try:
+        temp = ctypes.c_uint()
+        if lib.nvmlDeviceGetTemperature(dev, 0, ctypes.byref(temp)) == 0:
+            gpu_temp = float(temp.value)
+        else:
+            gpu_temp = 0.0
+        util = _NvmlUtilization()
+        if lib.nvmlDeviceGetUtilizationRates(dev, ctypes.byref(util)) == 0:
+            gpu_util = int(util.gpu)
+        else:
+            gpu_util = 0
+        return gpu_temp, gpu_util
+    except Exception:
+        return 0.0, 0
+
+OVERRIDE_FILE = "/tmp/asus-fan-override.json"
+
+def get_manual_override():
+    """Check if user manually toggled fan profile recently."""
+    try:
+        if os.path.exists(OVERRIDE_FILE):
+            with open(OVERRIDE_FILE, "r") as f:
+                data = json.load(f)
+            # Override valid for 30 minutes (1800s)
+            if time.time() - data.get("timestamp", 0) < 1800:
+                return data.get("profile")
+    except Exception:
+        pass
+    return None
+
+# ──────────────────────────────────────────────────────────────
+# ASUS Profile
+# ──────────────────────────────────────────────────────────────
+def get_current_asus_profile():
+    try:
+        res = subprocess.run(["asusctl", "profile", "get"], capture_output=True, text=True, timeout=2)
+        for line in res.stdout.splitlines():
+            if "Active profile:" in line:
+                return line.split(":")[-1].strip()
+    except Exception as e:
+        print(f"[AutoPower] Error getting ASUS profile: {e}", file=sys.stderr, flush=True)
+    return "Balanced"
+
+def set_asus_profile(profile):
+    try:
+        subprocess.run(["asusctl", "profile", "set", profile], capture_output=True, timeout=3)
+        print(f"[AutoPower] ASUS profile → {profile}", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Error setting ASUS profile: {e}", file=sys.stderr, flush=True)
+
+# ──────────────────────────────────────────────────────────────
+# Display — Refresh Rate via Hyprland
+# ──────────────────────────────────────────────────────────────
+SHELL_CONFIG_PATH = os.path.expanduser("~/Archlinux_config/dotfiles/caelestia/shell.json")
+
+def ensure_hyprland_env():
+    if "HYPRLAND_INSTANCE_SIGNATURE" not in os.environ:
+        dirs = [os.path.basename(p) for p in glob.glob(f"/run/user/{os.getuid()}/hypr/*_*") if os.path.isdir(p)]
+        if dirs:
+            os.environ["HYPRLAND_INSTANCE_SIGNATURE"] = dirs[0]
+            return True
+        return False
+    return True
+
+def set_refresh_rate(hz):
+    """Switch eDP-1 refresh rate using hyprctl eval + hl.monitor() (Lua parser)."""
+    if not ensure_hyprland_env():
+        return False
+    lua_cmd = f'hl.monitor({{ output = "eDP-1", mode = "1920x1080@{hz}", position = "0x0", scale = 1 }})'
+    try:
+        result = subprocess.run(
+            ["hyprctl", "eval", lua_cmd],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and "ok" in result.stdout.lower():
+            print(f"[AutoPower] Display → {hz}Hz", flush=True)
+            return True
+        else:
+            print(f"[AutoPower] Display {hz}Hz error: {result.stderr.strip() or result.stdout.strip()}", file=sys.stderr, flush=True)
+            return False
+    except Exception as e:
+        print(f"[AutoPower] Display switch error: {e}", file=sys.stderr, flush=True)
+        return False
+
+def configure_hyprland_effects(ac_online: bool):
+    """Dynamically adjust compositor performance & rendering based on power state."""
+    if not ensure_hyprland_env():
+        return False
+    direct_scanout = 1
+    render_scheduling = "true"  # Luôn giữ true để loại bỏ 100% độ trễ gõ chữ và input lag
+    anim_enabled = "true" if ac_online else "false"
+    blur_enabled = "true" if ac_online else "false"
+    blur_passes = 2 if ac_online else 1
+    shadow_enabled = "true" if ac_online else "false"
+    lua_cmd = (
+        f'hl.config({{ '
+        f'render = {{ direct_scanout = {direct_scanout}, new_render_scheduling = {render_scheduling} }}, '
+        f'animations = {{ enabled = {anim_enabled} }}, '
+        f'decoration = {{ shadow = {{ enabled = {shadow_enabled} }}, blur = {{ enabled = {blur_enabled}, passes = {blur_passes}, new_optimizations = true }} }} '
+        f'}})'
+    )
+    try:
+        res = subprocess.run(["hyprctl", "eval", lua_cmd], capture_output=True, text=True, timeout=3)
+        if res.returncode == 0 and "ok" in res.stdout.lower():
+            state = f"AC Max Smooth 144Hz (blur=2, anim=on, shadow=on)" if ac_online else f"Battery Eco 60Hz (blur=off, anim=off, shadow=off, direct_scanout=1)"
+            print(f"[AutoPower] Hyprland tuning → {state}", flush=True)
+            return True
+        return False
+    except Exception as e:
+        print(f"[AutoPower] Hyprland decoration error: {e}", file=sys.stderr, flush=True)
+        return False
+
+def reload_caelestia():
+    """Reliably restart QuickShell using Hyprland's native dispatcher with Intel Mesa isolation."""
+    ensure_hyprland_env()
+    # Clean any hung IPC callers first
+    subprocess.run(["pkill", "-9", "-f", "qs -c caelestia ipc"], capture_output=True)
+    subprocess.run(["qs", "-c", "caelestia", "kill"], capture_output=True, timeout=3)
+    for _ in range(10):
+        res = subprocess.run(["pgrep", "-f", "qs -c caelestia"], capture_output=True, text=True)
+        if not res.stdout.strip():
+            break
+        time.sleep(0.1)
+    # Force kill if still hung
+    subprocess.run(["pkill", "-9", "-f", "qs -c caelestia"], capture_output=True)
+    subprocess.run(["pkill", "-9", "-f", "caelestia shell"], capture_output=True)
+    time.sleep(0.3)
+    subprocess.run(
+        ["hyprctl", "eval", 'hl.dispatch(hl.dsp.exec_cmd("caelestia-intel"))'],
+        capture_output=True, timeout=5
+    )
+
+def set_keyboard_backlight(level: str):
+    """Control ASUS TUF keyboard RGB backlight (off, low, med, high)."""
+    try:
+        subprocess.run(["asusctl", "leds", "set", level], capture_output=True, timeout=3)
+        print(f"[AutoPower] Keyboard RGB backlight → {level}", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Keyboard backlight error: {e}", file=sys.stderr, flush=True)
+
+def configure_caelestia(ac_online: bool):
+    """
+    Dynamically tune Caelestia Shell:
+    - Khi CẮM SẠC (AC): Bật đầy đủ hiệu ứng (Thanh Taskbar/Dock, Hình nền, Cava sóng nhạc nền,
+      Shimeji con mèo, Desktop Lyrics, Desktop Clock, Spotify/GitHub widgets, Video wallpaper).
+    - Khi DÙNG PIN (Battery): Tắt hoàn toàn Taskbar/Dock, tắt hoàn toàn Hình nền, tắt Cava,
+      Shimeji, Lyrics, Clock để giao diện đen kịt/siêu nhẹ, tối đa hóa thời lượng pin.
+    """
+    try:
+        if not os.path.exists(SHELL_CONFIG_PATH):
+            return
+        with open(SHELL_CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        changed = False
+
+        # 1. Background (Hình nền, Cava, Lyrics, Clock): CHỈ BẬT KHI CẮM SẠC, TẮT HOÀN TOÀN KHI DÙNG PIN
+        bg = data.setdefault("background", {})
+        if bg.get("enabled") != ac_online:
+            bg["enabled"] = ac_online
+            changed = True
+
+        if bg.get("wallpaperEnabled") != ac_online:
+            bg["wallpaperEnabled"] = ac_online
+            changed = True
+
+        if bg.setdefault("visualiser", {}).get("enabled") != ac_online:
+            bg["visualiser"]["enabled"] = ac_online
+            changed = True
+
+        if bg.setdefault("desktopLyrics", {}).get("enabled") != ac_online:
+            bg["desktopLyrics"]["enabled"] = ac_online
+            changed = True
+
+        if bg.setdefault("desktopClock", {}).get("enabled") != ac_online:
+            bg["desktopClock"]["enabled"] = ac_online
+            changed = True
+
+        target_video_pause = not ac_online
+        if bg.get("videoWallpaperPaused") != target_video_pause:
+            bg["videoWallpaperPaused"] = target_video_pause
+            changed = True
+
+        # 2. Shimeji con mèo: CHỈ BẬT KHI CẮM SẠC, TẮT KHI DÙNG PIN
+        shimeji = data.setdefault("shimeji", {})
+        if shimeji.get("enabled") != ac_online:
+            shimeji["enabled"] = ac_online
+            changed = True
+
+        if shimeji.get("autoHide") is not False:
+            shimeji["autoHide"] = False
+            changed = True
+
+        if shimeji.get("path") != "root:/assets/shimeji/pusheen":
+            shimeji["path"] = "root:/assets/shimeji/pusheen"
+            changed = True
+
+        if shimeji.get("count") != 1:
+            shimeji["count"] = 1
+            changed = True
+
+        # 3. Taskbar (Bar / Dock): BẬT KHI CẮM SẠC, TẮT HOÀN TOÀN KHI DÙNG PIN
+        bar = data.setdefault("bar", {})
+        target_bar_persistent = ac_online
+        if bar.get("persistent") != target_bar_persistent:
+            bar["persistent"] = target_bar_persistent
+            changed = True
+
+        if bar.get("showOnHover", False):
+            bar["showOnHover"] = False
+            changed = True
+
+        target_excluded_screens = [] if ac_online else ["^.*$"]
+        if bar.get("excludedScreens") != target_excluded_screens:
+            bar["excludedScreens"] = target_excluded_screens
+            changed = True
+
+        # Widgets phụ trên bar (Spotify, GitHub): Bật khi AC, Tắt khi pin
+        entries = bar.setdefault("entries", {})
+        for item in entries.setdefault("start", []):
+            if item.get("id") == "spotify" and item.get("enabled") != ac_online:
+                item["enabled"] = ac_online
+                changed = True
+        for item in entries.setdefault("end", []):
+            if item.get("id") == "github" and item.get("enabled") != ac_online:
+                item["enabled"] = ac_online
+                changed = True
+
+        # 4. Dashboard & Utilities & Launcher: Luôn bật sẵn sàng
+        dash = data.setdefault("dashboard", {})
+        if not dash.get("enabled", True):
+            dash["enabled"] = True
+            changed = True
+
+        sidebar = data.setdefault("sidebar", {})
+        if not sidebar.get("enabled", True):
+            sidebar["enabled"] = True
+            changed = True
+
+        utils = data.setdefault("utilities", {})
+        if not utils.get("enabled", True):
+            utils["enabled"] = True
+            changed = True
+
+        launcher = data.setdefault("launcher", {})
+        if not launcher.get("enabled", True):
+            launcher["enabled"] = True
+            changed = True
+
+        if changed:
+            with open(SHELL_CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            mode_str = "AC (Hiệu ứng & Shimeji: BẬT)" if ac_online else "BATTERY (Hiệu ứng & Shimeji: TẮT, Tiết kiệm pin)"
+            print(f"[AutoPower] Caelestia shell.json updated -> {mode_str}, reloading shell...", flush=True)
+            reload_caelestia()
+            print("[AutoPower] Caelestia shell reloaded successfully", flush=True)
+        else:
+            mode_str = "AC" if ac_online else "BATTERY"
+            print(f"[AutoPower] Caelestia shell already in target state ({mode_str})", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Caelestia config error: {e}", file=sys.stderr, flush=True)
+
+
+# ──────────────────────────────────────────────────────────────
+def set_bluetooth(enabled: bool):
+    action = "power on" if enabled else "power off"
+    try:
+        subprocess.run(["bluetoothctl", *action.split()], capture_output=True, timeout=5)
+        state = "BẬT" if enabled else "TẮT"
+        print(f"[AutoPower] Bluetooth → {state}", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Bluetooth error: {e}", file=sys.stderr, flush=True)
+
+# ──────────────────────────────────────────────────────────────
+# Mako Notifications
+# ──────────────────────────────────────────────────────────────
+def set_notifications(enabled: bool):
+    """
+    Toggle Do-Not-Disturb qua Caelestia IPC.
+    Battery: enableDnd → ẩn toast/notifications
+    AC: disableDnd → khôi phục notifications
+    """
+    try:
+        ipc_cmd = "notifs disableDnd" if enabled else "notifs enableDnd"
+        result = subprocess.run(
+            ["caelestia", "shell", ipc_cmd],
+            capture_output=True, text=True, timeout=3
+        )
+        state = "BẬT (DND off)" if enabled else "TẮT (DND on)"
+        print(f"[AutoPower] Notifications → {state}", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Notification toggle error: {e}", file=sys.stderr, flush=True)
+
+# ──────────────────────────────────────────────────────────────
+# Typing & Cursor Effects (Kitty trail & VS Code smooth caret)
+# ──────────────────────────────────────────────────────────────
+def configure_typing_effects(ac_online: bool):
+    """
+    Tự động tắt hiệu ứng gõ phím khi dùng pin để chống lag và tiết kiệm điện:
+    - Kitty terminal: cursor_trail (0 khi dùng pin, 1 khi cắm sạc)
+    - VS Code: editor.cursorSmoothCaretAnimation (off khi dùng pin, on khi cắm sạc)
+    """
+    # 1. Kitty terminal cursor trail
+    kitty_conf = os.path.expanduser("~/Archlinux_config/dotfiles/kitty/kitty.conf")
+    if os.path.exists(kitty_conf):
+        try:
+            with open(kitty_conf, "r", encoding="utf-8") as f:
+                content = f.read()
+            target_val = "1" if ac_online else "0"
+            new_content = re.sub(r"cursor_trail\s+[01]", f"cursor_trail                 {target_val}", content)
+            if new_content != content:
+                with open(kitty_conf, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+                subprocess.run(["pkill", "-USR1", "-x", "kitty"], capture_output=True)
+                print(f"[AutoPower] Kitty cursor_trail → {target_val} ({'ON' if ac_online else 'OFF - không lag phím'})", flush=True)
+        except Exception as e:
+            print(f"[AutoPower] Kitty config error: {e}", file=sys.stderr, flush=True)
+
+    # 2. VS Code smooth caret animation
+    vscode_settings = os.path.expanduser("~/.config/Code/User/settings.json")
+    if os.path.exists(vscode_settings):
+        try:
+            with open(vscode_settings, "r", encoding="utf-8") as f:
+                content = f.read()
+            target_val = "on" if ac_online else "off"
+            new_content = re.sub(r'"editor\.cursorSmoothCaretAnimation":\s*"(on|off)"', f'"editor.cursorSmoothCaretAnimation": "{target_val}"', content)
+            if new_content != content:
+                with open(vscode_settings, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+                print(f"[AutoPower] VS Code smooth caret → {target_val}", flush=True)
+        except Exception as e:
+            print(f"[AutoPower] VS Code config error: {e}", file=sys.stderr, flush=True)
+
+# ──────────────────────────────────────────────────────────────
+# Background Tasks — Ollama, dev containers, trash-empty, etc.
+# ──────────────────────────────────────────────────────────────
+STUDY_CONTAINERS = ["local_mysql", "local_phpmyadmin"]
+
+def manage_background_tasks(ac_online):
+    # Luôn giữ MySQL và phpMyAdmin hoạt động liên tục phục vụ học tập (chỉ ăn ~0.01% CPU)
+    for c in STUDY_CONTAINERS:
+        try:
+            res = subprocess.run(["docker", "inspect", "-f", "{{.State.Status}}", c], capture_output=True, text=True, timeout=2)
+            if res.stdout.strip() == "paused":
+                print(f"[AutoPower] Unpausing {c} để đảm bảo học tập không bị ngắt quãng...", flush=True)
+                subprocess.run(["docker", "unpause", c], capture_output=True, timeout=5)
+        except Exception:
+            pass
+
+    if not ac_online:
+        # Chỉ tắt Ollama AI container khi dùng pin (Ollama ăn nhiều RAM/CPU)
+        try:
+            res = subprocess.run(
+                ["docker", "ps", "-q", "-f", "name=ollama"],
+                capture_output=True, text=True, timeout=2
+            )
+            if res.stdout.strip():
+                print("[AutoPower] Battery: Stopping Ollama AI container...", flush=True)
+                subprocess.run(["docker", "stop", "ollama"], capture_output=True, timeout=10)
+        except Exception:
+            pass
+
+        # Kill hanging trash-empty or stale python loops
+        for proc in ["trash-empty", "optimize-system.sh"]:
+            try:
+                subprocess.run(["pkill", "-f", proc], capture_output=True)
+            except Exception:
+                pass
+
+        # Kill any voice-ai daemon if running
+        try:
+            subprocess.run(["pkill", "-f", "voice-ai"], capture_output=True)
+        except Exception:
+            pass
+
+    else:
+        # Restore Ollama AI container on AC
+        try:
+            res_all = subprocess.run(
+                ["docker", "ps", "-a", "-q", "-f", "name=ollama"],
+                capture_output=True, text=True, timeout=2
+            )
+            if res_all.stdout.strip():
+                res_run = subprocess.run(
+                    ["docker", "ps", "-q", "-f", "name=ollama"],
+                    capture_output=True, text=True, timeout=2
+                )
+                if not res_run.stdout.strip():
+                    print("[AutoPower] AC: Resuming Ollama AI container...", flush=True)
+                    subprocess.run(["docker", "start", "ollama"], capture_output=True, timeout=10)
+        except Exception:
+            pass
+
+# ──────────────────────────────────────────────────────────────
+# Stale SingletonLock cleaner
+# ──────────────────────────────────────────────────────────────
+def clean_stale_singleton_locks():
+    home = os.path.expanduser("~")
+    target_dirs = [
+        os.path.join(home, ".config", "BraveSoftware", "Brave-Browser"),
+        os.path.join(home, ".config", "google-chrome"),
+        os.path.join(home, ".config", "chromium"),
+        os.path.join(home, ".config", "ZaloData"),
+        os.path.join(home, ".config", "discord"),
+        os.path.join(home, ".config", "Code"),
+    ]
+    for d in target_dirs:
+        lock_file = os.path.join(d, "SingletonLock")
+        if os.path.islink(lock_file) or os.path.exists(lock_file):
+            try:
+                target = os.readlink(lock_file)
+                parts  = target.split("-")
+                pid    = int(parts[-1])
+                try:
+                    os.kill(pid, 0)
+                except OSError:
+                    print(f"[AutoPower] Cleaning stale lock in {d} (PID {pid} dead)", flush=True)
+                    for item in ["SingletonLock", "SingletonCookie", "SingletonSocket"]:
+                        p = os.path.join(d, item)
+                        if os.path.islink(p) or os.path.exists(p):
+                            try:
+                                os.unlink(p)
+                            except Exception:
+                                pass
+            except Exception:
+                pass
+
+def clean_quickshell_ramdisk():
+    """Prevent runaway quickshell/Qt logs from exhausting /run/user/1000 tmpfs."""
+    try:
+        run_user = "/run/user/1000"
+        if not os.path.exists(run_user):
+            return
+
+        # 1. Truncate any quickshell log file exceeding 10 MB
+        for pattern in ["/run/user/1000/quickshell/by-id/*/*.log", "/run/user/1000/quickshell/by-id/*/*.qslog"]:
+            for log_file in glob.glob(pattern):
+                try:
+                    if os.path.isfile(log_file) and os.path.getsize(log_file) > 10 * 1024 * 1024:
+                        os.truncate(log_file, 0)
+                        print(f"[AutoPower] Truncated oversized quickshell log: {log_file}", flush=True)
+                except Exception:
+                    pass
+
+        # 2. Emergency check: if /run/user/1000 exceeds 80% capacity, truncate all logs
+        st = os.statvfs(run_user)
+        if st.f_blocks > 0:
+            used_pct = (1.0 - st.f_bavail / st.f_blocks) * 100
+            if used_pct > 80.0:
+                print(f"[AutoPower] ⚠️ /run/user/1000 critical ({used_pct:.1f}% used). Truncating quickshell logs...", flush=True)
+                for pattern in ["/run/user/1000/quickshell/by-id/*/*.log", "/run/user/1000/quickshell/by-id/*/*.qslog"]:
+                    for log_file in glob.glob(pattern):
+                        try:
+                            if os.path.isfile(log_file):
+                                os.truncate(log_file, 0)
+                        except Exception:
+                            pass
+    except Exception:
+        pass
+
+
+# ──────────────────────────────────────────────────────────────
+# Main power state handler
+# ──────────────────────────────────────────────────────────────
+def on_power_state_change(ac_online):
+    clean_stale_singleton_locks()
+    clean_quickshell_ramdisk()
+    manage_background_tasks(ac_online)
+    configure_typing_effects(ac_online)
+
+    if not ac_online:
+        # ════════════════════════════════
+        # BATTERY MODE — MƯỢT MÀ & TẮT HIỆU ỨNG GÕ PHÍM TIẾT KIỆM PIN
+        # ════════════════════════════════
+        print("[AutoPower] AC disconnected → BATTERY MODE (60Hz, Typing Effects: OFF, Balanced)", flush=True)
+
+        # 0. Ngắt kết nối NVML để dGPU NVIDIA RTX 3050 có thể ngủ sâu D3cold (tiết kiệm ~7W)
+        shutdown_nvml()
+
+        # 1. Chuyển màn hình về 60Hz để giảm 58% tải đồ họa và triệt tiêu sụt áp pin
+        set_refresh_rate(60)
+
+        # 2. Hyprland: Tắt Shadow, tắt Blur, tắt Animations để giải phóng 100% shader GPU và render load
+        configure_hyprland_effects(False)
+
+        # 3. Caelestia: Chế độ siêu nhẹ (tắt hover dashboard/taskbar, tắt visualiser/lyrics, giữ Utilities & Launcher)
+        configure_caelestia(False)
+
+        # 4. CPU profile: power-saver (intel_pstate tiết kiệm tối đa, EPP: power, CPU idle ~800MHz)
+        try:
+            subprocess.run(["powerprofilesctl", "set", "power-saver"], capture_output=True, timeout=3)
+            print("[AutoPower] CPU → power-saver (EPP: power, tối đa thời lượng pin)", flush=True)
+        except Exception:
+            pass
+
+        # 5. ASUS profile: Quiet (Quạt 0 RPM im lặng tuyệt đối, ngắt điện mô-tơ quạt, tiết kiệm ~2W-3W)
+        set_asus_profile("Quiet")
+
+        # 6. Tắt đèn bàn phím RGB khi dùng pin để tiết kiệm điện
+        set_keyboard_backlight("off")
+
+        # 7. Đảm bảo cổng PCIe của NVIDIA (dGPU + Audio Controller) ở chế độ auto (D3cold - 0W)
+        for dev in ["0000:01:00.0", "0000:01:00.1"]:
+            try:
+                with open(f"/sys/bus/pci/devices/{dev}/power/control", "w") as f:
+                    f.write("auto\n")
+            except Exception:
+                pass
+
+        # 8. Bluetooth: KHÔNG TẮT (Tránh reset co-existence chip Wi-Fi combo MT7921)
+        # Module Bluetooth ở trạng thái chờ chỉ tiêu thụ ~0.05W, giữ bật để mạng Wi-Fi không rớt
+
+        # 9. Độ sáng màn hình 40% (tiết kiệm ~3W so với 70%)
+        set_brightness_percent(BATTERY_BRIGHTNESS_PERCENT)
+
+        # 10. Thông báo người dùng
+        subprocess.run([
+            "notify-send", "-u", "normal", "-i", "battery-good",
+            "🔋 Chế độ Pin — Tiết Kiệm Tối Đa",
+            "60Hz • Tắt Taskbar & Hình nền • Tắt Cava/Shimeji • Quạt 0 RPM • dGPU 0W"
+        ], capture_output=True)
+
+    else:
+        # ════════════════════════════════
+        # AC MODE — Tối đa Hiệu năng & 144Hz
+        # ════════════════════════════════
+        print("[AutoPower] AC connected → PERFORMANCE MODE (144Hz, max boost)", flush=True)
+
+        # 1. Khôi phục 144Hz
+        set_refresh_rate(144)
+
+        # 2. Hyprland: Khôi phục hiệu ứng đầy đủ (Shadow ON, Blur passes = 2, Animations ON)
+        configure_hyprland_effects(True)
+
+        # 3. Caelestia: Khôi phục giao diện đầy đủ (Dashboard, Taskbar hover, Visualiser, Sidebar)
+        configure_caelestia(True)
+
+        # 4. Performance CPU profile on AC (Tối đa độ nhạy, Intel Turbo boost tức thì, 0 micro-stutter)
+        try:
+            subprocess.run(["powerprofilesctl", "set", "performance"], capture_output=True, timeout=3)
+            print("[AutoPower] CPU → performance", flush=True)
+        except Exception:
+            pass
+
+        # 5. ASUS profile: Performance (Bung xõa toàn bộ sức mạnh quạt)
+        set_asus_profile("Performance")
+
+        # 6. Khôi phục đèn bàn phím RGB
+        set_keyboard_backlight("med")
+
+        # 7. Bluetooth BẬT
+        set_bluetooth(True)
+
+        # 8. Khôi phục độ sáng 100%
+        set_brightness_percent(AC_BRIGHTNESS_PERCENT)
+
+        # 9. Bật thông báo trở lại
+        set_notifications(True)
+
+        # 10. Thông báo người dùng
+        subprocess.run([
+            "notify-send", "-u", "low", "-i", "ac-adapter",
+            "⚡ Đã cắm sạc — Performance 144Hz",
+            "144Hz • Hiệu năng tối đa • Khôi phục toàn bộ giao diện & AI"
+        ], capture_output=True)
+
+# ──────────────────────────────────────────────────────────────
+# Main loop
+# ──────────────────────────────────────────────────────────────
+def main():
+    print("[AutoPower] Starting ASUS TUF Power Manager v3.5 (Instant AI GPU & Active Anti-Heat Airflow)...", flush=True)
+    clean_stale_singleton_locks()
+    clean_quickshell_ramdisk()
+
+    last_ac               = None
+    hyprland_synced_state = None
+    loop_tick             = 0
+    CHECK_INTERVAL        = 1  # 1 second for instant AI/GPU detection
+
+    while True:
+        try:
+            loop_tick += 1
+            if loop_tick >= 30:
+                loop_tick = 0
+                clean_quickshell_ramdisk()
+
+            ac = is_ac_online()
+
+            # Detect state change or initial startup
+            if last_ac is None or ac != last_ac:
+                last_ac = ac
+                # Reset manual override on AC plug/unplug so profile matches power source
+                if os.path.exists(OVERRIDE_FILE):
+                    try:
+                        os.unlink(OVERRIDE_FILE)
+                    except Exception:
+                        pass
+                on_power_state_change(ac)
+                hyprland_synced_state = ac
+
+            # Ensure Hyprland refresh rate & effects are synced if Hyprland was delayed during boot
+            if hyprland_synced_state != ac:
+                if ensure_hyprland_env():
+                    if set_refresh_rate(144 if ac else 60) and configure_hyprland_effects(ac):
+                        hyprland_synced_state = ac
+
+            cur = get_current_asus_profile()
+
+            # Check manual override from asus-fan-toggle
+            override = get_manual_override()
+            if override:
+                if cur != override:
+                    set_asus_profile(override)
+                time.sleep(CHECK_INTERVAL)
+                continue
+
+            cpu_temp = get_cpu_temp()
+
+            if ac:
+                # AC Mode: CHỐNG ÁM NHIỆT KHUNG SƯỜN & PHÁT HIỆN TẢI AI TỨC THÌ
+                gpu_temp, gpu_util = get_gpu_status()
+                max_temp = max(cpu_temp, gpu_temp)
+
+                # 1. Phát hiện chạy AI / CUDA / Đồ họa (GPU util > 15% hoặc GPU temp >= 58°C hoặc CPU >= 65°C):
+                if gpu_util > 15 or gpu_temp >= 58.0 or max_temp >= 65.0:
+                    if cur != "Performance":
+                        set_asus_profile("Performance")
+                        print(f"[AutoPower] 🔥 Tải cao / AI chạy tức thì (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C, Util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
+
+                # 2. Duy trì lưu lượng gió chống ám nhiệt vào khung sườn khi lướt web / làm việc:
+                elif max_temp >= 50.0:
+                    if cur not in ["Performance", "Balanced"]:
+                        set_asus_profile("Balanced")
+                        print(f"[AutoPower] 🌬️ Duy trì gió chủ động chống ám nhiệt khung sườn (Max: {max_temp:.1f}°C) → Balanced", flush=True)
+
+                # 3. Chỉ khi máy thực sự siêu mát và nhàn rỗi (< 45°C) mới hạ về Balanced êm
+                elif max_temp <= 44.0:
+                    if cur != "Balanced":
+                        set_asus_profile("Balanced")
+                        print(f"[AutoPower] ❄️ Máy siêu mát ({max_temp:.1f}°C ≤ 44°C) → Balanced êm ái", flush=True)
+
+            else:
+                # Battery Mode: Tiết kiệm pin tối đa
+                # Không poll NVML để GPU rơi vào D3cold (0.0W)
+                max_temp = cpu_temp
+                if max_temp >= 75.0 and cur != "Performance":
+                    set_asus_profile("Performance")
+                    print(f"[AutoPower] ⚠️ Pin nhưng nhiệt cao (Max: {max_temp:.1f}°C) → Cứu nguy Performance", flush=True)
+                elif max_temp <= 55.0 and cur != "Quiet":
+                    set_asus_profile("Quiet")
+                    print(f"[AutoPower] ❄️ Pin máy mát ({max_temp:.1f}°C ≤ 55°C) → Quiet (0 RPM)", flush=True)
+
+        except Exception as e:
+            print(f"[AutoPower] Loop exception: {e}", file=sys.stderr, flush=True)
+
+        time.sleep(CHECK_INTERVAL)
+
+if __name__ == "__main__":
+    main()

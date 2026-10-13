@@ -66,10 +66,9 @@ else
         fi
     done
 
-    # 4. Tắt Ollama & pause dev containers khi dùng pin
+    # 4. Tắt Ollama khi dùng pin (giữ local_mysql, local_phpmyadmin hoạt động cho học tập)
     if command -v docker >/dev/null 2>&1; then
         docker stop ollama >/dev/null 2>&1 || true
-        docker pause local_mysql local_phpmyadmin >/dev/null 2>&1 || true
     fi
 
     # 5. NVIDIA PCIe Runtime PM auto (cho phép ngủ sâu D3cold)
