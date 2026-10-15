@@ -288,6 +288,14 @@ def set_keyboard_backlight(level: str):
     except Exception as e:
         print(f"[AutoPower] Keyboard backlight error: {e}", file=sys.stderr, flush=True)
 
+def set_battery_charge_limit(limit: int = 80):
+    """Enforce ASUS battery charge limit (default 80% to preserve battery health)."""
+    try:
+        subprocess.run(["asusctl", "battery", "limit", str(limit)], capture_output=True, timeout=3)
+        print(f"[AutoPower] Battery charge limit enforced → {limit}%", flush=True)
+    except Exception as e:
+        print(f"[AutoPower] Battery limit error: {e}", file=sys.stderr, flush=True)
+
 def configure_caelestia(ac_online: bool, force_reload: bool = False):
     """
     Dynamically tune Caelestia Shell:
@@ -627,6 +635,7 @@ def on_power_state_change(ac_online):
     clean_quickshell_ramdisk()
     manage_background_tasks(ac_online)
     configure_typing_effects(ac_online)
+    set_battery_charge_limit(80)
 
     if not ac_online:
         # ════════════════════════════════
@@ -737,6 +746,7 @@ def main():
     print("[AutoPower] Starting ASUS TUF Power Manager v3.5 (Instant AI GPU & Active Anti-Heat Airflow)...", flush=True)
     clean_stale_singleton_locks()
     clean_quickshell_ramdisk()
+    set_battery_charge_limit(80)
 
     last_ac               = None
     hyprland_synced_state = None

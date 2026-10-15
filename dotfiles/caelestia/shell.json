@@ -1,6 +1,6 @@
 {
     "ai": {
-        "defaultOllamaModel": "test-qwen3-nothink:latest",
+        "defaultOllamaModel": "qwen3:4b",
         "enableCelestialMode": false,
         "enableOllama": false,
         "ollamaHistoryJson": ""
@@ -9,9 +9,9 @@
         "islands": false,
         "pitchBlack": false,
         "transparency": {
-            "base": 0.26279772782651073,
+            "base": 0.36111187256335286,
             "enabled": false,
-            "layers": 1
+            "layers": 0.37976973684210524
         }
     },
     "audio": {

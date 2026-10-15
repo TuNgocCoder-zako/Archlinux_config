@@ -1,7 +1,7 @@
 # Fish Shell — Caelestia Anime Rice Config
 
 set -g fish_greeting
-fish_add_path ~/.cargo/bin ~/.local/bin /usr/local/bin ~/src/flutter/bin ~/Android/Sdk/platform-tools ~/Android/Sdk/cmdline-tools/latest/bin
+fish_add_path ~/.cargo/bin ~/.local/bin /usr/local/bin ~/.config/composer/vendor/bin ~/src/flutter/bin ~/Android/Sdk/platform-tools ~/Android/Sdk/cmdline-tools/latest/bin
 
 # Input method (Fcitx5 / Tiếng Việt)
 set -gx XMODIFIERS '@im=fcitx'
