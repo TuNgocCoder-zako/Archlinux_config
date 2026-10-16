@@ -26,10 +26,20 @@ def get_cpu_temp():
 
 def get_gpu_temp():
     try:
+        status_path = "/sys/bus/pci/devices/0000:01:00.0/power/runtime_status"
+        if os.path.exists(status_path):
+            with open(status_path, "r") as f:
+                if f.read().strip() == "suspended":
+                    return None
+        ac_path = "/sys/class/power_supply/ACAD/online"
+        if os.path.exists(ac_path):
+            with open(ac_path, "r") as f:
+                if f.read().strip() == "0":
+                    return None
         res = subprocess.run(["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=1)
         return float(res.stdout.strip())
     except:
-        return 0.0
+        return None
 
 def get_fan_speeds():
     cpu_fan, gpu_fan = 0, 0
@@ -300,7 +310,10 @@ class AsusTufWindow(Adw.ApplicationWindow):
         prof = get_active_profile()
 
         self.lbl_temp.set_text(f"{temp:.1f} °C")
-        self.lbl_gpu_temp.set_text(f"{gpu_temp:.0f} °C")
+        if gpu_temp is None:
+            self.lbl_gpu_temp.set_text("D3cold (0W)")
+        else:
+            self.lbl_gpu_temp.set_text(f"{gpu_temp:.0f} °C")
         self.lbl_cpu_fan.set_text(f"{cpu_rpm} RPM")
         self.lbl_gpu_fan.set_text(f"{gpu_rpm} RPM")
         self.refresh_profile_buttons(prof)

@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# asus-fan-toggle: Chuyển đổi linh hoạt chế độ quạt ASUS TUF Gaming & Hiển thị thông số chi tiết
+# Hỗ trợ chu kỳ: Performance (Turbo) -> Balanced -> Quiet -> Auto
+
+OVERRIDE_FILE="/tmp/asus-fan-override.json"
+
+CURRENT=$(asusctl profile get 2>/dev/null | grep -i "Active profile:" | awk '{print $NF}')
+IS_OVERRIDE="0"
+if [ -f "$OVERRIDE_FILE" ]; then
+    IS_OVERRIDE="1"
+fi
+
+if [ "$IS_OVERRIDE" = "0" ]; then
+    # Đang ở Auto -> Chuyển sang ép cố định Performance (Turbo)
+    asusctl profile set Performance >/dev/null 2>&1
+    powerprofilesctl set performance 2>/dev/null || true
+    echo '{"profile": "Performance", "timestamp": '$(date +%s)'}' > "$OVERRIDE_FILE"
+    NEXT="Performance (Turbo Cố định)"
+    ICON="🚀"
+    DESC="Quạt chạy tối đa • Thổi mát liên tục • Chống ám nhiệt khung sườn"
+else
+    case "$CURRENT" in
+        "Performance")
+            asusctl profile set Balanced >/dev/null 2>&1
+            powerprofilesctl set balanced 2>/dev/null || true
+            echo '{"profile": "Balanced", "timestamp": '$(date +%s)'}' > "$OVERRIDE_FILE"
+            NEXT="Balanced (Cân bằng Cố định)"
+            ICON="⚖️"
+            DESC="Cân bằng nhiệt độ & độ ồn êm ái"
+            ;;
+        "Balanced")
+            asusctl profile set Quiet >/dev/null 2>&1
+            powerprofilesctl set power-saver 2>/dev/null || true
+            echo '{"profile": "Quiet", "timestamp": '$(date +%s)'}' > "$OVERRIDE_FILE"
+            NEXT="Quiet (Yên tĩnh Cố định)"
+            ICON="🤫"
+            DESC="Yên tĩnh tối đa • Giảm tốc độ vòng quay quạt"
+            ;;
+        "Quiet"|*)
+            # Quay lại Auto: Xóa override để daemon tự động theo dõi GPU/CPU
+            rm -f "$OVERRIDE_FILE"
+            NEXT="Auto (Tự động thông minh)"
+            ICON="🤖"
+            DESC="Tự động cảm biến: Kích tốc khi AI/GPU chạy, chống ngâm nhiệt khi cắm sạc"
+            ;;
+    esac
+fi
+
+# Đọc thông số phần cứng thời gian thực
+HW=$(grep -l "asus" /sys/class/hwmon/hwmon*/name 2>/dev/null | sed "s|/name||" | head -n 1)
+CPU_RPM=0
+GPU_RPM=0
+if [ -n "$HW" ]; then
+    CPU_RPM=$(cat "$HW/fan1_input" 2>/dev/null || echo 0)
+    GPU_RPM=$(cat "$HW/fan2_input" 2>/dev/null || echo 0)
+fi
+
+CORE_HWMON=$(grep -l "coretemp" /sys/class/hwmon/hwmon*/name 2>/dev/null | sed "s|name|temp1_input|" | head -n 1)
+CPU_TEMP=0
+if [ -n "$CORE_HWMON" ] && [ -f "$CORE_HWMON" ]; then
+    CPU_TEMP=$(awk '{printf "%.0f", $1/1000}' "$CORE_HWMON" 2>/dev/null || echo 0)
+fi
+
+NV_STATUS=$(cat /sys/bus/pci/devices/0000:01:00.0/power/runtime_status 2>/dev/null || echo "suspended")
+if [ "$NV_STATUS" = "suspended" ] || [ "$(cat /sys/class/power_supply/ACAD/online 2>/dev/null)" = "0" ]; then
+    GPU_INFO="GPU: D3cold (0W)"
+else
+    GPU_TEMP=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null || echo 0)
+    GPU_INFO="GPU Fan: ${GPU_RPM} RPM (${GPU_TEMP}°C)"
+fi
+
+FAN_INFO="CPU Fan: ${CPU_RPM} RPM (${CPU_TEMP}°C)  •  ${GPU_INFO}"
+
+notify-send -u normal -t 3500 \
+    -i preferences-system-performance \
+    -a "ASUS TUF Fan" \
+    "$ICON Chế độ quạt: $NEXT" \
+    "$DESC\n$FAN_INFO"

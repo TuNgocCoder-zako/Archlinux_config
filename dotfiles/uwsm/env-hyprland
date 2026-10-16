@@ -30,5 +30,4 @@ export HYPRCURSOR_SIZE='24'
 # ######### Hardware & Drivers (Intel TigerLake Iris Xe) #########
 export LIBVA_DRIVER_NAME='iHD'
 export MESA_LOADER_DRIVER_OVERRIDE='iris'
-export MESA_SHADER_CACHE_MAX_SIZE='4G'
-export AQ_DRM_DEVICES='/dev/dri/card-intel:/dev/dri/card-nvidia'
+export AQ_DRM_DEVICES='/dev/dri/card-intel'
