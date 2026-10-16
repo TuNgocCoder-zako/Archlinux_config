@@ -759,16 +759,6 @@ def main():
             if loop_tick >= 30:
                 loop_tick = 0
                 clean_quickshell_ramdisk()
-                # Check & re-enforce battery charge limit if reset by BIOS or asusd
-                try:
-                    limit_path = "/sys/class/power_supply/BAT1/charge_control_end_threshold"
-                    if os.path.exists(limit_path):
-                        with open(limit_path, "r") as f:
-                            curr_limit = f.read().strip()
-                        if curr_limit != "80":
-                            set_battery_charge_limit(80)
-                except Exception:
-                    pass
 
             ac = is_ac_online()
 
