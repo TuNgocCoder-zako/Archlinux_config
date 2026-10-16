@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# battery — Quick Battery Info & Charge Limiter for ASUS TUF
+# ==============================================================================
+
+BAT_DIR="/sys/class/power_supply/BAT1"
+AC_ONLINE="/sys/class/power_supply/ACAD/online"
+
+# Fallback auto-detection if BAT1 is named differently
+if [ ! -d "$BAT_DIR" ]; then
+    BAT_DIR=$(find /sys/class/power_supply -name "BAT*" -type d 2>/dev/null | head -n 1)
+fi
+
+# Set battery limit if an argument between 20 and 100 is passed (e.g. 'battery 80')
+if [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge 20 ] && [ "$1" -le 100 ]; then
+    asusctl battery limit "$1" >/dev/null 2>&1
+    echo -e "\033[1;32m⚡ Đã thiết lập giới hạn sạc pin:\033[0m \033[1;37m$1%\033[0m"
+    exit 0
+fi
+
+if [ -z "$BAT_DIR" ] || [ ! -f "$BAT_DIR/capacity" ]; then
+    echo "❌ Không tìm thấy thông tin pin."
+    exit 1
+fi
+
+CAP=$(cat "$BAT_DIR/capacity" 2>/dev/null)
+STATUS=$(cat "$BAT_DIR/status" 2>/dev/null)
+LIMIT=$(cat "$BAT_DIR/charge_control_end_threshold" 2>/dev/null)
+[ -z "$LIMIT" ] && LIMIT="100"
+
+# Options: -p / --percent (only percentage e.g. 81%)
+if [ "$1" = "-p" ] || [ "$1" = "--percent" ]; then
+    echo "${CAP}%"
+    exit 0
+fi
+
+# Options: -n / --number (only number e.g. 81)
+if [ "$1" = "-n" ] || [ "$1" = "--number" ]; then
+    echo "$CAP"
+    exit 0
+fi
+
+# Status translation
+case "$STATUS" in
+    "Charging")     ST_TXT="Đang sạc ⚡" ;;
+    "Discharging")  ST_TXT="Đang dùng pin 🔋" ;;
+    "Not charging") ST_TXT="Đã ngắt sạc (Bảo vệ pin) 🛑" ;;
+    "Full")         ST_TXT="Pin đầy 🌟" ;;
+    *)              ST_TXT="$STATUS" ;;
+esac
+
+AC_STATE="Dùng pin"
+if [ -f "$AC_ONLINE" ] && [ "$(cat "$AC_ONLINE" 2>/dev/null)" = "1" ]; then
+    AC_STATE="Cắm sạc (AC) 🔌"
+fi
+
+echo -e "\033[1;32m🔋 Pin:\033[0m \033[1;37m${CAP}%\033[0m [\033[0;36m${ST_TXT}\033[0m]"
+echo -e "\033[1;33m⚡ Nguồn:\033[0m ${AC_STATE} \033[0;90m|\033[0m \033[1;34mNgưỡng sạc:\033[0m ${LIMIT}%"

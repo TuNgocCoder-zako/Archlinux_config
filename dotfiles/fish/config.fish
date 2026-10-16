@@ -39,6 +39,10 @@ alias fetch="fastfetch"
 alias wall="~/.local/bin/set-wallpaper"
 alias wallr='~/.local/bin/set-wallpaper (find ~/Pictures/Wallpapers/ -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) | shuf -n 1)'
 alias agy="agy --dangerously-skip-permissions"
+alias battery="~/.local/bin/battery"
+alias batery="~/.local/bin/battery"
+alias pin="~/.local/bin/battery"
+alias bat="~/.local/bin/battery"
 
 
 # Auto-start Hyprland when logging in on TTY1 (fallback if no Display Manager)
