@@ -82,6 +82,22 @@ Singleton {
 
                 if (!recordIpApiRateLimit(metadata))
                     console.warn(lc, `ip-api request failed: ${error}`);
+
+                // Fallback to https://ipinfo.io/json (HTTPS, highly reliable)
+                Requests.get("https://ipinfo.io/json", text => {
+                    if (GlobalConfig.services.weatherLocation)
+                        return;
+                    try {
+                        const info = JSON.parse(text);
+                        if (info.loc) {
+                            city = fixCityName(info.city ?? "");
+                            timer.restart();
+                            loc = info.loc;
+                        }
+                    } catch (e) {
+                        console.warn(lc, `ipinfo fallback failed: ${e}`);
+                    }
+                });
             });
         }
     }
@@ -110,6 +126,23 @@ Singleton {
         if (!cityName)
             return "";
         const mapping = {
+            // Vietnamese
+            "Ho Chi Minh City": "TP. Hồ Chí Minh",
+            "Thanh pho Ho Chi Minh": "TP. Hồ Chí Minh",
+            "Thành phố Hồ Chí Minh": "TP. Hồ Chí Minh",
+            "Hanoi": "Hà Nội",
+            "Ha Noi": "Hà Nội",
+            "Da Nang": "Đà Nẵng",
+            "Hai Phong": "Hải Phòng",
+            "Can Tho": "Cần Thơ",
+            "Hue": "Huế",
+            "Nha Trang": "Nha Trang",
+            "Vung Tau": "Vũng Tàu",
+            "Da Lat": "Đà Lạt",
+            "Quy Nhon": "Quy Nhơn",
+            "Bien Hoa": "Biên Hòa",
+            "Buon Ma Thuot": "Buôn Ma Thuột",
+
             // Polish
             "Poznan": "Poznań",
             "Wroclaw": "Wrocław",
@@ -200,10 +233,10 @@ Singleton {
             }
 
             console.warn(lc, "No locality in nominatim response");
-            city = qsTr("Unknown City");
         }, error => {
             console.warn(lc, `Nominatim request failed: ${error}`);
-            city = qsTr("Unknown City");
+            if (!city || city === qsTr("Unknown City"))
+                city = fixCityName(GlobalConfig.services.weatherLocation || qsTr("Current Location"));
         }, nominatimHeaders);
     }
 

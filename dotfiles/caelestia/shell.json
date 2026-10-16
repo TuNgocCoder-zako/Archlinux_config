@@ -25,12 +25,12 @@
             "background": {
                 "blur": false,
                 "enabled": true,
-                "opacity": 0.07501541940789473
+                "opacity": 1
             },
             "enabled": true,
             "invertColors": true,
             "position": "top-left",
-            "scale": 1.1029373972039473,
+            "scale": 0.9098752248201438,
             "shadow": {
                 "blur": 1.3760587993421052,
                 "enabled": false,
@@ -289,12 +289,13 @@
         "pipPaused": false,
         "smartScheme": true,
         "useFahrenheit": false,
-        "visualiserBars": 60
+        "visualiserBars": 60,
+        "weatherLocation": "Ho Chi Minh City"
     },
     "shimeji": {
         "autoHide": false,
         "count": 1,
-        "enabled": true,
+        "enabled": false,
         "path": "root:/assets/shimeji/pusheen",
         "scale": 1
     },

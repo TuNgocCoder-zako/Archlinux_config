@@ -29,6 +29,39 @@ PageBase {
         }
     ]
 
+    // City preset items for weather
+    readonly property list<MenuItem> cityPresetItems: [
+        MenuItem {
+            text: qsTr("Auto (IP Location)")
+        },
+        MenuItem {
+            text: "Ho Chi Minh City"
+        },
+        MenuItem {
+            text: "Hanoi"
+        },
+        MenuItem {
+            text: "Da Nang"
+        },
+        MenuItem {
+            text: "Hai Phong"
+        },
+        MenuItem {
+            text: "Can Tho"
+        }
+    ]
+
+    function getCityActiveItem(): var {
+        const cur = root.targetConfig.services.weatherLocation;
+        if (!cur)
+            return cityPresetItems[0];
+        for (let i = 1; i < cityPresetItems.length; i++) {
+            if (cityPresetItems[i].text.toLowerCase() === cur.toLowerCase())
+                return cityPresetItems[i];
+        }
+        return null;
+    }
+
     title: qsTr("Language & region")
 
     ColumnLayout {
@@ -92,42 +125,47 @@ PageBase {
             text: qsTr("Weather")
         }
 
-        // Placeholder until the map-based location picker lands
-        ConnectedRect {
-            Layout.fillWidth: true
+        InfoRow {
             first: true
+            last: false
+            icon: Weather.icon
+            label: qsTr("Current weather")
+            subtext: Weather.city ? Weather.city : qsTr("Detecting location...")
+            value: Weather.cc ? `${Weather.temp} • ${Weather.description}` : qsTr("Loading...")
+        }
+
+        TextFieldRow {
+            first: false
+            last: false
+            label: qsTr("Weather location")
+            subtext: qsTr("Type city (e.g. Hanoi, Ho Chi Minh City, Da Nang) or leave empty for Auto")
+            placeholderText: qsTr("Auto (IP location) or type city")
+            configNode: root.targetConfig.services
+            propertyName: "weatherLocation"
+            value: root.targetConfig.services.weatherLocation ?? ""
+            onEditingFinished: v => {
+                const trimmed = v.trim();
+                root.targetConfig.services.weatherLocation = trimmed;
+                root.targetConfig.save();
+                Weather.reload();
+            }
+        }
+
+        SelectRow {
+            first: false
             last: true
-            implicitHeight: comingSoon.implicitHeight + Tokens.padding.extraLarge * 2
-
-            ColumnLayout {
-                id: comingSoon
-
-                anchors.centerIn: parent
-                width: parent.width - Tokens.padding.largeIncreased * 2
-                spacing: Tokens.padding.extraSmall
-
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "map"
-                    color: Colours.palette.m3outlineVariant
-                    fontStyle: Tokens.font.icon.extraLarge
+            label: qsTr("City presets")
+            subtext: qsTr("Quickly switch between common cities")
+            menuItems: root.cityPresetItems
+            active: root.getCityActiveItem()
+            onSelected: item => {
+                if (root.cityPresetItems.indexOf(item) === 0) {
+                    root.targetConfig.services.weatherLocation = "";
+                } else {
+                    root.targetConfig.services.weatherLocation = item.text;
                 }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Location picker coming soon")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.title.small
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    text: qsTr("Choose your weather location on a map in a future update")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.body.small
-                }
+                root.targetConfig.save();
+                Weather.reload();
             }
         }
 
