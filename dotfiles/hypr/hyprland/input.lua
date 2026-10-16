@@ -27,11 +27,23 @@ hl.config({
     },
 })
 
+-- Touchpad toggle state check (hỗ trợ Super + F10 / asus-tuf-control)
+local runtime_dir = os.getenv("XDG_RUNTIME_DIR") or "/tmp"
+local is_tp_disabled = false
+local f = io.open(runtime_dir .. "/touchpad-disabled", "r") or io.open("/tmp/touchpad-disabled", "r")
+if f then
+    is_tp_disabled = true
+    f:close()
+end
+
 hl.device({
     name        = "elan1203:00-04f3:307a-touchpad",
     sensitivity = vars.touchpadSensitivity or 0.35,
+    enabled     = not is_tp_disabled,
 })
 hl.device({
     name        = "elan1203:00-04f3:307a-mouse",
     sensitivity = vars.touchpadSensitivity or 0.35,
+    enabled     = not is_tp_disabled,
 })
+

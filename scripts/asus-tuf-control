@@ -79,6 +79,10 @@ def set_auto_service(active):
     enable_cmd = "enable" if active else "disable"
     subprocess.run(["systemctl", "--user", enable_cmd, "asus-fan-auto.service"], capture_output=True)
 
+def is_touchpad_active():
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    return not (os.path.exists(os.path.join(runtime_dir, "touchpad-disabled")) or os.path.exists("/tmp/touchpad-disabled"))
+
 class AsusTufApp(Adw.Application):
     def __init__(self):
         super().__init__(application_id='com.asus.tuf.control')
@@ -261,9 +265,10 @@ class AsusTufWindow(Adw.ApplicationWindow):
 
         row_tp = Adw.ActionRow(title="Khóa / Mở bàn di chuột")
         row_tp.set_subtitle("Bật hoặc tắt Touchpad chống chạm nhầm (Phím tắt: Super + F10)")
+        self._updating_tp_switch = False
         self.switch_tp = Gtk.Switch()
         self.switch_tp.set_valign(Gtk.Align.CENTER)
-        self.switch_tp.set_active(not os.path.exists("/tmp/touchpad-disabled"))
+        self.switch_tp.set_active(is_touchpad_active())
         self.switch_tp.connect("state-set", self.on_tp_switch_toggled)
         row_tp.add_suffix(self.switch_tp)
         tp_group.add(row_tp)
@@ -305,6 +310,8 @@ class AsusTufWindow(Adw.ApplicationWindow):
         return False
 
     def on_tp_switch_toggled(self, switch, state):
+        if getattr(self, "_updating_tp_switch", False):
+            return False
         cmd = "on" if state else "off"
         subprocess.run(["/home/tu/.local/bin/touchpad-toggle", cmd], capture_output=True)
         return False
@@ -336,9 +343,11 @@ class AsusTufWindow(Adw.ApplicationWindow):
         self.lbl_gpu_fan.set_text(f"{gpu_rpm} RPM")
         self.refresh_profile_buttons(prof)
         self.refresh_bat_buttons()
-        tp_active = not os.path.exists("/tmp/touchpad-disabled")
+        tp_active = is_touchpad_active()
         if self.switch_tp.get_active() != tp_active:
-            self.switch_tp.set_state(tp_active)
+            self._updating_tp_switch = True
+            self.switch_tp.set_active(tp_active)
+            self._updating_tp_switch = False
         return True
 
 if __name__ == "__main__":
