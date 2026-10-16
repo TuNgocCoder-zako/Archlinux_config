@@ -255,6 +255,19 @@ class AsusTufWindow(Adw.ApplicationWindow):
         row_aura.add_suffix(aura_box)
         led_group.add(row_aura)
 
+        # Group 6: Touchpad Control
+        tp_group = Adw.PreferencesGroup(title="Bàn di chuột (Touchpad)")
+        pref_page.add(tp_group)
+
+        row_tp = Adw.ActionRow(title="Khóa / Mở bàn di chuột")
+        row_tp.set_subtitle("Bật hoặc tắt Touchpad chống chạm nhầm (Phím tắt: Super + F10)")
+        self.switch_tp = Gtk.Switch()
+        self.switch_tp.set_valign(Gtk.Align.CENTER)
+        self.switch_tp.set_active(not os.path.exists("/tmp/touchpad-disabled"))
+        self.switch_tp.connect("state-set", self.on_tp_switch_toggled)
+        row_tp.add_suffix(self.switch_tp)
+        tp_group.add(row_tp)
+
         # Initial Refresh & Timer
         self.refresh_stats()
         GLib.timeout_add_seconds(2, self.refresh_stats)
@@ -291,6 +304,11 @@ class AsusTufWindow(Adw.ApplicationWindow):
         subprocess.run(["notify-send", "-a", "ASUS Auto Fan", f"Chế độ tự động {status_text}"])
         return False
 
+    def on_tp_switch_toggled(self, switch, state):
+        cmd = "on" if state else "off"
+        subprocess.run(["/home/tu/.local/bin/touchpad-toggle", cmd], capture_output=True)
+        return False
+
     def refresh_profile_buttons(self, active_prof):
         for btn in (self.btn_quiet, self.btn_balanced, self.btn_perf):
             btn.remove_css_class("suggested-action")
@@ -318,6 +336,9 @@ class AsusTufWindow(Adw.ApplicationWindow):
         self.lbl_gpu_fan.set_text(f"{gpu_rpm} RPM")
         self.refresh_profile_buttons(prof)
         self.refresh_bat_buttons()
+        tp_active = not os.path.exists("/tmp/touchpad-disabled")
+        if self.switch_tp.get_active() != tp_active:
+            self.switch_tp.set_state(tp_active)
         return True
 
 if __name__ == "__main__":

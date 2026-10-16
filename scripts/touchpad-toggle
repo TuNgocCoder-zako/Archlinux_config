@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# touchpad-toggle — Bật / Khóa bàn di chuột ASUS TUF (Hyprland Lua)
+# Phím tắt: Super + F10 (hoặc Fn + F10)
+# ==============================================================================
+
+STATE_FILE="/tmp/touchpad-disabled"
+
+set_touchpad() {
+    local enable="$1"
+    if [ "$enable" = "true" ]; then
+        rm -f "$STATE_FILE"
+        hyprctl eval 'hl.device({ name = "elan1203:00-04f3:307a-touchpad", enabled = true }); hl.device({ name = "elan1203:00-04f3:307a-mouse", enabled = true })' >/dev/null 2>&1
+        notify-send -u normal -t 2000 -i input-touchpad -a "ASUS TUF Touchpad" "🖱️ Touchpad: ĐÃ BẬT" "Bàn di chuột hoạt động bình thường"
+        echo "enabled"
+    else
+        touch "$STATE_FILE"
+        hyprctl eval 'hl.device({ name = "elan1203:00-04f3:307a-touchpad", enabled = false }); hl.device({ name = "elan1203:00-04f3:307a-mouse", enabled = false })' >/dev/null 2>&1
+        notify-send -u normal -t 2000 -i touchpad-disabled -a "ASUS TUF Touchpad" "🚫 Touchpad: ĐÃ KHÓA" "Đã tắt bàn di chuột chống chạm nhầm khi gõ phím"
+        echo "disabled"
+    fi
+}
+
+case "$1" in
+    on|enable|1|true)
+        set_touchpad "true"
+        ;;
+    off|disable|0|false)
+        set_touchpad "false"
+        ;;
+    status)
+        if [ -f "$STATE_FILE" ]; then
+            echo "disabled"
+        else
+            echo "enabled"
+        fi
+        ;;
+    toggle|*)
+        if [ -f "$STATE_FILE" ]; then
+            set_touchpad "true"
+        else
+            set_touchpad "false"
+        fi
+        ;;
+esac
