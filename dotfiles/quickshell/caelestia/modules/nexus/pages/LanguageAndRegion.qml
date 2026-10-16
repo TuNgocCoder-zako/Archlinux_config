@@ -35,6 +35,9 @@ PageBase {
             text: qsTr("Auto (IP Location)")
         },
         MenuItem {
+            text: "Nha Trang"
+        },
+        MenuItem {
             text: "Ho Chi Minh City"
         },
         MenuItem {
