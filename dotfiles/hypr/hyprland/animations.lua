@@ -37,15 +37,15 @@ hl.curve("linear",            { type = "bezier", points = { { 0.0,  0.0 }, { 1.0
 -- Window Animations — Mở/Đóng/Di chuyển cửa sổ sống động
 -- ══════════════════════════════════════════════════════════════
 
--- Mở cửa sổ: popin 82% với độ nảy bounce nhẹ (showcase style)
-hl.animation({ leaf = "windows",     enabled = true, speed = 3.6, bezier = "bounce",      style = "popin 82%" })
-hl.animation({ leaf = "windowsIn",   enabled = true, speed = 3.6, bezier = "bounce",      style = "popin 82%" })
+-- Mở cửa sổ: popin 92% dứt khoát mượt mà, không bị rung lắc nảy quá trớn
+hl.animation({ leaf = "windows",     enabled = true, speed = 4.2, bezier = "fluent_decel", style = "popin 92%" })
+hl.animation({ leaf = "windowsIn",   enabled = true, speed = 4.2, bezier = "fluent_decel", style = "popin 92%" })
 
--- Đóng cửa sổ: êm dịu, biến mất gọn gàng
-hl.animation({ leaf = "windowsOut",  enabled = true, speed = 2.4, bezier = "easeOutCirc", style = "popin 88%" })
+-- Đóng cửa sổ: êm dịu, dứt khoát
+hl.animation({ leaf = "windowsOut",  enabled = true, speed = 3.2, bezier = "easeOutCirc",  style = "popin 92%" })
 
--- Di chuyển / Tiling resize: mượt mà, không bị lag mắt
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 3.5, bezier = "smooth_move" })
+-- Di chuyển / Tiling resize: mượt mà, phản hồi tức thì 0ms
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 4.0, bezier = "smooth_move" })
 
 
 -- ══════════════════════════════════════════════════════════════

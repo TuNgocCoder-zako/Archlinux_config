@@ -226,19 +226,24 @@ def configure_hyprland_effects(ac_online: bool):
     render_scheduling = "true"  # Luôn giữ true để loại bỏ 100% độ trễ gõ chữ và input lag
     anim_enabled = "true" if ac_online else "false"
     blur_enabled = "true" if ac_online else "false"
-    blur_passes = 2 if ac_online else 1
+    blur_passes = 1  # 1 pass Dual-Kawase: Giảm 50% shader load, mượt tuyệt đối 144Hz trên Intel iGPU
+    blur_size = 4
+    xray_val = "true"
     shadow_enabled = "true" if ac_online else "false"
+    shadow_range = 8
+    shadow_power = 2
     lua_cmd = (
         f'hl.config({{ '
         f'render = {{ direct_scanout = {direct_scanout}, new_render_scheduling = {render_scheduling} }}, '
         f'animations = {{ enabled = {anim_enabled} }}, '
-        f'decoration = {{ shadow = {{ enabled = {shadow_enabled} }}, blur = {{ enabled = {blur_enabled}, passes = {blur_passes}, new_optimizations = true }} }} '
+        f'decoration = {{ shadow = {{ enabled = {shadow_enabled}, range = {shadow_range}, render_power = {shadow_power} }}, '
+        f'blur = {{ enabled = {blur_enabled}, passes = {blur_passes}, size = {blur_size}, xray = {xray_val}, new_optimizations = true }} }} '
         f'}})'
     )
     try:
         res = subprocess.run(["hyprctl", "eval", lua_cmd], capture_output=True, text=True, timeout=3)
         if res.returncode == 0 and "ok" in res.stdout.lower():
-            state = f"AC Max Smooth 144Hz (blur=2, anim=on, shadow=on)" if ac_online else f"Battery Eco 60Hz (blur=off, anim=off, shadow=off, direct_scanout=1)"
+            state = f"AC Ultra-Smooth 144Hz (blur=1pass, size=4, xray=on, shadow=8, anim=on)" if ac_online else f"Battery Eco 60Hz (blur=off, anim=off, shadow=off, direct_scanout=1)"
             print(f"[AutoPower] Hyprland tuning → {state}", flush=True)
             return True
         return False

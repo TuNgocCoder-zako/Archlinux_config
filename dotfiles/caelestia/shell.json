@@ -23,7 +23,7 @@
     "background": {
         "desktopClock": {
             "background": {
-                "blur": true,
+                "blur": false,
                 "enabled": true,
                 "opacity": 0.07501541940789473
             },
@@ -60,7 +60,7 @@
         "videoWallpaperPaused": false,
         "visualiser": {
             "autoHide": true,
-            "blur": true,
+            "blur": false,
             "enabled": true,
             "rounding": 0.381527549342105,
             "spacing": 0.5311472039473685

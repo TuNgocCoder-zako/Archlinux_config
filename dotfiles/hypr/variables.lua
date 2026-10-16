@@ -20,19 +20,19 @@ return {
     workspaceSwipeFingers      = 3,
     gestureFingersMore         = 4,
 
-    -- Blur (Tối ưu mượt mà cho 144Hz iGPU)
+    -- Blur (Tối ưu mượt mà cho 144Hz Intel iGPU)
     blurEnabled                = true,
     blurSpecialWs              = false,
     blurPopups                 = false,
     blurInputMethods           = false,
-    blurSize                   = 6,
-    blurPasses                 = 2,
-    blurXray                   = false,
+    blurSize                   = 4,
+    blurPasses                 = 1,
+    blurXray                   = true,
 
     -- Shadow (Tối ưu shader render power)
     shadowEnabled              = true,
-    shadowRange                = 12,
-    shadowRenderPower          = 3,
+    shadowRange                = 8,
+    shadowRenderPower          = 2,
     shadowColour               = "rgba(" .. scheme.inversePrimary .. "10)",
 
     -- Gaps (Tối ưu cửa sổ rộng rãi, không bị thu nhỏ)
@@ -41,8 +41,8 @@ return {
     windowGapsOut              = 6,
     singleWindowGapsOut        = 4,
 
-    -- Window styling
-    windowOpacity              = 0.95,
+    -- Window styling (Cửa sổ ứng dụng sắc nét 1.0, Terminal giữ độ mờ riêng)
+    windowOpacity              = 1.0,
     windowRounding             = 15,
     windowBorderSize           = 1,
     activeWindowBorderColour   = "rgba(" .. scheme.primary .. "e6)",
