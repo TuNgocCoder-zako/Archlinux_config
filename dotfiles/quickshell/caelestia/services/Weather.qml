@@ -137,6 +137,8 @@ Singleton {
             "Can Tho": "Cần Thơ",
             "Hue": "Huế",
             "Nha Trang": "Nha Trang",
+            "Thành Phố Nha Trang": "Nha Trang",
+            "Thanh Pho Nha Trang": "Nha Trang",
             "Vung Tau": "Vũng Tàu",
             "Da Lat": "Đà Lạt",
             "Quy Nhon": "Quy Nhơn",
