@@ -431,9 +431,13 @@ def configure_caelestia(ac_online: bool, force_reload: bool = False):
 
 # ──────────────────────────────────────────────────────────────
 def set_bluetooth(enabled: bool):
-    action = "power on" if enabled else "power off"
     try:
-        subprocess.run(["bluetoothctl", *action.split()], capture_output=True, timeout=5)
+        if enabled:
+            subprocess.run(["rfkill", "unblock", "bluetooth"], capture_output=True, timeout=3)
+            time.sleep(0.3)
+            subprocess.run(["bluetoothctl", "power", "on"], capture_output=True, timeout=5)
+        else:
+            subprocess.run(["bluetoothctl", "power", "off"], capture_output=True, timeout=5)
         state = "BẬT" if enabled else "TẮT"
         print(f"[AutoPower] Bluetooth → {state}", flush=True)
     except Exception as e:
@@ -747,6 +751,7 @@ def main():
     clean_stale_singleton_locks()
     clean_quickshell_ramdisk()
     set_battery_charge_limit(80)
+    set_bluetooth(True)
 
     last_ac               = None
     hyprland_synced_state = None

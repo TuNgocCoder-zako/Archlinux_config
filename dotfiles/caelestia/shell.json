@@ -281,7 +281,8 @@
     "services": {
         "audioIncrement": 0.05,
         "bluetoothAutoReconnectDevices": [
-            "A9:2B:1B:AA:5E:E4"
+            "A9:2B:1B:AA:5E:E4",
+            "CE:4C:E7:73:AB:40"
         ],
         "gpuType": "NVIDIA",
         "lyricsBackend": "Auto",
