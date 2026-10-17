@@ -131,7 +131,6 @@ fi
 # 7. Extras
 echo -e "\n${CYAN}── Extras & AUR ──${NC}"
 check_cmd "yay (AUR)"  "yay"
-check_cmd "momoisay"   "momoisay"  optional
 check_cmd "Firefox"    "firefox"   optional
 
 # 8. Config Files
