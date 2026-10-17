@@ -232,8 +232,8 @@ def configure_hyprland_effects(ac_online: bool):
         return False
     direct_scanout = 1
     render_scheduling = "true"  # Luôn giữ true để loại bỏ 100% độ trễ gõ chữ và input lag
-    anim_enabled = "true"  # Luôn bật animations để giao diện đồng nhất, mượt mà ở cả AC và Battery
-    blur_enabled = "true"
+    anim_enabled = "true" if ac_online else "false"  # Tắt trên pin để GPU không tốn xung nhịp chuyển động
+    blur_enabled = "true" if ac_online else "false"
     blur_passes = 1  # 1 pass Dual-Kawase: Giảm 50% shader load, mượt tuyệt đối trên Intel iGPU
     blur_size = 4
     xray_val = "true"
@@ -251,7 +251,7 @@ def configure_hyprland_effects(ac_online: bool):
     try:
         res = subprocess.run(["hyprctl", "eval", lua_cmd], capture_output=True, text=True, timeout=3)
         if res.returncode == 0 and "ok" in res.stdout.lower():
-            state = f"AC 144Hz (shadow=on, blur=1pass, anim=on)" if ac_online else f"Battery 60Hz (shadow=off, blur=1pass, anim=on)"
+            state = f"AC 144Hz (shadow=on, blur=1pass, anim=on)" if ac_online else f"Battery Eco 60Hz (shadow=off, blur=off, anim=off - chống sụt áp)"
             print(f"[AutoPower] Hyprland tuning → {state}", flush=True)
             return True
         return False
@@ -311,11 +311,13 @@ def set_battery_charge_limit(limit: int = 80):
 
 def configure_caelestia(ac_online: bool, force_reload: bool = False):
     """
-    Ensure Caelestia Shell remains 100% unified, stable, and consistent:
-    - Giao diện (Thanh Taskbar/Dock, Hình nền, Desktop Clock, Widgets):
-      LUÔN BẬT & ĐỒNG NHẤT ở cả cắm sạc lẫn dùng pin.
-    - Shimeji & Dashboard: Luôn tắt vĩnh viễn theo đúng ý người dùng.
-    - Không tự ý reload/kill shell khi cắm rút sạc để chống chớp giật và gián đoạn công việc.
+    Dynamically tune Caelestia Shell:
+    - Khi CẮM SẠC (AC): Bật đầy đủ giao diện & hiệu ứng (Dashboard, Taskbar cố định,
+      Hình nền, Cava sóng nhạc nền, Desktop Clock, Spotify/GitHub widgets).
+    - Khi DÙNG PIN (Battery): Chế độ tiết kiệm cực đoan chống sụt áp pin chai:
+      Tắt hoàn toàn Taskbar & Dashboard để khi lia chuột không bị kích hoạt render gây sụt áp,
+      tắt Hình nền, tắt Cava/visualiser, tạm dừng video wallpaper.
+    - Shimeji con mèo: Luôn tắt vĩnh viễn (người dùng không dùng).
     """
     try:
         if not os.path.exists(SHELL_CONFIG_PATH):
@@ -325,77 +327,86 @@ def configure_caelestia(ac_online: bool, force_reload: bool = False):
 
         changed = False
 
-        # 1. Background (Hình nền, Clock): Luôn bật đồng nhất ở cả AC và Pin
+        # 1. Background (Hình nền, Cava, Lyrics, Clock): Bật khi AC, Tắt khi Dùng Pin (chống sụt áp pin chai)
         bg = data.setdefault("background", {})
-        if not bg.get("enabled", True):
-            bg["enabled"] = True
+        if bg.get("enabled") != ac_online:
+            bg["enabled"] = ac_online
             changed = True
 
-        if not bg.get("wallpaperEnabled", True):
-            bg["wallpaperEnabled"] = True
+        if bg.get("wallpaperEnabled") != ac_online:
+            bg["wallpaperEnabled"] = ac_online
             changed = True
 
-        if bg.setdefault("desktopClock", {}).get("enabled") is not True:
-            bg["desktopClock"]["enabled"] = True
+        if bg.setdefault("visualiser", {}).get("enabled") != ac_online:
+            bg["visualiser"]["enabled"] = ac_online
             changed = True
 
-        # Video wallpaper: Tạm dừng khi dùng pin để chống ngốn GPU
+        if bg.setdefault("desktopLyrics", {}).get("enabled") != ac_online:
+            bg["desktopLyrics"]["enabled"] = ac_online
+            changed = True
+
+        if bg.setdefault("desktopClock", {}).get("enabled") != ac_online:
+            bg["desktopClock"]["enabled"] = ac_online
+            changed = True
+
         target_video_pause = not ac_online
         if bg.get("videoWallpaperPaused") != target_video_pause:
             bg["videoWallpaperPaused"] = target_video_pause
             changed = True
 
-        # 2. Shimeji con mèo: TẮT HOÀN TOÀN (Người dùng không dùng)
+        # 2. Shimeji con mèo: LUÔN TẮT HOÀN TOÀN (Người dùng không dùng mèo Shimeji)
         shimeji = data.setdefault("shimeji", {})
         if shimeji.get("enabled") is not False:
             shimeji["enabled"] = False
             changed = True
 
-        # 3. Taskbar (Bar / Dock): Luôn giữ persistent và hiển thị đầy đủ ở cả AC và Pin
+        # 3. Taskbar (Bar / Dock): BẬT KHI CẮM SẠC, TẮT HOÀN TOÀN KHI DÙNG PIN (tránh lia chuột sụt áp)
         bar = data.setdefault("bar", {})
-        if bar.get("persistent") is not True:
-            bar["persistent"] = True
+        target_bar_persistent = ac_online
+        if bar.get("persistent") != target_bar_persistent:
+            bar["persistent"] = target_bar_persistent
             changed = True
 
         if bar.get("showOnHover", False):
             bar["showOnHover"] = False
             changed = True
 
-        if bar.get("excludedScreens") != []:
-            bar["excludedScreens"] = []
+        target_excluded_screens = [] if ac_online else ["eDP-1", "^.*$"]
+        if bar.get("excludedScreens") != target_excluded_screens:
+            bar["excludedScreens"] = target_excluded_screens
             changed = True
 
         # Đồng bộ cấu hình screens riêng nếu có
         for s_name, s_conf in data.get("screens", {}).items():
             if isinstance(s_conf, dict) and "bar" in s_conf:
-                if s_conf["bar"].get("persistent") is not True:
-                    s_conf["bar"]["persistent"] = True
+                if s_conf["bar"].get("persistent") != target_bar_persistent:
+                    s_conf["bar"]["persistent"] = target_bar_persistent
                     changed = True
-                if s_conf["bar"].get("excludedScreens") != []:
-                    s_conf["bar"]["excludedScreens"] = []
+                if s_conf["bar"].get("excludedScreens") != target_excluded_screens:
+                    s_conf["bar"]["excludedScreens"] = target_excluded_screens
                     changed = True
 
-        # Widgets trên bar (Spotify, GitHub): Luôn giữ bật đồng nhất
+        # Widgets phụ trên bar (Spotify, GitHub): Bật khi AC, Tắt khi pin
         entries = bar.setdefault("entries", {})
         for item in entries.setdefault("start", []):
-            if item.get("id") == "spotify" and item.get("enabled") is not True:
-                item["enabled"] = True
+            if item.get("id") == "spotify" and item.get("enabled") != ac_online:
+                item["enabled"] = ac_online
                 changed = True
         for item in entries.setdefault("end", []):
-            if item.get("id") == "github" and item.get("enabled") is not True:
-                item["enabled"] = True
+            if item.get("id") == "github" and item.get("enabled") != ac_online:
+                item["enabled"] = ac_online
                 changed = True
 
-        # 4. Dashboard: TẮT HOÀN TOÀN (Tránh che khuất màn hình khi rê chuột)
+        # 4. Dashboard: BẬT KHI CẮM SẠC, TẮT KHI DÙNG PIN (chống lia chuột lên mép trên bị sụt áp)
         dash = data.setdefault("dashboard", {})
-        if dash.get("enabled") is not False:
-            dash["enabled"] = False
+        if dash.get("enabled") != ac_online:
+            dash["enabled"] = ac_online
             changed = True
-        if dash.get("showOnHover") is not False:
-            dash["showOnHover"] = False
+        if dash.get("showOnHover") != ac_online:
+            dash["showOnHover"] = ac_online
             changed = True
-        if dash.get("showDashboard") is not False:
-            dash["showDashboard"] = False
+        if dash.get("showDashboard") != ac_online:
+            dash["showDashboard"] = ac_online
             changed = True
 
         # Sidebar & Utilities & Launcher: Luôn bật sẵn sàng
@@ -417,9 +428,13 @@ def configure_caelestia(ac_online: bool, force_reload: bool = False):
         if changed or force_reload:
             with open(SHELL_CONFIG_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4)
-            print("[AutoPower] Caelestia shell.json synced to unified state", flush=True)
-            if force_reload:
-                reload_caelestia()
+            mode_str = "AC (Dashboard, Taskbar & Hiệu ứng: BẬT)" if ac_online else "BATTERY (Dashboard, Taskbar & Hình nền: TẮT chống sụt áp)"
+            print(f"[AutoPower] Caelestia shell.json updated -> {mode_str}, reloading shell...", flush=True)
+            reload_caelestia()
+            print("[AutoPower] Caelestia shell reloaded successfully", flush=True)
+        else:
+            mode_str = "AC" if ac_online else "BATTERY"
+            print(f"[AutoPower] Caelestia shell already in target state ({mode_str})", flush=True)
     except Exception as e:
         print(f"[AutoPower] Caelestia config error: {e}", file=sys.stderr, flush=True)
 
@@ -448,9 +463,9 @@ def set_notifications(enabled: bool):
     AC: disableDnd → khôi phục notifications
     """
     try:
-        ipc_cmd = "notifs disableDnd" if enabled else "notifs enableDnd"
+        action = "disableDnd" if enabled else "enableDnd"
         result = subprocess.run(
-            ["caelestia", "shell", ipc_cmd],
+            ["caelestia", "shell", "notifs", action],
             capture_output=True, text=True, timeout=3
         )
         state = "BẬT (DND off)" if enabled else "TẮT (DND on)"
@@ -638,9 +653,9 @@ def on_power_state_change(ac_online):
 
     if not ac_online:
         # ════════════════════════════════
-        # BATTERY MODE — MƯỢT MÀ, TIẾT KIỆM ĐIỆN & GIAO DIỆN ĐỒNG NHẤT
+        # BATTERY MODE — CHẾ ĐỘ TIẾT KIỆM CỰC ĐOAN CHỐNG SỤT ÁP PIN CHAI
         # ════════════════════════════════
-        print("[AutoPower] AC disconnected → BATTERY MODE (60Hz, Balanced, Unified UI)", flush=True)
+        print("[AutoPower] AC disconnected → BATTERY MODE (60Hz, Balanced, Extreme Anti-Voltage-Drop)", flush=True)
 
         # 0. Ngắt kết nối NVML để dGPU NVIDIA RTX 3050 có thể ngủ sâu D3cold (tiết kiệm ~7W)
         shutdown_nvml()
@@ -648,11 +663,11 @@ def on_power_state_change(ac_online):
         # 1. Chuyển màn hình về 60Hz để giảm tải đồ họa và tiết kiệm pin
         set_refresh_rate(60)
 
-        # 2. Hyprland: Tắt Shadow, giữ Animations và Blur 1 pass mượt mà
+        # 2. Hyprland: Tắt Shadow, Blur và Animations chống sụt áp khi pin chai
         configure_hyprland_effects(False)
 
-        # 3. Caelestia: Giữ nguyên giao diện đồng nhất 100%, KHÔNG reload shell gây chớp giật
-        configure_caelestia(False, force_reload=False)
+        # 3. Caelestia: Chế độ tiết kiệm cực đoan chống sụt áp pin chai (tắt Taskbar, Dashboard, Hình nền, Cava)
+        configure_caelestia(False, force_reload=True)
 
         # 4. CPU profile: balanced (EPP: balance_performance, mượt mà 0ms không lag phím)
         try:
@@ -685,8 +700,8 @@ def on_power_state_change(ac_online):
         try:
             subprocess.run([
                 "notify-send", "-u", "normal", "-i", "battery-good",
-                "🔋 Chế độ Pin — 60Hz Mượt Mà",
-                "60Hz • Quạt 0 RPM • dGPU 0W (Giao diện đồng nhất)"
+                "🔋 Chế độ Pin — Tiết Kiệm Tối Đa",
+                "60Hz • Tắt Taskbar & Dashboard • Quạt 0 RPM • dGPU 0W"
             ], capture_output=True, timeout=2)
         except Exception:
             pass
@@ -695,7 +710,7 @@ def on_power_state_change(ac_online):
         # ════════════════════════════════
         # AC MODE — Tối đa Hiệu năng & 144Hz
         # ════════════════════════════════
-        print("[AutoPower] AC connected → PERFORMANCE MODE (144Hz, max boost, Unified UI)", flush=True)
+        print("[AutoPower] AC connected → PERFORMANCE MODE (144Hz, max boost, Full UI & Dashboard)", flush=True)
 
         # 1. Khôi phục 144Hz
         set_refresh_rate(144)
@@ -703,8 +718,8 @@ def on_power_state_change(ac_online):
         # 2. Hyprland: Khôi phục hiệu ứng đầy đủ (Shadow ON, Blur 1 pass, Animations ON)
         configure_hyprland_effects(True)
 
-        # 3. Caelestia: Giữ nguyên giao diện đồng nhất 100%, KHÔNG reload shell gây chớp giật
-        configure_caelestia(True, force_reload=False)
+        # 3. Caelestia: Bật đầy đủ Dashboard, Taskbar, Hình nền & Cava khi cắm sạc
+        configure_caelestia(True, force_reload=True)
 
         # 4. Performance CPU profile on AC (Tối đa độ nhạy, Intel Turbo boost tức thì, 0 micro-stutter)
         try:
@@ -733,7 +748,7 @@ def on_power_state_change(ac_online):
             subprocess.run([
                 "notify-send", "-u", "low", "-i", "ac-adapter",
                 "⚡ Đã cắm sạc — Performance 144Hz",
-                "144Hz • Hiệu năng tối đa • Mượt mà 100%"
+                "144Hz • Hiệu năng tối đa • Khôi phục Dashboard & Giao diện"
             ], capture_output=True, timeout=2)
         except Exception:
             pass

@@ -27,7 +27,7 @@
                 "enabled": true,
                 "opacity": 1
             },
-            "enabled": false,
+            "enabled": true,
             "invertColors": true,
             "position": "top-left",
             "scale": 0.9098752248201438,
@@ -45,7 +45,7 @@
                 "enabled": false,
                 "opacity": 0.0916067023026314
             },
-            "enabled": false,
+            "enabled": true,
             "invertColors": true,
             "overlay": true,
             "position": "bottom-center",
@@ -56,16 +56,16 @@
                 "opacity": 0.06169819078947369
             }
         },
-        "enabled": false,
-        "videoWallpaperPaused": true,
+        "enabled": true,
+        "videoWallpaperPaused": false,
         "visualiser": {
             "autoHide": true,
             "blur": false,
-            "enabled": false,
+            "enabled": true,
             "rounding": 0.381527549342105,
             "spacing": 0.5311472039473685
         },
-        "wallpaperEnabled": false,
+        "wallpaperEnabled": true,
         "wallpaperRecolor": false,
         "wallpaperRecolorStrength": 0
     },
@@ -105,7 +105,7 @@
                     "id": "tray"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "id": "github"
                 },
                 {
@@ -123,19 +123,17 @@
                     "id": "workspaces"
                 },
                 {
-                    "enabled": false,
+                    "enabled": true,
                     "id": "spotify"
                 }
             ]
         },
         "excludedScreens": [
-            "eDP-1",
-            "^.*$"
         ],
         "github": {
             "background": true
         },
-        "persistent": false,
+        "persistent": true,
         "popouts": {
             "activeWindow": false,
             "statusIcons": true,
@@ -207,13 +205,13 @@
     "dashboard": {
         "colorizeMediaGif": false,
         "dragThreshold": 30,
-        "enabled": false,
+        "enabled": true,
         "profilePicShape": 0,
         "randomizeMediaShapeColors": false,
         "replaceMediaLyricsWithVisuals": false,
-        "showDashboard": false,
+        "showDashboard": true,
         "showHyprlandSplash": true,
-        "showOnHover": false,
+        "showOnHover": true,
         "showPerformance": true,
         "showTerminal": false,
         "showWeather": true,
