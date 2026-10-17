@@ -187,7 +187,7 @@ create_bind(vars.kbAudioSettings, hl.dsp.exec_cmd(vars.audioSettings))
 -- Utilities
 create_bind(vars.kbScreenshot, hl.dsp.exec_cmd("/home/tu/.local/bin/screenshot region"), locked)
 create_bind("SUPER + Print", hl.dsp.exec_cmd("/home/tu/.local/bin/screenshot full"), locked)
-create_bind(vars.kbScreenshotFreeze, hl.dsp.exec_cmd("/home/tu/.local/bin/screenshot region"), locked)
+create_bind(vars.kbScreenshotFreeze, hl.dsp.exec_cmd("/home/tu/.local/bin/screenshot edit"), locked)
 create_bind(vars.kbScreenshotRegion, hl.dsp.exec_cmd("/home/tu/.local/bin/screenshot edit"), locked)
 create_bind("ALT + S", hl.dsp.exec_cmd("/home/tu/.local/bin/screenshot region"), locked)
 create_bind(vars.kbRecord, hl.dsp.exec_cmd("caelestia record"))

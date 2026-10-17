@@ -295,7 +295,7 @@
     "shimeji": {
         "autoHide": false,
         "count": 1,
-        "enabled": false,
+        "enabled": true,
         "path": "root:/assets/shimeji/pusheen",
         "scale": 1
     },

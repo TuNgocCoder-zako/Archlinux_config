@@ -87,10 +87,10 @@ return {
     kbGroupLockActive          = "SUPER + SHIFT + Comma",
 
     -- Window Actions
-    kbWindowDecreaseWidth      = { "SUPER + Minus", "SUPER + ALT + Left" },
-    kbWindowIncreaseWidth      = { "SUPER + Equal", "SUPER + ALT + Right" },
-    kbWindowDecreaseHeight     = { "SUPER + SHIFT + Minus", "SUPER + ALT + Up" },
-    kbWindowIncreaseHeight     = { "SUPER + SHIFT + Equal", "SUPER + ALT + Down" },
+    kbWindowDecreaseWidth      = "SUPER + Minus",
+    kbWindowIncreaseWidth      = "SUPER + Equal",
+    kbWindowDecreaseHeight     = "SUPER + SHIFT + Minus",
+    kbWindowIncreaseHeight     = "SUPER + SHIFT + Equal",
 
     kbMoveWindow               = "SUPER + Z",
     kbResizeWindow             = "SUPER + X",
@@ -113,7 +113,7 @@ return {
     -- Apps
     kbTerminal                 = "SUPER + T",
     kbBrowser                  = "SUPER + W",
-    kbEditor                   = "SUPER + C",
+    kbEditor                   = "SUPER + SHIFT + E",
     kbFileExplorer             = "SUPER + E",
     kbAudioSettings            = "CTRL + ALT + V",
 

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# display-toggle: Quản lý / Chiếu màn hình ngoài (khớp biểu tượng Fn + F9)
+
+if which wdisplays >/dev/null 2>&1; then
+    wdisplays &
+elif which nwg-displays >/dev/null 2>&1; then
+    nwg-displays &
+else
+    MON_COUNT=$(hyprctl monitors 2>/dev/null | grep -c "ID " || echo 1)
+    notify-send -u normal -t 3000 -i video-display -a "ASUS Display" "🖥️ Quản lý màn hình (Project)" "Hiện có $MON_COUNT màn hình đang hoạt động"
+fi

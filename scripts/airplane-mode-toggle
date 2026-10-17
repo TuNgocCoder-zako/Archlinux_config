@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# airplane-mode-toggle: Bật / Tắt chế độ máy bay ASUS TUF (khớp biểu tượng Fn + F12)
+
+if rfkill list | grep -i "Soft blocked: yes" >/dev/null 2>&1; then
+    rfkill unblock all
+    notify-send -u normal -t 2500 -i network-wireless -a "ASUS Airplane Mode" "✈️ Chế độ máy bay: ĐÃ TẮT" "Khôi phục kết nối Wi-Fi & Bluetooth"
+else
+    rfkill block all
+    notify-send -u normal -t 2500 -i airplane-mode -a "ASUS Airplane Mode" "✈️ Chế độ máy bay: ĐÃ BẬT" "Đã ngắt toàn bộ sóng Wi-Fi & Bluetooth"
+fi

@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# asus-kbd-toggle: Điều khiển đèn bàn phím RGB & độ sáng cho ASUS TUF Gaming
+# Hỗ trợ: Chuyển hiệu ứng Aura (mode) hoặc Chuyển độ sáng (brightness)
+
+STATE_FILE="$HOME/.config/asus-kbd-state"
+mkdir -p "$(dirname "$STATE_FILE")"
+
+ACTION="${1:-mode}"
+
+case "$ACTION" in
+    "brightness"|"bright"|"b")
+        asusctl leds next >/dev/null 2>&1
+        LEVEL=$(asusctl leds get 2>/dev/null | awk '{print $NF}')
+        case "$LEVEL" in
+            "Off"|"off")
+                ICON="🌑"
+                DESC="Đã tắt đèn nền bàn phím"
+                ;;
+            "Low"|"low")
+                ICON="🌘"
+                DESC="Độ sáng thấp (Tiết kiệm điện/Dịu mắt)"
+                ;;
+            "Med"|"med")
+                ICON="🌖"
+                DESC="Độ sáng vừa (Mặc định chuẩn)"
+                ;;
+            "High"|"high")
+                ICON="🌕"
+                DESC="Độ sáng tối đa (Rõ nét trong đêm)"
+                ;;
+            *)
+                ICON="💡"
+                DESC="Mức sáng: $LEVEL"
+                ;;
+        esac
+        notify-send -u normal -t 2000 -i preferences-desktop-keyboard-shortcuts -a "ASUS TUF Keyboard" "$ICON Độ sáng phím: $LEVEL" "$DESC"
+        ;;
+
+    "up")
+        asusctl leds set high >/dev/null 2>&1
+        notify-send -u normal -t 2000 -i preferences-desktop-keyboard-shortcuts -a "ASUS TUF Keyboard" "🌕 Độ sáng phím: Tối đa (High)" "Đã bật sáng mức cao nhất"
+        ;;
+
+    "down")
+        asusctl leds set low >/dev/null 2>&1
+        notify-send -u normal -t 2000 -i preferences-desktop-keyboard-shortcuts -a "ASUS TUF Keyboard" "🌘 Độ sáng phím: Thấp (Low)" "Đã hạ sáng mức dịu mắt"
+        ;;
+
+    "off")
+        asusctl leds set off >/dev/null 2>&1
+        notify-send -u normal -t 2000 -i preferences-desktop-keyboard-shortcuts -a "ASUS TUF Keyboard" "🌑 Đèn phím: Đã tắt (Off)" "Ngắt hoàn toàn đèn bàn phím"
+        ;;
+
+    "mode"|"m"|*)
+        # Đọc trạng thái mode hiện tại
+        CURRENT_MODE="rainbow"
+        if [ -f "$STATE_FILE" ]; then
+            CURRENT_MODE=$(cat "$STATE_FILE" 2>/dev/null || echo "rainbow")
+        fi
+
+        case "$CURRENT_MODE" in
+            "rainbow")
+                # Chuyển sang Neon Cyan
+                asusctl aura effect static -c 00e5ff >/dev/null 2>&1
+                NEXT_MODE="cyan"
+                TITLE="💎 Neon Cyan (Xanh băng)"
+                DESC="Màu tĩnh công nghệ • Dịu mắt • Chống chói"
+                ;;
+            "cyan")
+                # Chuyển sang Caelestia Lavender Purple
+                asusctl aura effect static -c cba6f7 >/dev/null 2>&1
+                NEXT_MODE="purple"
+                TITLE="💜 Caelestia Purple (Tím Pastel)"
+                DESC="Màu tĩnh đồng bộ giao diện Caelestia Shell"
+                ;;
+            "purple")
+                # Chuyển sang Clean White
+                asusctl aura effect static -c ffffff >/dev/null 2>&1
+                NEXT_MODE="white"
+                TITLE="⚪ Pure White (Trắng thanh lịch)"
+                DESC="Ánh sáng trắng tự nhiên • Dễ nhìn phím ban đêm"
+                ;;
+            "white")
+                # Chuyển sang Breathing Cyberpunk
+                asusctl aura effect breathe --speed med -c 00e5ff -c ff007f >/dev/null 2>&1
+                NEXT_MODE="breathe"
+                TITLE="🌊 Breathing Cyan-Pink (Thở Cyberpunk)"
+                DESC="Nhấp nháy nhịp nhàng hai tông màu"
+                ;;
+            "breathe"|*)
+                # Chuyển sang Rainbow Cycle
+                asusctl aura effect rainbow-cycle --speed med >/dev/null 2>&1
+                NEXT_MODE="rainbow"
+                TITLE="🌈 Rainbow Cycle (Cầu vồng chuyển động)"
+                DESC="Hiệu ứng dải màu RGB chuyển động mượt mà"
+                ;;
+        esac
+
+        echo "$NEXT_MODE" > "$STATE_FILE"
+        # Đảm bảo đèn đang sáng
+        CUR_BRIGHT=$(asusctl leds get 2>/dev/null | awk '{print $NF}')
+        if [ "$CUR_BRIGHT" = "Off" ] || [ "$CUR_BRIGHT" = "off" ]; then
+            asusctl leds set med >/dev/null 2>&1
+        fi
+
+        notify-send -u normal -t 2500 -i preferences-desktop-keyboard-shortcuts -a "ASUS TUF Keyboard" "$TITLE" "$DESC"
+        ;;
+esac
