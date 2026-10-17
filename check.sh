@@ -154,7 +154,7 @@ fi
 
 if [ "$HAS_RICE" = true ]; then
     echo -e "\n${CYAN}── Rice Config Files ──${NC}"
-    rice_configs=(caelestia/hypr-vars.lua caelestia/hypr-user.conf cava/config fastfetch/config.jsonc quickshell/caelestia/modules/background/Wallpaper.qml)
+    rice_configs=(caelestia/hypr-vars.lua caelestia/hypr-user.lua caelestia/hypr-user.conf cava/config fastfetch/config.jsonc quickshell/caelestia/modules/background/Wallpaper.qml)
     for cfg in "${rice_configs[@]}"; do
         if [ -f "$HOME/.config/$cfg" ]; then
             echo -e "  ${GREEN}[OK]${NC}   $cfg"; ((ok++))
