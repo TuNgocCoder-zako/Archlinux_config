@@ -138,10 +138,11 @@ PageBase {
         }
 
         TextFieldRow {
+            id: locationField
             first: false
             last: false
             label: qsTr("Weather location")
-            subtext: qsTr("Type city (e.g. Hanoi, Ho Chi Minh City, Da Nang) or leave empty for Auto")
+            subtext: qsTr("Type city (e.g. Nha Trang, Hanoi) or leave empty for Auto")
             placeholderText: qsTr("Auto (IP location) or type city")
             configNode: root.targetConfig.services
             propertyName: "weatherLocation"
@@ -161,12 +162,14 @@ PageBase {
             subtext: qsTr("Quickly switch between common cities")
             menuItems: root.cityPresetItems
             active: root.getCityActiveItem()
+            fallbackText: root.targetConfig.services.weatherLocation || qsTr("Custom")
             onSelected: item => {
                 if (root.cityPresetItems.indexOf(item) === 0) {
                     root.targetConfig.services.weatherLocation = "";
                 } else {
                     root.targetConfig.services.weatherLocation = item.text;
                 }
+                locationField.field.text = root.targetConfig.services.weatherLocation;
                 root.targetConfig.save();
                 Weather.reload();
             }
