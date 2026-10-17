@@ -27,7 +27,7 @@
                 "enabled": true,
                 "opacity": 1
             },
-            "enabled": true,
+            "enabled": false,
             "invertColors": true,
             "position": "top-left",
             "scale": 0.9098752248201438,
@@ -45,7 +45,7 @@
                 "enabled": false,
                 "opacity": 0.0916067023026314
             },
-            "enabled": true,
+            "enabled": false,
             "invertColors": true,
             "overlay": true,
             "position": "bottom-center",
@@ -56,16 +56,16 @@
                 "opacity": 0.06169819078947369
             }
         },
-        "enabled": true,
-        "videoWallpaperPaused": false,
+        "enabled": false,
+        "videoWallpaperPaused": true,
         "visualiser": {
             "autoHide": true,
             "blur": false,
-            "enabled": true,
+            "enabled": false,
             "rounding": 0.381527549342105,
             "spacing": 0.5311472039473685
         },
-        "wallpaperEnabled": true,
+        "wallpaperEnabled": false,
         "wallpaperRecolor": false,
         "wallpaperRecolorStrength": 0
     },
@@ -105,7 +105,7 @@
                     "id": "tray"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "id": "github"
                 },
                 {
@@ -123,17 +123,19 @@
                     "id": "workspaces"
                 },
                 {
-                    "enabled": true,
+                    "enabled": false,
                     "id": "spotify"
                 }
             ]
         },
         "excludedScreens": [
+            "eDP-1",
+            "^.*$"
         ],
         "github": {
             "background": true
         },
-        "persistent": true,
+        "persistent": false,
         "popouts": {
             "activeWindow": false,
             "statusIcons": true,
@@ -205,13 +207,13 @@
     "dashboard": {
         "colorizeMediaGif": false,
         "dragThreshold": 30,
-        "enabled": true,
+        "enabled": false,
         "profilePicShape": 0,
         "randomizeMediaShapeColors": false,
         "replaceMediaLyricsWithVisuals": false,
-        "showDashboard": true,
+        "showDashboard": false,
         "showHyprlandSplash": true,
-        "showOnHover": true,
+        "showOnHover": false,
         "showPerformance": true,
         "showTerminal": false,
         "showWeather": true,
@@ -295,7 +297,7 @@
     "shimeji": {
         "autoHide": false,
         "count": 1,
-        "enabled": true,
+        "enabled": false,
         "path": "root:/assets/shimeji/pusheen",
         "scale": 1
     },
