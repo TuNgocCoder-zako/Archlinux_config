@@ -161,8 +161,8 @@ def get_gpu_status():
         else:
             gpu_util = 0
 
-        # If GPU is completely idle with low temp, release NVML to allow it to enter D3cold
-        if gpu_util == 0 and gpu_temp < 50.0:
+        # If GPU is completely idle, always release NVML to allow it to enter D3cold
+        if gpu_util == 0:
             shutdown_nvml()
 
         return gpu_temp, gpu_util
@@ -794,6 +794,8 @@ def main():
     last_ac               = None
     hyprland_synced_state = None
     loop_tick             = 0
+    last_gpu_util         = 0
+    last_gpu_temp         = 0.0
     CHECK_INTERVAL        = 1  # 1 second for instant AI/GPU detection
 
     while True:
@@ -837,7 +839,13 @@ def main():
 
             if ac:
                 # AC Mode: CHỐNG ÁM NHIỆT KHUNG SƯỜN & PHÁT HIỆN TẢI AI TỨC THÌ
-                gpu_temp, gpu_util = get_gpu_status()
+                # Nếu GPU đang ở trạng thái rảnh (util == 0), chỉ kiểm tra mỗi 5 giây để kernel có đủ thời gian autosuspend (2s delay)
+                if loop_tick % 5 == 0 or last_gpu_util > 0:
+                    gpu_temp, gpu_util = get_gpu_status()
+                    last_gpu_util = gpu_util
+                    last_gpu_temp = gpu_temp
+                else:
+                    gpu_temp, gpu_util = last_gpu_temp, last_gpu_util
                 max_temp = max(cpu_temp, gpu_temp)
 
                 # 1. Phát hiện chạy AI / CUDA / Đồ họa (GPU util > 15% hoặc GPU temp >= 58°C hoặc CPU >= 65°C):

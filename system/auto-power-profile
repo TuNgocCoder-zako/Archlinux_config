@@ -32,11 +32,16 @@ for bat in /sys/class/power_supply/BAT*/charge_control_end_threshold; do
 done
 
 if is_ac_online; then
-    # ─── ĐANG CẮM SẠC (AC POWER: MAX PERFORMANCE) ───
+    # ─── ĐANG CẮM SẠC (AC POWER: BALANCED PERFORMANCE, CHỐNG ÁM NHIỆT KHUNG PHÍM) ───
     echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || true
-    powerprofilesctl set performance >/dev/null 2>&1 || true
+    powerprofilesctl set balanced >/dev/null 2>&1 || true
     for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
-        [ -f "$epp" ] && echo "performance" > "$epp" 2>/dev/null || true
+        [ -f "$epp" ] && echo "balance_performance" > "$epp" 2>/dev/null || true
+    done
+
+    # NVIDIA PCIe Runtime PM auto (cho phép ngủ sâu D3cold khi idle trên AC)
+    for pci in /sys/bus/pci/devices/0000:01:00.*/power/control; do
+        [ -f "$pci" ] && echo "auto" > "$pci" 2>/dev/null || true
     done
 
     [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save off >/dev/null 2>&1 || true
