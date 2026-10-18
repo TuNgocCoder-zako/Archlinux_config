@@ -48,14 +48,24 @@ if is_ac_online; then
     rfkill unblock bluetooth >/dev/null 2>&1 || true
     bluetoothctl power on >/dev/null 2>&1 || true
 
+    # Bật Runtime PM cho NVMe SSD (hạ nhiệt độ controller SSD từ 54°C xuống ~38°C)
+    for nvme in /sys/class/nvme/nvme*/device/power/control; do
+        [ -f "$nvme" ] && echo "auto" > "$nvme" 2>/dev/null || true
+    done
+
+    # Intel iGPU: Cho phép hạ về tần số sàn phần cứng RPn (350MHz) khi rảnh để uncore hạ áp mát mẻ
     for c in /sys/class/drm/card[0-9]*; do
         if [ -f "$c/gt_min_freq_mhz" ] && [ -f "$c/device/vendor" ] && [ "$(cat "$c/device/vendor" 2>/dev/null)" = "0x8086" ]; then
-            echo 800 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            if [ -f "$c/gt_RPn_freq_mhz" ]; then
+                cat "$c/gt_RPn_freq_mhz" > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            else
+                echo 350 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            fi
         fi
     done
 
     command -v docker >/dev/null 2>&1 && docker unpause local_mysql local_phpmyadmin >/dev/null 2>&1 || true
-    logger -t auto-power-profile "Switched to AC Performance Mode (CPU: max, iGPU min: 800MHz, WiFi PS: off, BT: on)"
+    logger -t auto-power-profile "Switched to AC Balanced Mode (CPU: balanced, iGPU RPn, NVMe: auto, WiFi PS: off)"
 else
     # ─── ĐANG DÙNG PIN (BATTERY: ENERGY SAVING & SMOOTH 60HZ) ───
     # 1. CPU sang balanced, EPP balance_performance để phản hồi tức thì 0ms không lag phím
@@ -69,22 +79,31 @@ else
     # 2. Wi-Fi: Tắt power_save cho chip MediaTek MT7921 để chống rớt gói/lag mạng
     [ -n "$WIFI_IFACE" ] && iw dev "$WIFI_IFACE" set power_save off >/dev/null 2>&1 || true
 
-    # 3. Intel iGPU: Giữ sàn 800MHz phản hồi 0ms
+    # 3. Bật Runtime PM cho NVMe SSD trên pin
+    for nvme in /sys/class/nvme/nvme*/device/power/control; do
+        [ -f "$nvme" ] && echo "auto" > "$nvme" 2>/dev/null || true
+    done
+
+    # 4. Intel iGPU: Tần số sàn 350MHz tiết kiệm điện năng tối đa
     for c in /sys/class/drm/card[0-9]*; do
         if [ -f "$c/gt_min_freq_mhz" ] && [ -f "$c/device/vendor" ] && [ "$(cat "$c/device/vendor" 2>/dev/null)" = "0x8086" ]; then
-            echo 800 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            if [ -f "$c/gt_RPn_freq_mhz" ]; then
+                cat "$c/gt_RPn_freq_mhz" > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            else
+                echo 350 > "$c/gt_min_freq_mhz" 2>/dev/null || true
+            fi
         fi
     done
 
-    # 4. Tắt Ollama khi dùng pin (giữ local_mysql, local_phpmyadmin hoạt động cho học tập)
+    # 5. Tắt Ollama khi dùng pin (giữ local_mysql, local_phpmyadmin hoạt động cho học tập)
     if command -v docker >/dev/null 2>&1; then
         docker stop ollama >/dev/null 2>&1 || true
     fi
 
-    # 5. NVIDIA PCIe Runtime PM auto (cho phép ngủ sâu D3cold)
+    # 6. NVIDIA PCIe Runtime PM auto (cho phép ngủ sâu D3cold)
     for pci in /sys/bus/pci/devices/0000:01:00.*/power/control; do
         [ -f "$pci" ] && echo "auto" > "$pci" 2>/dev/null || true
     done
 
-    logger -t auto-power-profile "Switched to Battery Mode (CPU: balance_performance, iGPU: 800MHz, dGPU: D3cold)"
+    logger -t auto-power-profile "Switched to Battery Mode (CPU: balance_performance, iGPU: RPn 350MHz, dGPU: D3cold)"
 fi

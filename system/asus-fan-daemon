@@ -796,6 +796,10 @@ def main():
     loop_tick             = 0
     last_gpu_util         = 0
     last_gpu_temp         = 0.0
+    high_load_ticks       = 0
+    cool_ticks            = 0
+    battery_high_ticks    = 0
+    battery_cool_ticks    = 0
     CHECK_INTERVAL        = 1  # 1 second for instant AI/GPU detection
 
     while True:
@@ -810,6 +814,10 @@ def main():
             # Detect state change or initial startup
             if last_ac is None or ac != last_ac:
                 last_ac = ac
+                high_load_ticks = 0
+                cool_ticks = 0
+                battery_high_ticks = 0
+                battery_cool_ticks = 0
                 # Reset manual override on AC plug/unplug so profile matches power source
                 if os.path.exists(OVERRIDE_FILE):
                     try:
@@ -846,33 +854,49 @@ def main():
                     last_gpu_temp = gpu_temp
                 else:
                     gpu_temp, gpu_util = last_gpu_temp, last_gpu_util
-                max_temp = max(cpu_temp, gpu_temp)
 
-                # 1. Phát hiện chạy AI / CUDA / Đồ họa / Tải nặng:
-                # Ngưỡng kích hoạt Performance: GPU util > 15% hoặc GPU temp >= 60°C hoặc CPU >= 75°C
-                if gpu_util > 15 or gpu_temp >= 60.0 or cpu_temp >= 75.0:
-                    if cur != "Performance":
-                        set_asus_profile("Performance")
-                        print(f"[AutoPower] 🔥 Tải cao / AI chạy tức thì (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C, Util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
+                is_high_load = (gpu_util > 20) or (gpu_temp >= 65.0) or (cpu_temp >= 82.0)
+                is_cool_load = (cpu_temp < 70.0) and (gpu_temp < 58.0) and (gpu_util <= 5)
 
-                # 2. Khi tải giảm và nhiệt độ dịu xuống (CPU < 68°C, GPU < 55°C, GPU util <= 5%):
-                # Tự động hạ về Balanced êm ái, bảo đảm CPU EPP luôn ở balanced (chống ám nhiệt bàn phím)
-                elif cpu_temp < 68.0 and gpu_temp < 55.0 and gpu_util <= 5:
-                    if cur != "Balanced":
-                        set_asus_profile("Balanced")
-                        subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=2)
-                        print(f"[AutoPower] 🌬️ Nhiệt độ dịu mát (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C) → Hạ về Balanced êm mát", flush=True)
+                if is_high_load:
+                    high_load_ticks += 1
+                    cool_ticks = 0
+                    if high_load_ticks >= 4:
+                        if cur != "Performance":
+                            set_asus_profile("Performance")
+                            print(f"[AutoPower] 🔥 Tải cao liên tục (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C, Util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
+                elif is_cool_load:
+                    cool_ticks += 1
+                    high_load_ticks = 0
+                    if cool_ticks >= 12:
+                        if cur != "Balanced":
+                            set_asus_profile("Balanced")
+                            subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=2)
+                            print(f"[AutoPower] 🌬️ Nhiệt độ ổn định mát (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C) → Hạ về Balanced êm mát", flush=True)
+                else:
+                    high_load_ticks = 0
+                    cool_ticks = 0
 
             else:
                 # Battery Mode: Tiết kiệm pin tối đa
                 # Không poll NVML để GPU rơi vào D3cold (0.0W)
-                max_temp = cpu_temp
-                if max_temp >= 75.0 and cur != "Performance":
-                    set_asus_profile("Performance")
-                    print(f"[AutoPower] ⚠️ Pin nhưng nhiệt cao (Max: {max_temp:.1f}°C) → Cứu nguy Performance", flush=True)
-                elif max_temp <= 55.0 and cur != "Quiet":
-                    set_asus_profile("Quiet")
-                    print(f"[AutoPower] ❄️ Pin máy mát ({max_temp:.1f}°C ≤ 55°C) → Quiet (0 RPM)", flush=True)
+                if cpu_temp >= 80.0:
+                    battery_high_ticks += 1
+                    battery_cool_ticks = 0
+                    if battery_high_ticks >= 4:
+                        if cur != "Performance":
+                            set_asus_profile("Performance")
+                            print(f"[AutoPower] ⚠️ Pin nhiệt cao liên tục ({cpu_temp:.1f}°C) → Cứu nguy Performance", flush=True)
+                elif cpu_temp <= 58.0:
+                    battery_cool_ticks += 1
+                    battery_high_ticks = 0
+                    if battery_cool_ticks >= 10:
+                        if cur != "Quiet":
+                            set_asus_profile("Quiet")
+                            print(f"[AutoPower] ❄️ Pin máy mát ({cpu_temp:.1f}°C ≤ 58°C) → Quiet (0 RPM)", flush=True)
+                else:
+                    battery_high_ticks = 0
+                    battery_cool_ticks = 0
 
         except Exception as e:
             print(f"[AutoPower] Loop exception: {e}", file=sys.stderr, flush=True)

@@ -26,3 +26,7 @@ hl.env("_JAVA_AWT_WM_NONREPARENTING", "1")
 hl.env("LIBVA_DRIVER_NAME", "iHD")
 hl.env("MESA_LOADER_DRIVER_OVERRIDE", "iris")
 hl.env("AQ_DRM_DEVICES", "/dev/dri/card-intel")
+hl.env("__EGL_VENDOR_LIBRARY_FILENAMES", "/usr/share/glvnd/egl_vendor.d/50_mesa.json")
+hl.env("VK_DRIVER_FILES", "/usr/share/vulkan/icd.d/intel_icd.json")
+hl.env("VDPAU_DRIVER", "va_gl")
+

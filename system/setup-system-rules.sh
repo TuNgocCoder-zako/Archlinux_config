@@ -23,7 +23,9 @@ echo -e "${BLUE}>>> Cài đặt các quy tắc phần cứng và giới hạn hi
 # 1. Power management udev rule
 if [ -f "$SYSTEM_DIR/95-power-management.rules" ]; then
     cp "$SYSTEM_DIR/95-power-management.rules" /etc/udev/rules.d/
-    udevadm control --reload-rules && udevadm trigger --subsystem-match=power_supply || true
+    udevadm control --reload-rules
+    udevadm trigger --subsystem-match=power_supply || true
+    udevadm trigger --subsystem-match=pci || true
     echo -e "${GREEN}[OK]${NC} Đã cài đặt /etc/udev/rules.d/95-power-management.rules"
 fi
 
@@ -54,7 +56,8 @@ fi
 if [ -f "$SYSTEM_DIR/auto-power-profile" ]; then
     cp "$SYSTEM_DIR/auto-power-profile" /usr/local/bin/auto-power-profile
     chmod +x /usr/local/bin/auto-power-profile
-    echo -e "${GREEN}[OK]${NC} Đã cài đặt /usr/local/bin/auto-power-profile"
+    /usr/local/bin/auto-power-profile || true
+    echo -e "${GREEN}[OK]${NC} Đã cài đặt và kích hoạt /usr/local/bin/auto-power-profile"
 fi
 
 if [ -f "$SYSTEM_DIR/auto-power-profile.service" ]; then

@@ -1,2 +1,9 @@
 # Tự động điều chỉnh hiệu năng CPU, WiFi, Bluetooth khi cắm hoặc rút sạc
 SUBSYSTEM=="power_supply", ACTION=="change", RUN+="/usr/local/bin/auto-power-profile"
+
+# Tự động bật Runtime PM (APST & PCIe ASPM L1.2) cho bộ điều khiển NVMe SSD
+# Giúp hạ nhiệt độ controller SSD từ ~54°C xuống ~38°C, giải quyết triệt để ám nhiệt nửa trái phím
+ACTION=="add|change", SUBSYSTEM=="pci", ATTR{class}=="0x010802", ATTR{power/control}="auto"
+
+# Tự động bật Runtime PM cho Intel PCH SATA/AHCI controller
+ACTION=="add|change", SUBSYSTEM=="pci", ATTR{class}=="0x010601", ATTR{power/control}="auto"
