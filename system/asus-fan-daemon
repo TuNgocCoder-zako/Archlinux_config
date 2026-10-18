@@ -129,8 +129,23 @@ def shutdown_nvml():
         _nvml_handle = None
     _nvml_initialized = False
 
+def get_gpu_pci_status():
+    """Reads Linux PCI runtime_status without waking GPU. Returns 'suspended', 'active', etc."""
+    try:
+        with open("/sys/bus/pci/devices/0000:01:00.0/power/runtime_status", "r") as f:
+            return f.read().strip()
+    except Exception:
+        return "unknown"
+
 def get_gpu_status():
-    """Returns (gpu_temp_c, gpu_util_pct). Fast, zero subprocess."""
+    """Returns (gpu_temp_c, gpu_util_pct). Fast, zero subprocess, never wakes sleeping GPU."""
+    pci_status = get_gpu_pci_status()
+    if pci_status == "suspended":
+        # GPU is sleeping in D3cold (0W). Do not wake it up with NVML!
+        if _nvml_handle:
+            shutdown_nvml()
+        return 0.0, 0
+
     if not _init_nvml() or not _nvml_handle:
         return 0.0, 0
     lib, dev = _nvml_handle
@@ -145,6 +160,11 @@ def get_gpu_status():
             gpu_util = int(util.gpu)
         else:
             gpu_util = 0
+
+        # If GPU is completely idle with low temp, release NVML to allow it to enter D3cold
+        if gpu_util == 0 and gpu_temp < 50.0:
+            shutdown_nvml()
+
         return gpu_temp, gpu_util
     except Exception:
         return 0.0, 0
@@ -721,34 +741,42 @@ def on_power_state_change(ac_online):
         # 3. Caelestia: Bật đầy đủ Dashboard, Taskbar, Hình nền & Cava khi cắm sạc
         configure_caelestia(True, force_reload=True)
 
-        # 4. Performance CPU profile on AC (Tối đa độ nhạy, Intel Turbo boost tức thì, 0 micro-stutter)
+        # 4. Balanced CPU profile on AC (Intel Speed Shift tự động bung 4.5 GHz trong 1ms khi có tải, idle 800MHz ăn 2W mát rượi chống ám nhiệt)
         try:
-            subprocess.run(["powerprofilesctl", "set", "performance"], capture_output=True, timeout=3)
-            print("[AutoPower] CPU → performance", flush=True)
+            subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=3)
+            print("[AutoPower] CPU → balanced (chống ám nhiệt, 1ms burst 4.5GHz)", flush=True)
         except Exception:
             pass
 
-        # 5. ASUS profile: Performance (Bung xõa toàn bộ sức mạnh quạt)
-        set_asus_profile("Performance")
+        # 5. ASUS profile: Balanced trên AC (Êm ái, duy trì luồng gió nhẹ mát mẻ; khi CPU/GPU tải cao daemon sẽ tự động nâng lên Performance)
+        set_asus_profile("Balanced")
 
         # 6. Khôi phục đèn bàn phím RGB
         set_keyboard_backlight("med")
 
-        # 7. Bluetooth BẬT
+        # 7. Đảm bảo cổng PCIe của NVIDIA (dGPU + Audio Controller) ở chế độ auto để dGPU có thể ngủ sâu D3cold (0W) khi idle
+        for dev in ["0000:01:00.0", "0000:01:00.1"]:
+            try:
+                with open(f"/sys/bus/pci/devices/{dev}/power/control", "w") as f:
+                    f.write("auto\n")
+            except Exception:
+                pass
+
+        # 8. Bluetooth BẬT
         set_bluetooth(True)
 
-        # 8. Khôi phục độ sáng 100%
+        # 9. Khôi phục độ sáng 100%
         set_brightness_percent(AC_BRIGHTNESS_PERCENT)
 
-        # 9. Bật thông báo trở lại
+        # 10. Bật thông báo trở lại
         set_notifications(True)
 
-        # 10. Thông báo người dùng
+        # 11. Thông báo người dùng
         try:
             subprocess.run([
                 "notify-send", "-u", "low", "-i", "ac-adapter",
-                "⚡ Đã cắm sạc — Performance 144Hz",
-                "144Hz • Hiệu năng tối đa • Khôi phục Dashboard & Giao diện"
+                "⚡ Đã cắm sạc — 144Hz Mát Mẻ",
+                "144Hz • Hiệu năng tối đa • Chống ám nhiệt • Khôi phục Dashboard"
             ], capture_output=True, timeout=2)
         except Exception:
             pass
