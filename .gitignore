@@ -18,3 +18,7 @@ Thumbs.db
 *.key
 *.token
 id_rsa*
+
+# Python
+__pycache__/
+*.pyc
