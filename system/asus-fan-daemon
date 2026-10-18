@@ -848,23 +848,20 @@ def main():
                     gpu_temp, gpu_util = last_gpu_temp, last_gpu_util
                 max_temp = max(cpu_temp, gpu_temp)
 
-                # 1. Phát hiện chạy AI / CUDA / Đồ họa (GPU util > 15% hoặc GPU temp >= 58°C hoặc CPU >= 65°C):
-                if gpu_util > 15 or gpu_temp >= 58.0 or max_temp >= 65.0:
+                # 1. Phát hiện chạy AI / CUDA / Đồ họa / Tải nặng:
+                # Ngưỡng kích hoạt Performance: GPU util > 15% hoặc GPU temp >= 60°C hoặc CPU >= 75°C
+                if gpu_util > 15 or gpu_temp >= 60.0 or cpu_temp >= 75.0:
                     if cur != "Performance":
                         set_asus_profile("Performance")
                         print(f"[AutoPower] 🔥 Tải cao / AI chạy tức thì (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C, Util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
 
-                # 2. Duy trì lưu lượng gió chống ám nhiệt vào khung sườn khi lướt web / làm việc:
-                elif max_temp >= 50.0:
-                    if cur not in ["Performance", "Balanced"]:
-                        set_asus_profile("Balanced")
-                        print(f"[AutoPower] 🌬️ Duy trì gió chủ động chống ám nhiệt khung sườn (Max: {max_temp:.1f}°C) → Balanced", flush=True)
-
-                # 3. Chỉ khi máy thực sự siêu mát và nhàn rỗi (< 45°C) mới hạ về Balanced êm
-                elif max_temp <= 44.0:
+                # 2. Khi tải giảm và nhiệt độ dịu xuống (CPU < 68°C, GPU < 55°C, GPU util <= 5%):
+                # Tự động hạ về Balanced êm ái, bảo đảm CPU EPP luôn ở balanced (chống ám nhiệt bàn phím)
+                elif cpu_temp < 68.0 and gpu_temp < 55.0 and gpu_util <= 5:
                     if cur != "Balanced":
                         set_asus_profile("Balanced")
-                        print(f"[AutoPower] ❄️ Máy siêu mát ({max_temp:.1f}°C ≤ 44°C) → Balanced êm ái", flush=True)
+                        subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=2)
+                        print(f"[AutoPower] 🌬️ Nhiệt độ dịu mát (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C) → Hạ về Balanced êm mát", flush=True)
 
             else:
                 # Battery Mode: Tiết kiệm pin tối đa
