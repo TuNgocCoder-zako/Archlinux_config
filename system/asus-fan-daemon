@@ -61,22 +61,35 @@ def set_brightness_percent(percent):
         print(f"[AutoPower] Brightness error: {e}", file=sys.stderr, flush=True)
 
 # ──────────────────────────────────────────────────────────────
-# Sensors
+# Sensors (CPU Core, Motherboard VRM, NVMe SSD)
 # ──────────────────────────────────────────────────────────────
-def get_cpu_temp():
+def get_hardware_temperatures():
+    """Returns (cpu_temp, vrm_temp, nvme_temp) in Celsius."""
+    cpu_temp = 50.0
+    vrm_temp = 45.0
+    nvme_temp = 45.0
     for path in glob.glob("/sys/class/hwmon/hwmon*"):
         try:
             with open(os.path.join(path, "name")) as f:
-                if f.read().strip() == "coretemp":
-                    with open(os.path.join(path, "temp1_input")) as tf:
-                        return int(tf.read().strip()) / 1000.0
+                name = f.read().strip()
+            if name == "coretemp":
+                with open(os.path.join(path, "temp1_input")) as tf:
+                    cpu_temp = int(tf.read().strip()) / 1000.0
+            elif name == "acpitz":
+                # temp1 is motherboard VRM / left chassis area directly under WASD
+                with open(os.path.join(path, "temp1_input")) as tf:
+                    vrm_temp = int(tf.read().strip()) / 1000.0
+            elif name == "nvme":
+                # temp1 is Composite temperature of primary M.2 NVMe SSD
+                with open(os.path.join(path, "temp1_input")) as tf:
+                    nvme_temp = int(tf.read().strip()) / 1000.0
         except Exception:
             pass
-    try:
-        with open("/sys/class/thermal/thermal_zone0/temp") as f:
-            return int(f.read().strip()) / 1000.0
-    except Exception:
-        return 50.0
+    return cpu_temp, vrm_temp, nvme_temp
+
+def get_cpu_temp():
+    cpu, _, _ = get_hardware_temperatures()
+    return cpu
 
 def is_ac_online():
     """Check if any external AC/Mains/USB-C charger is online."""
@@ -100,6 +113,9 @@ _nvml_initialized = False
 
 class _NvmlUtilization(ctypes.Structure):
     _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
+
+class _NvmlMemory(ctypes.Structure):
+    _fields_ = [("total", ctypes.c_ulonglong), ("free", ctypes.c_ulonglong), ("used", ctypes.c_ulonglong)]
 
 def _init_nvml():
     global _nvml_handle, _nvml_initialized
@@ -138,16 +154,16 @@ def get_gpu_pci_status():
         return "unknown"
 
 def get_gpu_status():
-    """Returns (gpu_temp_c, gpu_util_pct). Fast, zero subprocess, never wakes sleeping GPU."""
+    """Returns (gpu_temp_c, gpu_util_pct, gpu_used_mem_mb). Fast, zero subprocess, never wakes sleeping GPU."""
     pci_status = get_gpu_pci_status()
     if pci_status == "suspended":
         # GPU is sleeping in D3cold (0W). Do not wake it up with NVML!
         if _nvml_handle:
             shutdown_nvml()
-        return 0.0, 0
+        return 0.0, 0, 0
 
     if not _init_nvml() or not _nvml_handle:
-        return 0.0, 0
+        return 0.0, 0, 0
     lib, dev = _nvml_handle
     try:
         temp = ctypes.c_uint()
@@ -161,13 +177,19 @@ def get_gpu_status():
         else:
             gpu_util = 0
 
-        # If GPU is completely idle, always release NVML to allow it to enter D3cold
-        if gpu_util == 0:
+        mem = _NvmlMemory()
+        if lib.nvmlDeviceGetMemoryInfo(dev, ctypes.byref(mem)) == 0:
+            gpu_used_mem_mb = int(mem.used // (1024 * 1024))
+        else:
+            gpu_used_mem_mb = 0
+
+        # If GPU is completely idle and no significant VRAM allocated, release NVML to allow it to enter D3cold
+        if gpu_util == 0 and gpu_used_mem_mb < 300:
             shutdown_nvml()
 
-        return gpu_temp, gpu_util
+        return gpu_temp, gpu_util, gpu_used_mem_mb
     except Exception:
-        return 0.0, 0
+        return 0.0, 0, 0
 
 OVERRIDE_FILE = "/tmp/asus-fan-override.json"
 
@@ -796,6 +818,7 @@ def main():
     loop_tick             = 0
     last_gpu_util         = 0
     last_gpu_temp         = 0.0
+    last_gpu_mem          = 0
     high_load_ticks       = 0
     cool_ticks            = 0
     battery_high_ticks    = 0
@@ -843,36 +866,59 @@ def main():
                 time.sleep(CHECK_INTERVAL)
                 continue
 
-            cpu_temp = get_cpu_temp()
+            cpu_temp, vrm_temp, nvme_temp = get_hardware_temperatures()
 
             if ac:
                 # AC Mode: CHỐNG ÁM NHIỆT KHUNG SƯỜN & PHÁT HIỆN TẢI AI TỨC THÌ
-                # Nếu GPU đang ở trạng thái rảnh (util == 0), chỉ kiểm tra mỗi 5 giây để kernel có đủ thời gian autosuspend (2s delay)
-                if loop_tick % 5 == 0 or last_gpu_util > 0:
-                    gpu_temp, gpu_util = get_gpu_status()
+                # Nếu GPU đang ở trạng thái rảnh và không có VRAM model lớn, kiểm tra mỗi 5s
+                if loop_tick % 5 == 0 or last_gpu_util > 0 or last_gpu_mem > 300:
+                    gpu_temp, gpu_util, gpu_mem = get_gpu_status()
                     last_gpu_util = gpu_util
                     last_gpu_temp = gpu_temp
+                    last_gpu_mem = gpu_mem
                 else:
-                    gpu_temp, gpu_util = last_gpu_temp, last_gpu_util
+                    gpu_temp, gpu_util, gpu_mem = last_gpu_temp, last_gpu_util, last_gpu_mem
 
-                is_high_load = (gpu_util > 20) or (gpu_temp >= 65.0) or (cpu_temp >= 82.0)
-                is_cool_load = (cpu_temp < 70.0) and (gpu_temp < 58.0) and (gpu_util <= 5)
+                # TẢI CAO / NHIỆT CAO (Kích hoạt quạt Performance để giải nhiệt ngay, không để om nhiệt vào khung phím):
+                # 1. CPU ấm/nóng (>= 70°C)
+                # 2. Dàn VRM bên trái bo mạch nóng (>= 57°C)
+                # 3. Ổ cứng NVMe SSD nóng (>= 53°C)
+                # 4. GPU nóng (>= 58°C) hoặc GPU tải cao (util > 15%)
+                # 5. Có Model AI (Ollama / PyTorch / Game) nạp vào VRAM (> 500 MB)
+                is_high_load = (
+                    (cpu_temp >= 70.0) or
+                    (vrm_temp >= 57.0) or
+                    (nvme_temp >= 53.0) or
+                    (gpu_temp >= 58.0) or
+                    (gpu_util > 15) or
+                    (gpu_mem > 500)
+                )
+
+                # MÁY THẬT SỰ NGUỘI VÀ KHÔNG CHẠY TẢI NẶNG (Mới hạ về Balanced êm ái):
+                is_cool_load = (
+                    (cpu_temp < 60.0) and
+                    (vrm_temp < 50.0) and
+                    (nvme_temp < 48.0) and
+                    (gpu_temp < 50.0) and
+                    (gpu_util <= 5) and
+                    (gpu_mem < 400)
+                )
 
                 if is_high_load:
                     high_load_ticks += 1
                     cool_ticks = 0
-                    if high_load_ticks >= 4:
+                    if high_load_ticks >= 3:
                         if cur != "Performance":
                             set_asus_profile("Performance")
-                            print(f"[AutoPower] 🔥 Tải cao liên tục (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C, Util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
+                            print(f"[AutoPower] 🔥 Tải cao / AI chạy / Khung phím ấm (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C, VRAM: {gpu_mem}MB) → Performance (Turbo Airflow)", flush=True)
                 elif is_cool_load:
                     cool_ticks += 1
                     high_load_ticks = 0
-                    if cool_ticks >= 12:
+                    if cool_ticks >= 20:
                         if cur != "Balanced":
                             set_asus_profile("Balanced")
                             subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=2)
-                            print(f"[AutoPower] 🌬️ Nhiệt độ ổn định mát (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C) → Hạ về Balanced êm mát", flush=True)
+                            print(f"[AutoPower] 🌬️ Khung máy đã nguội hoàn toàn (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C) → Hạ về Balanced êm mát", flush=True)
                 else:
                     high_load_ticks = 0
                     cool_ticks = 0
@@ -880,20 +926,20 @@ def main():
             else:
                 # Battery Mode: Tiết kiệm pin tối đa
                 # Không poll NVML để GPU rơi vào D3cold (0.0W)
-                if cpu_temp >= 80.0:
+                if cpu_temp >= 75.0 or vrm_temp >= 62.0:
                     battery_high_ticks += 1
                     battery_cool_ticks = 0
-                    if battery_high_ticks >= 4:
+                    if battery_high_ticks >= 3:
                         if cur != "Performance":
                             set_asus_profile("Performance")
-                            print(f"[AutoPower] ⚠️ Pin nhiệt cao liên tục ({cpu_temp:.1f}°C) → Cứu nguy Performance", flush=True)
-                elif cpu_temp <= 58.0:
+                            print(f"[AutoPower] ⚠️ Pin nhiệt cao liên tục (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Cứu nguy Performance", flush=True)
+                elif cpu_temp <= 55.0 and vrm_temp <= 50.0:
                     battery_cool_ticks += 1
                     battery_high_ticks = 0
                     if battery_cool_ticks >= 10:
                         if cur != "Quiet":
                             set_asus_profile("Quiet")
-                            print(f"[AutoPower] ❄️ Pin máy mát ({cpu_temp:.1f}°C ≤ 58°C) → Quiet (0 RPM)", flush=True)
+                            print(f"[AutoPower] ❄️ Pin máy mát (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Quiet (0 RPM)", flush=True)
                 else:
                     battery_high_ticks = 0
                     battery_cool_ticks = 0
