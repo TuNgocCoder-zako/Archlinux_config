@@ -1,9 +1,9 @@
 {
     "ai": {
-        "defaultOllamaModel": "qwen3:4b",
-        "enableCelestialMode": false,
-        "enableOllama": false,
-        "ollamaHistoryJson": ""
+        "defaultOllamaModel": "llama3",
+        "enableCelestialMode": true,
+        "enableOllama": true,
+        "ollamaHistoryJson": "[{\"id\":\"chat_1792501803862\",\"title\":\"New Chat\",\"messages\":[{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'phi3' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'gemma' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'mistral' not found\",\"isFinished\":true,\"thoughtText\":\"\"}]}]"
     },
     "appearance": {
         "islands": false,
@@ -249,7 +249,6 @@
             "code",
             "firefox",
             "idea",
-            "docker-desktop",
             "io.dbeaver.DBeaver",
             "postman",
             "onlyoffice-desktopeditors",
@@ -286,7 +285,9 @@
         ],
         "gpuType": "NVIDIA",
         "lyricsBackend": "Auto",
+        "pipFollowFocus": false,
         "pipPaused": false,
+        "pipPosition": "bottom left",
         "smartScheme": true,
         "useFahrenheit": false,
         "visualiserBars": 60,

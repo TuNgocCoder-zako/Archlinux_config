@@ -5,8 +5,6 @@ return {
     fileExplorer               = "thunar",
 
     -- Touchpad
-    touchpadSensitivity        = 0.35,
-    touchpadScrollFactor       = 0.65,
     touchpadDisableTyping      = false,
     workspaceSwipeFingers      = 3,
 
@@ -46,6 +44,8 @@ return {
     kbShowSidebar              = { "SUPER + N", "ALT + N" },
 
     -- Custom
+    touchpadSensitivity        = 0.35,
+    touchpadScrollFactor       = 0.65,
     kbAudioSettings            = "",
     kbLauncher                 = { "SUPER_L", "SUPER_R", "SUPER + SUPER_L", "SUPER + SUPER_R", "ALT + D" },
 }

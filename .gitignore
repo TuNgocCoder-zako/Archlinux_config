@@ -22,3 +22,6 @@ id_rsa*
 # Python
 __pycache__/
 *.pyc
+
+# Knowledge graph
+graphify-out/
