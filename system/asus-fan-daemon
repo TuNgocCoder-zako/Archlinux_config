@@ -879,29 +879,28 @@ def main():
                 else:
                     gpu_temp, gpu_util, gpu_mem = last_gpu_temp, last_gpu_util, last_gpu_mem
 
-                # TẢI CAO / NHIỆT CAO (Kích hoạt quạt Performance để giải nhiệt ngay, không để om nhiệt vào khung phím):
-                # 1. CPU ấm/nóng (>= 70°C)
-                # 2. Dàn VRM bên trái bo mạch nóng (>= 57°C)
-                # 3. Ổ cứng NVMe SSD nóng (>= 53°C)
-                # 4. GPU nóng (>= 58°C) hoặc GPU tải cao (util > 15%)
-                # 5. Có Model AI (Ollama / PyTorch / Game) nạp vào VRAM (> 500 MB)
+                # TẢI CAO / NHIỆT CAO (Kích hoạt quạt Performance để giải nhiệt ngay khi thật sự cần):
+                # 1. CPU nóng (>= 75°C)
+                # 2. Dàn VRM bên trái bo mạch nóng (>= 68°C)
+                # 3. Ổ cứng NVMe SSD nóng (>= 62°C)
+                # 4. GPU nóng (>= 65°C) hoặc GPU tải cao (util > 15% - AI đang sinh token / game 3D)
+                # Lưu ý: KHÔNG dùng gpu_mem > 500 đơn thuần vì model AI giữ trên VRAM ở trạng thái chờ
+                # chỉ ăn 6W và mát 50°C. Nếu ép Performance sẽ làm CPU bị khóa 4.1GHz gây ám nhiệt ngược!
                 is_high_load = (
-                    (cpu_temp >= 70.0) or
-                    (vrm_temp >= 57.0) or
-                    (nvme_temp >= 53.0) or
-                    (gpu_temp >= 58.0) or
-                    (gpu_util > 15) or
-                    (gpu_mem > 500)
+                    (cpu_temp >= 75.0) or
+                    (vrm_temp >= 68.0) or
+                    (nvme_temp >= 62.0) or
+                    (gpu_temp >= 65.0) or
+                    (gpu_util > 15)
                 )
 
-                # MÁY THẬT SỰ NGUỘI VÀ KHÔNG CHẠY TẢI NẶNG (Mới hạ về Balanced êm ái):
+                # MÁY MÁT VÀ KHÔNG CHẠY TẢI NẶNG (Hạ về Balanced để CPU idle 800MHz chống ám nhiệt):
                 is_cool_load = (
-                    (cpu_temp < 60.0) and
-                    (vrm_temp < 50.0) and
-                    (nvme_temp < 48.0) and
-                    (gpu_temp < 50.0) and
-                    (gpu_util <= 5) and
-                    (gpu_mem < 400)
+                    (cpu_temp < 65.0) and
+                    (vrm_temp < 62.0) and
+                    (nvme_temp < 58.0) and
+                    (gpu_temp < 58.0) and
+                    (gpu_util <= 5)
                 )
 
                 if is_high_load:
@@ -910,15 +909,14 @@ def main():
                     if high_load_ticks >= 3:
                         if cur != "Performance":
                             set_asus_profile("Performance")
-                            print(f"[AutoPower] 🔥 Tải cao / AI chạy / Khung phím ấm (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C, VRAM: {gpu_mem}MB) → Performance (Turbo Airflow)", flush=True)
+                            print(f"[AutoPower] 🔥 Tải cao / AI tính toán (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C, GPU util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
                 elif is_cool_load:
                     cool_ticks += 1
                     high_load_ticks = 0
-                    if cool_ticks >= 20:
+                    if cool_ticks >= 8:
                         if cur != "Balanced":
                             set_asus_profile("Balanced")
-                            subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=2)
-                            print(f"[AutoPower] 🌬️ Khung máy đã nguội hoàn toàn (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C) → Hạ về Balanced êm mát", flush=True)
+                            print(f"[AutoPower] 🌬️ Khung máy đã nguội (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C) → Hạ về Balanced (CPU 800MHz mát rượi)", flush=True)
                 else:
                     high_load_ticks = 0
                     cool_ticks = 0
