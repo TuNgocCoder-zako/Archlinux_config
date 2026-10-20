@@ -110,6 +110,7 @@ def is_ac_online():
 # ──────────────────────────────────────────────────────────────
 _nvml_handle = None
 _nvml_initialized = False
+_last_nvml_idle_time = 0.0
 
 class _NvmlUtilization(ctypes.Structure):
     _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
@@ -134,7 +135,7 @@ def _init_nvml():
     return False
 
 def shutdown_nvml():
-    """Release NVML handle on battery so NVIDIA dGPU can enter D3cold (0.0W)."""
+    """Release NVML handle so NVIDIA dGPU can enter D3cold (0.0W)."""
     global _nvml_handle, _nvml_initialized
     if _nvml_handle:
         try:
@@ -155,11 +156,18 @@ def get_gpu_pci_status():
 
 def get_gpu_status():
     """Returns (gpu_temp_c, gpu_util_pct, gpu_used_mem_mb). Fast, zero subprocess, never wakes sleeping GPU."""
+    global _last_nvml_idle_time
     pci_status = get_gpu_pci_status()
     if pci_status == "suspended":
         # GPU is sleeping in D3cold (0W). Do not wake it up with NVML!
         if _nvml_handle:
             shutdown_nvml()
+        return 0.0, 0, 0
+
+    # Cooldown: nếu GPU rảnh và vừa shutdown NVML, dành tối thiểu 15s im lặng tuyệt đối
+    # để Linux PCI driver đếm ngược autosuspend_delay đưa GPU về D3cold (0.0W).
+    now = time.time()
+    if now - _last_nvml_idle_time < 15.0:
         return 0.0, 0, 0
 
     if not _init_nvml() or not _nvml_handle:
@@ -183,9 +191,10 @@ def get_gpu_status():
         else:
             gpu_used_mem_mb = 0
 
-        # If GPU is completely idle and no significant VRAM allocated, release NVML to allow it to enter D3cold
+        # Nếu GPU rảnh và không có VRAM model lớn, ngắt NVML ngay và bắt đầu cooldown 15s để GPU ngủ D3cold
         if gpu_util == 0 and gpu_used_mem_mb < 300:
             shutdown_nvml()
+            _last_nvml_idle_time = now
 
         return gpu_temp, gpu_util, gpu_used_mem_mb
     except Exception:
@@ -870,8 +879,11 @@ def main():
 
             if ac:
                 # AC Mode: CHỐNG ÁM NHIỆT KHUNG SƯỜN & PHÁT HIỆN TẢI AI TỨC THÌ
-                # Nếu GPU đang ở trạng thái rảnh và không có VRAM model lớn, kiểm tra mỗi 5s
-                if loop_tick % 5 == 0 or last_gpu_util > 0 or last_gpu_mem > 300:
+                # Nếu GPU đang ở D3cold (suspended), tuyệt đối không poll NVML để GPU giữ nguyên 0.0W
+                if get_gpu_pci_status() == "suspended":
+                    gpu_temp, gpu_util, gpu_mem = 0.0, 0, 0
+                    last_gpu_util, last_gpu_temp, last_gpu_mem = 0, 0.0, 0
+                elif loop_tick % 5 == 0 or last_gpu_util > 0 or last_gpu_mem > 300:
                     gpu_temp, gpu_util, gpu_mem = get_gpu_status()
                     last_gpu_util = gpu_util
                     last_gpu_temp = gpu_temp
