@@ -879,28 +879,23 @@ def main():
                 else:
                     gpu_temp, gpu_util, gpu_mem = last_gpu_temp, last_gpu_util, last_gpu_mem
 
-                # TẢI CAO / NHIỆT CAO (Kích hoạt quạt Performance để giải nhiệt ngay khi thật sự cần):
-                # 1. CPU nóng (>= 75°C)
-                # 2. Dàn VRM bên trái bo mạch nóng (>= 68°C)
-                # 3. Ổ cứng NVMe SSD nóng (>= 62°C)
-                # 4. GPU nóng (>= 65°C) hoặc GPU tải cao (util > 15% - AI đang sinh token / game 3D)
-                # Lưu ý: KHÔNG dùng gpu_mem > 500 đơn thuần vì model AI giữ trên VRAM ở trạng thái chờ
-                # chỉ ăn 6W và mát 50°C. Nếu ép Performance sẽ làm CPU bị khóa 4.1GHz gây ám nhiệt ngược!
+                # TẢI CỰC CAO / BẢO VỆ PHẦN CỨNG:
+                # Chỉ kích hoạt Performance (Turbo) khi CPU/GPU chịu tải nặng thực sự:
+                # 1. CPU quá nhiệt (>= 85°C liên tục)
+                # 2. GPU quá nhiệt (>= 75°C) hoặc GPU tải nặng (> 50% - Game 3D / AI batch)
+                # (Ở điều kiện bình thường 50-75°C, chế độ Balanced của ASUS BIOS đã tự điều tốc quạt 2400-3600 RPM
+                # mà KHÔNG bị khóa cứng CPU ở 4.1GHz, giúp máy mát rượi và không bị ám nhiệt).
                 is_high_load = (
-                    (cpu_temp >= 75.0) or
-                    (vrm_temp >= 68.0) or
-                    (nvme_temp >= 62.0) or
-                    (gpu_temp >= 65.0) or
-                    (gpu_util > 15)
+                    (cpu_temp >= 85.0) or
+                    (gpu_temp >= 75.0) or
+                    (gpu_util > 50)
                 )
 
-                # MÁY MÁT VÀ KHÔNG CHẠY TẢI NẶNG (Hạ về Balanced để CPU idle 800MHz chống ám nhiệt):
+                # HẠ VỀ BALANCED (Cân bằng êm mát, CPU hạ xung 800MHz chống ám nhiệt):
                 is_cool_load = (
-                    (cpu_temp < 65.0) and
-                    (vrm_temp < 62.0) and
-                    (nvme_temp < 58.0) and
-                    (gpu_temp < 58.0) and
-                    (gpu_util <= 5)
+                    (cpu_temp < 70.0) and
+                    (gpu_temp < 65.0) and
+                    (gpu_util <= 10)
                 )
 
                 if is_high_load:
@@ -909,14 +904,14 @@ def main():
                     if high_load_ticks >= 3:
                         if cur != "Performance":
                             set_asus_profile("Performance")
-                            print(f"[AutoPower] 🔥 Tải cao / AI tính toán (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C, GPU util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
+                            print(f"[AutoPower] 🔥 Tải cực cao (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C, GPU util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
                 elif is_cool_load:
                     cool_ticks += 1
                     high_load_ticks = 0
-                    if cool_ticks >= 8:
+                    if cool_ticks >= 3:
                         if cur != "Balanced":
                             set_asus_profile("Balanced")
-                            print(f"[AutoPower] 🌬️ Khung máy đã nguội (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, SSD: {nvme_temp:.1f}°C) → Hạ về Balanced (CPU 800MHz mát rượi)", flush=True)
+                            print(f"[AutoPower] 🌬️ Trở về Balanced (CPU: {cpu_temp:.1f}°C, GPU: {gpu_temp:.1f}°C) → CPU 800MHz êm mát chống ám nhiệt", flush=True)
                 else:
                     high_load_ticks = 0
                     cool_ticks = 0
