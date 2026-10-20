@@ -783,8 +783,8 @@ def on_power_state_change(ac_online):
         except Exception:
             pass
 
-        # 5. ASUS profile: Performance trên AC (Duy trì quạt nền ~2200-2600 RPM êm ái, tạo áp suất âm hút khí mát qua cụm phím WASD chống ám nhiệt)
-        set_asus_profile("Performance")
+        # 5. ASUS profile: Balanced trên AC (CPU idle 800MHz ăn 1.5W mát rượi, không bị khóa xung 4.1GHz)
+        set_asus_profile("Balanced")
 
         # 6. Khôi phục đèn bàn phím RGB
         set_keyboard_backlight("med")
@@ -895,12 +895,41 @@ def main():
                 else:
                     gpu_temp, gpu_util, gpu_mem = last_gpu_temp, last_gpu_util, last_gpu_mem
 
-                # Trên AC: Duy trì ASUS Profile ở Performance để quạt luôn giữ mức nền ~2200-2600 RPM.
-                # Mức này êm ái nhưng tạo đủ áp suất âm hút khí mát qua cụm phím WASD, loại bỏ triệt để hiện tượng ám nhiệt.
-                # (CPU vẫn chạy EPP: balanced nên khi idle hạ xung về 800MHz ăn 1.5W, tuyệt đối không bị khóa xung 4.1GHz).
-                if cur != "Performance":
-                    set_asus_profile("Performance")
-                    print(f"[AutoPower] 🌬️ AC Mode: Duy trì Performance profile (quạt nền ~2200-2600 RPM chống ám nhiệt)", flush=True)
+                # ĐIỀU TỐC THÔNG MINH TRÊN AC:
+                # Mặc định duy trì Balanced (CPU idle 800MHz ăn 1.5W mát rượi, EPP balance_performance).
+                # Chỉ kích hoạt Performance khi máy bắt đầu ấm (CPU >= 70°C hoặc VRM >= 64°C hoặc GPU tải > 20%)
+                # để tăng quạt lên 3500+ RPM giải nhiệt tức thì, sau đó tự hạ về Balanced.
+                is_high_load = (
+                    (cpu_temp >= 70.0) or
+                    (vrm_temp >= 64.0) or
+                    (gpu_temp >= 65.0) or
+                    (gpu_util > 20)
+                )
+
+                is_cool_load = (
+                    (cpu_temp < 60.0) and
+                    (vrm_temp < 56.0) and
+                    (gpu_temp < 55.0) and
+                    (gpu_util <= 5)
+                )
+
+                if is_high_load:
+                    high_load_ticks += 1
+                    cool_ticks = 0
+                    if high_load_ticks >= 3:
+                        if cur != "Performance":
+                            set_asus_profile("Performance")
+                            print(f"[AutoPower] 🔥 Tải cao / Nhiệt tăng (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, GPU util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
+                elif is_cool_load:
+                    cool_ticks += 1
+                    high_load_ticks = 0
+                    if cool_ticks >= 4:
+                        if cur != "Balanced":
+                            set_asus_profile("Balanced")
+                            print(f"[AutoPower] 🌬️ Máy đã nguội (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Balanced (CPU 800MHz mát rượi)", flush=True)
+                else:
+                    high_load_ticks = 0
+                    cool_ticks = 0
 
             else:
                 # Battery Mode: Tiết kiệm pin tối đa

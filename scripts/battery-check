@@ -17,7 +17,7 @@ if [ "$FULL_DESIGN" -gt 0 ] && [ "$FULL_ACTUAL" -gt 0 ]; then
 fi
 
 if [ "$AC_STATUS" = "1" ]; then
-    echo "• Nguồn điện: [CẮM SẠC - AC Online]"
+    echo "• Nguồn điện: [CẮM SẠC - AC Online] (144Hz • Hiệu năng tối đa)"
 else
     # Đo công suất xả thực tế
     CURR=$(cat /sys/class/power_supply/BAT1/current_now 2>/dev/null || echo 0)
@@ -39,17 +39,20 @@ fi
 echo "• Tình trạng pin: Chai $WEAR_PCT% (Còn $WH_ACTUAL Wh / Thiết kế: $WH_DESIGN Wh | Sức khỏe: $HEALTH_PCT%)"
 
 echo ""
-echo "• CPU Scaling & EPP:"
+echo "• CPU Scaling & EPP (12 luồng):"
 GOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)
 EPP=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null)
-FREQ=$(grep -m 1 "cpu MHz" /proc/cpuinfo | awk '{printf "%.0f MHz", $4}')
-echo "  - Governor: $GOV | EPP: $EPP | Xung nhịp: $FREQ"
+FREQ_AVG=$(awk '/cpu MHz/{sum+=$4; cnt++} END{if(cnt>0) printf "%.0f", sum/cnt; else print 0}' /proc/cpuinfo)
+FREQ_MIN=$(awk '/cpu MHz/{if(min=="" || $4<min) min=$4} END{printf "%.0f", min}' /proc/cpuinfo)
+FREQ_MAX=$(awk '/cpu MHz/{if(max=="" || $4>max) max=$4} END{printf "%.0f", max}' /proc/cpuinfo)
+echo "  - Governor: $GOV | EPP: $EPP"
+echo "  - Xung nhịp: Trung bình ${FREQ_AVG} MHz (Sàn idle: ${FREQ_MIN} MHz | Đỉnh tải: ${FREQ_MAX} MHz)"
 
 echo ""
 echo "• Intel Iris Xe iGPU:"
 MIN_F=$(cat /sys/class/drm/card1/gt_min_freq_mhz 2>/dev/null || cat /sys/class/drm/card0/gt_min_freq_mhz 2>/dev/null || echo "?")
 CUR_F=$(cat /sys/class/drm/card1/gt_cur_freq_mhz 2>/dev/null || cat /sys/class/drm/card0/gt_cur_freq_mhz 2>/dev/null || echo "?")
-echo "  - Sàn xung nhịp (Min): ${MIN_F}MHz | Hiện tại: ${CUR_F}MHz"
+echo "  - Sàn xung nhịp (Min): ${MIN_F}MHz | Hiện tại: ${CUR_F}MHz (Tự hạ về 350MHz khi không có vẽ hoạt ảnh)"
 
 echo ""
 echo "• NVIDIA RTX 3050 dGPU:"
