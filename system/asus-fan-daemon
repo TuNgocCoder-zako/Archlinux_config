@@ -295,18 +295,31 @@ def configure_hyprland_effects(ac_online: bool):
     shadow_enabled = "true" if ac_online else "false"
     shadow_range = 8 if ac_online else 0
     shadow_power = 2
+    inactive_opacity = 0.92 if ac_online else 1.0  # Tắt hòa trộn alpha cửa sổ nền khi dùng pin
+    rounding = 12 if ac_online else 4  # Bo góc 4px khi dùng pin để triệt tiêu gánh nặng khử răng cưa GPU
+    anim_resizes = "true" if ac_online else "false"  # Tắt hoạt ảnh khi kéo dãn cửa sổ
+    anim_dragging = "true" if ac_online else "false"  # Tắt hoạt ảnh khi kéo rê cửa sổ
     lua_cmd = (
         f'hl.config({{ '
         f'render = {{ direct_scanout = {direct_scanout}, new_render_scheduling = {render_scheduling} }}, '
         f'animations = {{ enabled = {anim_enabled} }}, '
-        f'decoration = {{ shadow = {{ enabled = {shadow_enabled}, range = {shadow_range}, render_power = {shadow_power} }}, '
-        f'blur = {{ enabled = {blur_enabled}, passes = {blur_passes}, size = {blur_size}, xray = {xray_val}, new_optimizations = true }} }} '
+        f'decoration = {{ '
+        f'inactive_opacity = {inactive_opacity}, '
+        f'rounding = {rounding}, '
+        f'shadow = {{ enabled = {shadow_enabled}, range = {shadow_range}, render_power = {shadow_power} }}, '
+        f'blur = {{ enabled = {blur_enabled}, passes = {blur_passes}, size = {blur_size}, xray = {xray_val}, new_optimizations = true }} '
+        f'}}, '
+        f'misc = {{ animate_manual_resizes = {anim_resizes}, animate_mouse_windowdragging = {anim_dragging} }} '
         f'}})'
     )
     try:
         res = subprocess.run(["hyprctl", "eval", lua_cmd], capture_output=True, text=True, timeout=3)
         if res.returncode == 0 and "ok" in res.stdout.lower():
-            state = f"AC 144Hz (shadow=on, blur=1pass, anim=on)" if ac_online else f"Battery Eco 60Hz (shadow=off, blur=off, anim=off - chống sụt áp)"
+            state = (
+                f"AC 144Hz (shadow=on, blur=1pass, anim=on, inactive_opacity=0.92, rounding=12)"
+                if ac_online else
+                f"Battery Eco 60Hz (shadow=off, blur=off, anim=off, inactive_opacity=1.0, rounding=4, no-drag-anim - chống sụt áp)"
+            )
             print(f"[AutoPower] Hyprland tuning → {state}", flush=True)
             return True
         return False
@@ -597,8 +610,8 @@ def manage_background_tasks(ac_online):
         except Exception:
             pass
 
-        # Kill hanging trash-empty or stale python loops
-        for proc in ["trash-empty", "optimize-system.sh"]:
+        # Kill hanging trash-empty, stale scripts, or duplicate inotifywait loops
+        for proc in ["trash-empty", "optimize-system.sh", "inotifywait -q -e"]:
             try:
                 subprocess.run(["pkill", "-f", proc], capture_output=True)
             except Exception:
@@ -731,6 +744,14 @@ def on_power_state_change(ac_online):
         except Exception:
             pass
 
+        # Clamp Intel CPU Turbo Boost on battery (ghim xung 2.7 GHz, chặn đứng giật điện 45W gây sụt áp pin chai)
+        try:
+            with open("/sys/devices/system/cpu/intel_pstate/no_turbo", "w") as f:
+                f.write("1\n")
+            print("[AutoPower] CPU Turbo → disabled (no_turbo=1, ghim tối đa 2.7GHz chống sụt áp)", flush=True)
+        except Exception:
+            pass
+
         # 5. ASUS profile: Quiet (Quạt 0 RPM im lặng tuyệt đối, ngắt điện mô-tơ quạt, tiết kiệm ~2W-3W)
         set_asus_profile("Quiet")
 
@@ -756,7 +777,7 @@ def on_power_state_change(ac_online):
             subprocess.run([
                 "notify-send", "-u", "normal", "-i", "battery-good",
                 "🔋 Chế độ Pin — Tiết Kiệm Tối Đa",
-                "60Hz • Tắt Taskbar & Dashboard • Quạt 0 RPM • dGPU 0W"
+                "60Hz • Tắt Taskbar & Dashboard • Quạt 0 RPM • dGPU 0W • Ghim 2.7GHz"
             ], capture_output=True, timeout=2)
         except Exception:
             pass
@@ -780,6 +801,14 @@ def on_power_state_change(ac_online):
         try:
             subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=3)
             print("[AutoPower] CPU → balanced (chống ám nhiệt, 1ms burst 4.5GHz)", flush=True)
+        except Exception:
+            pass
+
+        # Khôi phục Intel Turbo Boost trên AC (cho phép bung 4.5 GHz khi cần)
+        try:
+            with open("/sys/devices/system/cpu/intel_pstate/no_turbo", "w") as f:
+                f.write("0\n")
+            print("[AutoPower] CPU Turbo → enabled (no_turbo=0, bung 4.5GHz khi cắm sạc)", flush=True)
         except Exception:
             pass
 
@@ -811,7 +840,7 @@ def on_power_state_change(ac_online):
             subprocess.run([
                 "notify-send", "-u", "low", "-i", "ac-adapter",
                 "⚡ Đã cắm sạc — 144Hz Mát Mẻ",
-                "144Hz • Hiệu năng tối đa • Chống ám nhiệt • Khôi phục Dashboard"
+                "144Hz • Hiệu năng tối đa • Chống ám nhiệt • Turbo 4.5GHz • Khôi phục Dashboard"
             ], capture_output=True, timeout=2)
         except Exception:
             pass
