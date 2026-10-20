@@ -2,36 +2,63 @@
 # Quick Diagnostic for ASUS TUF Gaming F15 Battery & Hardware State
 
 echo "=== ASUS TUF Hardware & Power State ==="
-AC_STATUS=$(cat /sys/class/power_supply/ACAD/online 2>/dev/null || echo "?")
+AC_STATUS=$(cat /sys/class/power_supply/ACAD/online 2>/dev/null || cat /sys/class/power_supply/*/online 2>/dev/null | head -n 1)
+
+# Tính toán dung lượng và độ chai pin
+FULL_DESIGN=$(cat /sys/class/power_supply/BAT1/charge_full_design 2>/dev/null || echo 0)
+FULL_ACTUAL=$(cat /sys/class/power_supply/BAT1/charge_full 2>/dev/null || echo 0)
+VOLT_DESIGN=$(cat /sys/class/power_supply/BAT1/voltage_min_design 2>/dev/null || echo 11679000)
+
+if [ "$FULL_DESIGN" -gt 0 ] && [ "$FULL_ACTUAL" -gt 0 ]; then
+    HEALTH_PCT=$(awk "BEGIN {printf \"%.1f\", ($FULL_ACTUAL / $FULL_DESIGN) * 100}")
+    WEAR_PCT=$(awk "BEGIN {printf \"%.1f\", 100 - ($FULL_ACTUAL / $FULL_DESIGN) * 100}")
+    WH_ACTUAL=$(awk "BEGIN {printf \"%.1f\", ($FULL_ACTUAL * $VOLT_DESIGN) / 1000000000000}")
+    WH_DESIGN=$(awk "BEGIN {printf \"%.1f\", ($FULL_DESIGN * $VOLT_DESIGN) / 1000000000000}")
+fi
+
 if [ "$AC_STATUS" = "1" ]; then
     echo "• Nguồn điện: [CẮM SẠC - AC Online]"
 else
-    RATE=$(cat /sys/class/power_supply/BAT1/power_now 2>/dev/null || echo 0)
-    RATE_W=$(awk "BEGIN {print $RATE / 1000000}")
+    # Đo công suất xả thực tế
+    CURR=$(cat /sys/class/power_supply/BAT1/current_now 2>/dev/null || echo 0)
+    VOLT=$(cat /sys/class/power_supply/BAT1/voltage_now 2>/dev/null || echo 0)
+    RATE_W=$(awk "BEGIN {printf \"%.2f\", ($CURR * $VOLT) / 1000000000000}")
     PERCENT=$(cat /sys/class/power_supply/BAT1/capacity 2>/dev/null || echo "?")
-    echo "• Nguồn điện: [DÙNG PIN - Battery $PERCENT%] (Công suất tiêu thụ: ${RATE_W}W)"
+    
+    # Tính thời gian sử dụng ước tính
+    NOW_CHARGE=$(cat /sys/class/power_supply/BAT1/charge_now 2>/dev/null || echo 0)
+    NOW_WH=$(awk "BEGIN {printf \"%.2f\", ($NOW_CHARGE * $VOLT) / 1000000000000}")
+    if [ "$CURR" -gt 0 ]; then
+        TIME_REM=$(awk "BEGIN {h = $NOW_CHARGE / $CURR; m = (h - int(h)) * 60; printf \"%dh %02dm\", int(h), int(m)}")
+    else
+        TIME_REM="N/A"
+    fi
+    echo "• Nguồn điện: [DÙNG PIN - $PERCENT%] (Xả: ${RATE_W}W | Còn lại: ~${NOW_WH}Wh | Ước tính: $TIME_REM)"
 fi
+
+echo "• Tình trạng pin: Chai $WEAR_PCT% (Còn $WH_ACTUAL Wh / Thiết kế: $WH_DESIGN Wh | Sức khỏe: $HEALTH_PCT%)"
 
 echo ""
 echo "• CPU Scaling & EPP:"
 GOV=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)
 EPP=$(cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference 2>/dev/null)
-echo "  - Governor: $GOV | EPP: $EPP"
+FREQ=$(grep -m 1 "cpu MHz" /proc/cpuinfo | awk '{printf "%.0f MHz", $4}')
+echo "  - Governor: $GOV | EPP: $EPP | Xung nhịp: $FREQ"
 
 echo ""
 echo "• Intel Iris Xe iGPU:"
 MIN_F=$(cat /sys/class/drm/card1/gt_min_freq_mhz 2>/dev/null || cat /sys/class/drm/card0/gt_min_freq_mhz 2>/dev/null || echo "?")
 CUR_F=$(cat /sys/class/drm/card1/gt_cur_freq_mhz 2>/dev/null || cat /sys/class/drm/card0/gt_cur_freq_mhz 2>/dev/null || echo "?")
-echo "  - Sàn xung nhịp (Min): ${MIN_F}MHz | Hiện tại: ${CUR_F}MHz (144Hz tối thiểu nên >= 500MHz)"
+echo "  - Sàn xung nhịp (Min): ${MIN_F}MHz | Hiện tại: ${CUR_F}MHz"
 
 echo ""
 echo "• NVIDIA RTX 3050 dGPU:"
 NV_STATE=$(cat /sys/bus/pci/devices/0000:01:00.0/power/runtime_status 2>/dev/null || echo "unknown")
 echo "  - Trạng thái nguồn: $NV_STATE"
 if [ "$NV_STATE" = "suspended" ]; then
-    echo "  -> Đang ngủ sâu D3cold (0.0W - Rất tiết kiệm pin!)"
+    echo "  -> Đang ngủ sâu D3cold (0.0W - Hoàn hảo, không tốn pin!)"
 else
-    echo "  -> Đang THỨC (sẽ tự động vào D3cold sau 5-10s nếu nhàn rỗi):"
+    echo "  -> Đang THỨC (Tiêu thụ ~6-12W điện ngầm):"
     PIDS=$(fuser /dev/nvidia* 2>/dev/null)
     COMPUTE_PIDS=""
     for pid in $PIDS; do
@@ -43,7 +70,7 @@ else
     if [ -n "$COMPUTE_PIDS" ]; then
         echo "     Tiến trình đang kích hoạt dGPU: $COMPUTE_PIDS"
     else
-        echo "     (Không có tác vụ nặng/CUDA nào. GPU sẽ tự động vào D3cold sau vài giây nhàn rỗi)"
+        echo "     (Không có app nặng, GPU sẽ tự động vào D3cold sau 15s im lặng)"
     fi
 fi
 
@@ -52,5 +79,5 @@ echo "• Wi-Fi (MediaTek MT7921):"
 WLAN=$(iw dev 2>/dev/null | awk '$1=="Interface"{print $2}' | head -n 1)
 [ -z "$WLAN" ] && WLAN="wlp45s0"
 PS=$(iw dev "$WLAN" get power_save 2>/dev/null || echo "unknown")
-echo "  - Interface $WLAN: $PS (Khuyến nghị: 'off' để tránh đơ mạng và rớt gói)"
+echo "  - Interface $WLAN: Power save $PS"
 echo "========================================="
