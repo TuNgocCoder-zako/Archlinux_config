@@ -10,6 +10,7 @@ import qs.components
 import qs.components.containers
 import qs.components.controls
 import qs.components.effects
+import qs.components.filedialog
 import qs.services
 import qs.utils
 import Quickshell
@@ -28,6 +29,25 @@ Item {
     property var currentRequest: null
     property bool isStreaming: false
     property var screenState: null
+    property string attachedFilePath: ""
+    property string attachedFileName: ""
+
+    function attachFile(path) {
+        if (!path) return;
+        path = String(path).trim();
+        if (path.startsWith("file://")) {
+            path = decodeURIComponent(path.substring(7));
+        }
+        attachedFilePath = path;
+        var parts = path.split("/");
+        attachedFileName = parts[parts.length - 1];
+        Toaster.toast(qsTr("Đã đính kèm tập tin"), attachedFileName, "attach_file");
+    }
+
+    function clearAttachedFile() {
+        attachedFilePath = "";
+        attachedFileName = "";
+    }
     
 
     Timer {
@@ -477,20 +497,94 @@ Item {
     }
 
     function sendPrompt(promptText, isSystemToolResult = false, base64Image = null, toolName = "") {
-        if (!promptText.trim() && !base64Image) return;
+        if (!promptText.trim() && !base64Image && root.attachedFilePath === "") return;
 
         if (!isSystemToolResult) {
+            var userText = promptText || "";
+            var hasAttachedFile = root.attachedFilePath !== "";
+            var targetFile = root.attachedFilePath;
+            if (hasAttachedFile) {
+                userText = "📎 " + root.attachedFileName + (userText.trim() ? ("\n" + userText) : "\nXem qua tài liệu này giúp tôi.");
+                root.clearAttachedFile();
+            }
+
             chatHistory.append({
                 "isUser": true,
-                "text": promptText || "",
+                "text": userText,
                 "isFinished": true,
                 "thoughtText": ""
             });
             listView.positionViewAtEnd();
             saveHistory();
 
+            if (hasAttachedFile) {
+                for (var i = chatHistory.count - 1; i >= 0; i--) {
+                    var m = chatHistory.get(i);
+                    if (!m.isUser && !m.isFinished && m.text === "") {
+                        chatHistory.remove(i);
+                    }
+                }
+                chatHistory.append({
+                    "isUser": false,
+                    "text": "",
+                    "isFinished": false,
+                    "thoughtText": ""
+                });
+                listView.positionViewAtEnd();
+
+                isTyping = true;
+                isThinking = true;
+                inAgentLoop = true;
+                currentActionText = "Reading document...";
+                currentThoughtText = "";
+                accumulatedToolResults = "";
+                accumulatedToolImage = "";
+                runningToolsCount = 1;
+
+                var fileCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_file.py" --path ' + JSON.stringify(targetFile);
+                runAgentCommand(fileCmd, "exec_read_file");
+                return;
+            }
+
             var enableTools = GlobalConfig.ai.enableCelestialMode;
             var lower = (promptText || "").toLowerCase();
+
+            var fileRegex = /((?:\/|~\/|file:\/\/)[^\n\r"'\`]+?\.(?:pdf|txt|md|json|py|js|ts|c|cpp|rs|html|csv|log|conf|sh|ya?ml|ini|xml))/i;
+            var fileMatch = promptText.match(fileRegex);
+            var isFileReq = enableTools && fileMatch && (
+                promptText.trim() === fileMatch[1].trim() ||
+                /(?:đọc|xem|kiểm tra|tóm tắt|phân tích|nội dung|dịch|xử lý|read|check|summary|explain)/i.test(lower)
+            );
+
+            if (isFileReq) {
+                for (var i = chatHistory.count - 1; i >= 0; i--) {
+                    var m = chatHistory.get(i);
+                    if (!m.isUser && !m.isFinished && m.text === "") {
+                        chatHistory.remove(i);
+                    }
+                }
+                chatHistory.append({
+                    "isUser": false,
+                    "text": "",
+                    "isFinished": false,
+                    "thoughtText": ""
+                });
+                listView.positionViewAtEnd();
+
+                isTyping = true;
+                isThinking = true;
+                inAgentLoop = true;
+                currentActionText = "Reading document...";
+                currentThoughtText = "";
+                accumulatedToolResults = "";
+                accumulatedToolImage = "";
+                runningToolsCount = 1;
+
+                var fileCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_file.py" --path ' + JSON.stringify(fileMatch[1].trim());
+                runAgentCommand(fileCmd, "exec_read_file");
+                return;
+            }
+
             var screenWords = /(?:màn\s*hình|man\s*hinh|màn\s*này|desktop|screen|screenshot)/i;
             var actionWords = /(?:xem|đọc|dọc|nhìn|coi|chụp|kiểm\s*tra|quét|check|look|read|view|inspect|capture|thấy|giúp|bài)/i;
             var directPhrases = /(?:xem\s*màn|đọc\s*màn|dọc\s*màn|nhìn\s*màn|chụp\s*màn|coi\s*màn|màn\s*hình\s*đi|màn\s*hình\s*có|trên\s*màn|xem\s*ảnh|đọc\s*ảnh)/i;
@@ -533,8 +627,8 @@ Item {
         isThoughtExpanded = false;
         
         if (isSystemToolResult) {
-            if (toolName === "web_search" || toolName === "read_webpage") {
-                currentActionText = "Reading results...";
+            if (toolName === "web_search" || toolName === "read_webpage" || toolName === "read_file") {
+                currentActionText = "Reading document / results...";
             } else if (toolName === "take_screenshot") {
                 currentActionText = "Analyzing screen...";
             } else if (toolName === "get_weather") {
@@ -721,7 +815,7 @@ Item {
                                         try { args = JSON.parse(args); } catch (e) {}
                                     }
                                     
-                                    if (toolName === "take_screenshot" || toolName === "web_search" || toolName === "read_webpage" || toolName === "open_app" || toolName === "get_weather" || toolName === "caelestia_command") {
+                                    if (toolName === "take_screenshot" || toolName === "web_search" || toolName === "read_webpage" || toolName === "read_file" || toolName === "open_app" || toolName === "get_weather" || toolName === "caelestia_command") {
                                         runningToolsCount++;
                                     }
                                     
@@ -755,6 +849,14 @@ Item {
                                         }
                                         url = String(url || "").trim();
                                         runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode read --url "' + url.replace(new RegExp("\"", "g"), '\\"') + '"', "exec_" + toolName);
+                                    } else if (toolName === "read_file") {
+                                        currentActionText = "Reading file...";
+                                        var path = args.path || args.file_path || args.filepath || args.file || "";
+                                        if (typeof path === "object" && path !== null) {
+                                            path = path.value || path.description || path.path || "";
+                                        }
+                                        path = String(path || "").trim();
+                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_file.py" --path "' + path.replace(new RegExp("\"", "g"), '\\"') + '"', "exec_" + toolName);
                                     } else if (toolName === "open_app") {
                                         currentActionText = "Opening app...";
                                         var app = args.app_name || args.app;
@@ -850,7 +952,7 @@ Item {
         var enableTools = GlobalConfig.ai.enableCelestialMode;
         var sysPrompt = "You are Orion, an intelligent and helpful AI desktop assistant integrated into Arch Linux with Hyprland and Caelestia shell. You assist the user with programming, homework, desktop questions, and screen inspection. Answer accurately and directly in Vietnamese if asked in Vietnamese.";
         if (enableTools) {
-            sysPrompt += "\nCRITICAL INSTRUCTIONS:\n1. You HAVE FULL ACCESS to the user's screen through integrated tools. When the user asks you to look at, read, view, or check their screen (e.g. 'xem màn hình', 'đọc màn hình', 'dọc màn hình', 'giúp giải bài trên màn hình'), ALWAYS call the take_screenshot tool immediately.\n2. NEVER say 'Tôi không thể xem màn hình', 'Tôi không có khả năng xem', 'I cannot view your screen', or ask the user to provide an image if you haven't called take_screenshot first.\n3. You can browse the web using web_search or read_webpage.\n4. When using tools, do not explain that you are calling a tool, execute it directly and provide the solution to the user smoothly.";
+            sysPrompt += "\nCRITICAL INSTRUCTIONS:\n1. You HAVE FULL ACCESS to the user's screen through integrated tools. When the user asks you to look at, read, view, or check their screen (e.g. 'xem màn hình', 'đọc màn hình', 'dọc màn hình', 'giúp giải bài trên màn hình'), ALWAYS call the take_screenshot tool immediately.\n2. NEVER say 'Tôi không thể xem màn hình', 'Tôi không có khả năng xem', 'I cannot view your screen', or ask the user to provide an image if you haven't called take_screenshot first.\n3. You can read local files and documents on the user's system (including PDFs, text files, code, documents) using the read_file tool when the user mentions a file path or asks about a file.\n4. You can browse the web using web_search or read_webpage.\n5. When using tools, do not explain that you are calling a tool, execute it directly and provide the solution to the user smoothly.";
         }
         
         messages.push({
@@ -946,6 +1048,20 @@ Item {
                 {
                     "type": "function",
                     "function": {
+                        "name": "read_file",
+                        "description": "Reads and extracts the content of a local file on the user's system. Supports PDF documents, source code, text files, Markdown, JSON, configs, scripts. Provide the path to the file.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "path": { "type": "string", "description": "The path to the local file to read (e.g. /home/tu/Documents/report.pdf)" }
+                            },
+                            "required": ["path"]
+                        }
+                    }
+                },
+                {
+                    "type": "function",
+                    "function": {
                         "name": "open_app",
                         "description": "Searches for and launches an application installed on the user's system via its .desktop file.",
                         "parameters": {
@@ -1012,6 +1128,30 @@ Item {
         id: mainWrapper
         anchors.fill: parent
         anchors.margins: Tokens.padding.medium
+
+        DropArea {
+            anchors.fill: parent
+            z: 99
+            onDropped: drop => {
+                if (drop.hasUrls && drop.urls.length > 0) {
+                    for (var i = 0; i < drop.urls.length; i++) {
+                        var u = drop.urls[i].toString();
+                        root.attachFile(u);
+                        break;
+                    }
+                } else if (drop.hasText && drop.text.length > 0) {
+                    root.attachFile(drop.text.trim());
+                }
+            }
+        }
+
+        FileDialog {
+            id: attachFileDialog
+            title: qsTr("Chọn tài liệu để đọc")
+            onAccepted: path => {
+                root.attachFile(path);
+            }
+        }
 
          // Mode Switcher Row (Chat / History)
          RowLayout {
@@ -1761,6 +1901,51 @@ Item {
                      }
                  }
 
+                 // Attached File Chip
+                 StyledRect {
+                     id: attachedFileChip
+                     visible: root.attachedFilePath !== ""
+                     anchors.bottom: inputBoxRow.top
+                     anchors.left: parent.left
+                     anchors.bottomMargin: Tokens.spacing.small
+                     z: 11
+                     implicitHeight: 32
+                     implicitWidth: fileChipRow.implicitWidth + Tokens.padding.medium * 2
+                     radius: Tokens.rounding.full
+                     color: Colours.palette.m3secondaryContainer
+
+                     RowLayout {
+                         id: fileChipRow
+                         anchors.centerIn: parent
+                         spacing: Tokens.spacing.small
+
+                         MaterialIcon {
+                             text: "description"
+                             font: Tokens.font.icon.small
+                             color: Colours.palette.m3onSecondaryContainer
+                         }
+
+                         StyledText {
+                             text: root.attachedFileName
+                             font: Tokens.font.body.small
+                             color: Colours.palette.m3onSecondaryContainer
+                             elide: Text.ElideMiddle
+                             Layout.maximumWidth: 220
+                         }
+
+                         MaterialIcon {
+                             text: "close"
+                             font: Tokens.font.icon.small
+                             color: Colours.palette.m3onSecondaryContainer
+                             MouseArea {
+                                 anchors.fill: parent
+                                 cursorShape: Qt.PointingHandCursor
+                                 onClicked: root.clearAttachedFile()
+                             }
+                         }
+                     }
+                 }
+
                  // Input Box Row
                  StyledRect {
                      id: inputBoxRow
@@ -1823,13 +2008,45 @@ Item {
                                  Keys.onPressed: event => {
                                      if (event.key === Qt.Key_Return && !(event.modifiers & Qt.ShiftModifier)) {
                                          if (inputArea.inputMethodComposing) return;
-                                         if (inputArea.text.trim().length > 0) {
+                                         if (inputArea.text.trim().length > 0 || root.attachedFilePath !== "") {
                                              event.accepted = true;
                                              root.sendPrompt(inputArea.text);
                                              inputArea.clear();
                                          }
                                      }
                                  }
+                             }
+                         }
+
+                         // Attach File Button
+                         Item {
+                             Layout.preferredWidth: 36
+                             Layout.preferredHeight: 36
+                             visible: !root.isTyping
+
+                             MaterialShape {
+                                 anchors.fill: parent
+                                 color: attachBtnMouse.containsMouse ? Colours.layer(Colours.tPalette.m3surfaceContainerHighest, 2) : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+                                 shape: MaterialShape.Circle
+                                 scale: attachBtnMouse.pressed ? 0.6 : attachBtnMouse.containsMouse ? 0.85 : 0.75
+
+                                 Behavior on scale { Anim { type: Anim.FastSpatial } }
+                                 Behavior on color { CAnim {} }
+
+                                 MouseArea {
+                                     id: attachBtnMouse
+                                     anchors.fill: parent
+                                     hoverEnabled: true
+                                     cursorShape: Qt.PointingHandCursor
+                                     onClicked: attachFileDialog.open()
+                                 }
+                             }
+
+                             MaterialIcon {
+                                 anchors.centerIn: parent
+                                 text: "attach_file"
+                                 color: attachBtnMouse.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                                 font: Tokens.font.icon.small
                              }
                          }
 
@@ -1875,9 +2092,9 @@ Item {
 
                              MaterialShape {
                                  anchors.fill: parent
-                                 color: root.isTyping ? Colours.palette.m3error : (inputArea.text.length > 0 ? Colours.palette.m3primary : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 2))
+                                 color: root.isTyping ? Colours.palette.m3error : ((inputArea.text.length > 0 || root.attachedFilePath !== "") ? Colours.palette.m3primary : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 2))
                                  shape: root.isTyping ? MaterialShape.Cookie4Sided : MaterialShape.Circle
-                                 scale: (inputArea.text.length === 0 && !root.isTyping) ? 1 : sendMouse.pressed ? 0.6 : sendMouse.containsMouse ? 0.8 : 0.7
+                                 scale: (inputArea.text.length === 0 && root.attachedFilePath === "" && !root.isTyping) ? 1 : sendMouse.pressed ? 0.6 : sendMouse.containsMouse ? 0.8 : 0.7
                                  rotation: 0
                                  
                                  Behavior on scale { Anim { type: Anim.FastSpatial } }
@@ -1887,7 +2104,7 @@ Item {
                                      id: sendMouse
                                      anchors.fill: parent
                                      hoverEnabled: true
-                                     cursorShape: (inputArea.text.length > 0 || root.isTyping) ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                     cursorShape: (inputArea.text.length > 0 || root.attachedFilePath !== "" || root.isTyping) ? Qt.PointingHandCursor : Qt.ArrowCursor
                                      onClicked: {
                                          if (root.isTyping) {
                                              if (root.currentRequest) {
@@ -1899,7 +2116,7 @@ Item {
                                              typingTimer.stop();
                                              chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
                                              saveHistory();
-                                         } else if (inputArea.text.length > 0) {
+                                         } else if (inputArea.text.trim().length > 0 || root.attachedFilePath !== "") {
                                              root.sendPrompt(inputArea.text);
                                              inputArea.clear();
                                          }
@@ -1910,9 +2127,9 @@ Item {
                              MaterialIcon {
                                  anchors.centerIn: parent
                                  text: root.isTyping ? "stop" : "arrow_upward"
-                                 color: root.isTyping ? Colours.palette.m3onError : (inputArea.text.length > 0 ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant)
+                                 color: root.isTyping ? Colours.palette.m3onError : ((inputArea.text.length > 0 || root.attachedFilePath !== "") ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant)
                                  font: Tokens.font.icon.small
-                                 opacity: (inputArea.text.length > 0 || root.isTyping) ? 1.0 : 0.4
+                                 opacity: (inputArea.text.length > 0 || root.attachedFilePath !== "" || root.isTyping) ? 1.0 : 0.4
                                  Behavior on opacity { Anim { type: Anim.DefaultEffects } }
                                  Behavior on color { CAnim {} }
                              }
