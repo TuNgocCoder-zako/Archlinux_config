@@ -154,6 +154,14 @@ def get_gpu_pci_status():
     except Exception:
         return "unknown"
 
+def is_dgpu_in_use():
+    """Check if any process is actively using NVIDIA GPU character devices."""
+    try:
+        res = subprocess.run(["fuser", "/dev/nvidia0"], capture_output=True, text=True, timeout=1)
+        return bool(res.stdout.strip())
+    except Exception:
+        return False
+
 def get_gpu_status():
     """Returns (gpu_temp_c, gpu_util_pct, gpu_used_mem_mb). Fast, zero subprocess, never wakes sleeping GPU."""
     global _last_nvml_idle_time
@@ -164,10 +172,11 @@ def get_gpu_status():
             shutdown_nvml()
         return 0.0, 0, 0
 
-    # Cooldown: nếu GPU rảnh và vừa shutdown NVML, dành tối thiểu 15s im lặng tuyệt đối
-    # để Linux PCI driver đếm ngược autosuspend_delay đưa GPU về D3cold (0.0W).
-    now = time.time()
-    if now - _last_nvml_idle_time < 15.0:
+    # Nếu không có ứng dụng nào (Game, Ollama, CUDA) đang mở /dev/nvidia0,
+    # tuyệt đối không khởi tạo NVML để GPU đếm ngược autosuspend rơi vào D3cold (0.0W).
+    if not is_dgpu_in_use():
+        if _nvml_handle:
+            shutdown_nvml()
         return 0.0, 0, 0
 
     if not _init_nvml() or not _nvml_handle:
@@ -191,10 +200,10 @@ def get_gpu_status():
         else:
             gpu_used_mem_mb = 0
 
-        # Nếu GPU rảnh và không có VRAM model lớn, ngắt NVML ngay và bắt đầu cooldown 15s để GPU ngủ D3cold
+        # Nếu GPU rảnh và không có VRAM model lớn, ngắt NVML ngay
         if gpu_util == 0 and gpu_used_mem_mb < 300:
             shutdown_nvml()
-            _last_nvml_idle_time = now
+            _last_nvml_idle_time = time.time()
 
         return gpu_temp, gpu_util, gpu_used_mem_mb
     except Exception:
@@ -232,10 +241,6 @@ def set_asus_profile(profile):
     try:
         subprocess.run(["asusctl", "profile", "set", profile], capture_output=True, timeout=3)
         print(f"[AutoPower] ASUS profile → {profile}", flush=True)
-        # asusd tự động kéo powerprofilesctl theo profile (Performance -> EPP: performance làm CPU kẹt 4.1GHz).
-        # Khi cắm sạc, ta luôn giữ CPU ở balanced để idle hạ về 800MHz ăn 1.5W, tránh ám nhiệt nhưng vẫn giữ quạt nền 2400-3000 RPM.
-        if is_ac_online():
-            subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=3)
     except Exception as e:
         print(f"[AutoPower] Error setting ASUS profile: {e}", file=sys.stderr, flush=True)
 
@@ -369,13 +374,25 @@ def set_keyboard_backlight(level: str):
     except Exception as e:
         print(f"[AutoPower] Keyboard backlight error: {e}", file=sys.stderr, flush=True)
 
-def set_battery_charge_limit(limit: int = 80):
-    """Enforce ASUS battery charge limit (default 80% to preserve battery health)."""
+def sync_battery_charge_limit():
+    """Ensure battery limit in sysfs matches the user-configured asusd.ron limit."""
     try:
-        subprocess.run(["asusctl", "battery", "limit", str(limit)], capture_output=True, timeout=3)
-        print(f"[AutoPower] Battery charge limit enforced → {limit}%", flush=True)
+        target_limit = None
+        if os.path.exists("/etc/asusd/asusd.ron"):
+            with open("/etc/asusd/asusd.ron", "r") as f:
+                content = f.read()
+            m = re.search(r'charge_control_end_threshold:\s*(\d+)', content)
+            if m:
+                target_limit = int(m.group(1))
+
+        if target_limit is not None and os.path.exists("/sys/class/power_supply/BAT1/charge_control_end_threshold"):
+            with open("/sys/class/power_supply/BAT1/charge_control_end_threshold", "r") as f:
+                current_limit = int(f.read().strip())
+            if current_limit != target_limit:
+                subprocess.run(["asusctl", "battery", "limit", str(target_limit)], capture_output=True, timeout=3)
+                print(f"[AutoPower] Restored user battery charge limit → {target_limit}%", flush=True)
     except Exception as e:
-        print(f"[AutoPower] Battery limit error: {e}", file=sys.stderr, flush=True)
+        pass
 
 def configure_caelestia(ac_online: bool, force_reload: bool = False):
     """
@@ -717,7 +734,6 @@ def on_power_state_change(ac_online):
     clean_quickshell_ramdisk()
     manage_background_tasks(ac_online)
     configure_typing_effects(ac_online)
-    set_battery_charge_limit(80)
 
     if not ac_online:
         # ════════════════════════════════
@@ -737,14 +753,7 @@ def on_power_state_change(ac_online):
         # 3. Caelestia: Chế độ tiết kiệm cực đoan chống sụt áp pin chai (tắt Taskbar, Dashboard, Hình nền, Cava)
         configure_caelestia(False, force_reload=True)
 
-        # 4. CPU profile: balanced (EPP: balance_performance, mượt mà 0ms không lag phím)
-        try:
-            subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=3)
-            print("[AutoPower] CPU → balanced (EPP: balance_performance)", flush=True)
-        except Exception:
-            pass
-
-        # Clamp Intel CPU Turbo Boost on battery (ghim xung 2.7 GHz, chặn đứng giật điện 45W gây sụt áp pin chai)
+        # 4. Clamp Intel CPU Turbo Boost on battery (ghim xung 2.7 GHz, chặn đứng giật điện 45W gây sụt áp pin chai)
         try:
             with open("/sys/devices/system/cpu/intel_pstate/no_turbo", "w") as f:
                 f.write("1\n")
@@ -797,14 +806,7 @@ def on_power_state_change(ac_online):
         # 3. Caelestia: Bật đầy đủ Dashboard, Taskbar, Hình nền & Cava khi cắm sạc
         configure_caelestia(True, force_reload=True)
 
-        # 4. Balanced CPU profile on AC (Intel Speed Shift tự động bung 4.5 GHz trong 1ms khi có tải, idle 800MHz ăn 2W mát rượi chống ám nhiệt)
-        try:
-            subprocess.run(["powerprofilesctl", "set", "balanced"], capture_output=True, timeout=3)
-            print("[AutoPower] CPU → balanced (chống ám nhiệt, 1ms burst 4.5GHz)", flush=True)
-        except Exception:
-            pass
-
-        # Khôi phục Intel Turbo Boost trên AC (cho phép bung 4.5 GHz khi cần)
+        # 4. Khôi phục Intel Turbo Boost trên AC (cho phép bung 4.5 GHz khi cần)
         try:
             with open("/sys/devices/system/cpu/intel_pstate/no_turbo", "w") as f:
                 f.write("0\n")
@@ -812,8 +814,8 @@ def on_power_state_change(ac_online):
         except Exception:
             pass
 
-        # 5. ASUS profile: Balanced trên AC (CPU idle 800MHz ăn 1.5W mát rượi, không bị khóa xung 4.1GHz)
-        set_asus_profile("Balanced")
+        # 5. ASUS profile: Performance trên AC (Duy trì quạt nền ~2.400 - 3.000 RPM hút khí mát qua khe phím WASD chống ám nhiệt)
+        set_asus_profile("Performance")
 
         # 6. Khôi phục đèn bàn phím RGB
         set_keyboard_backlight("med")
@@ -852,7 +854,6 @@ def main():
     print("[AutoPower] Starting ASUS TUF Power Manager v3.5 (Instant AI GPU & Active Anti-Heat Airflow)...", flush=True)
     clean_stale_singleton_locks()
     clean_quickshell_ramdisk()
-    set_battery_charge_limit(80)
     set_bluetooth(True)
 
     last_ac               = None
@@ -873,6 +874,9 @@ def main():
             if loop_tick >= 30:
                 loop_tick = 0
                 clean_quickshell_ramdisk()
+
+            if loop_tick % 5 == 0:
+                sync_battery_charge_limit()
 
             ac = is_ac_online()
 
@@ -924,59 +928,31 @@ def main():
                 else:
                     gpu_temp, gpu_util, gpu_mem = last_gpu_temp, last_gpu_util, last_gpu_mem
 
-                # ĐIỀU TỐC THÔNG MINH TRÊN AC:
-                # Mặc định duy trì Balanced (CPU idle 800MHz ăn 1.5W mát rượi, EPP balance_performance).
-                # Chỉ kích hoạt Performance khi máy bắt đầu ấm (CPU >= 70°C hoặc VRM >= 64°C hoặc GPU tải > 20%)
-                # để tăng quạt lên 3500+ RPM giải nhiệt tức thì, sau đó tự hạ về Balanced.
-                is_high_load = (
-                    (cpu_temp >= 70.0) or
-                    (vrm_temp >= 64.0) or
-                    (gpu_temp >= 65.0) or
-                    (gpu_util > 20)
-                )
-
-                is_cool_load = (
-                    (cpu_temp < 60.0) and
-                    (vrm_temp < 56.0) and
-                    (gpu_temp < 55.0) and
-                    (gpu_util <= 5)
-                )
-
-                if is_high_load:
-                    high_load_ticks += 1
-                    cool_ticks = 0
-                    if high_load_ticks >= 3:
-                        if cur != "Performance":
-                            set_asus_profile("Performance")
-                            print(f"[AutoPower] 🔥 Tải cao / Nhiệt tăng (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C, GPU util: {gpu_util}%) → Performance (Turbo Airflow)", flush=True)
-                elif is_cool_load:
-                    cool_ticks += 1
-                    high_load_ticks = 0
-                    if cool_ticks >= 4:
-                        if cur != "Balanced":
-                            set_asus_profile("Balanced")
-                            print(f"[AutoPower] 🌬️ Máy đã nguội (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Balanced (CPU 800MHz mát rượi)", flush=True)
-                else:
-                    high_load_ticks = 0
-                    cool_ticks = 0
+                # Trên AC: Luôn duy trì ASUS Profile ở Performance để quạt luôn giữ mức nền ~2.400 - 3.000 RPM.
+                # Luồng gió này tạo áp suất âm hút khí mát liên tục qua các khe phím WASD,
+                # loại bỏ triệt để hiện tượng nhiệt lượng tích tụ truyền ngầm vào khung sườn máy (ám nhiệt).
+                # (CPU vẫn chạy EPP: balance_performance do asusd quản lý nên khi idle hạ xung về 800MHz ăn 1.5W).
+                if cur != "Performance":
+                    set_asus_profile("Performance")
+                    print(f"[AutoPower] 🌬️ AC Mode: Duy trì Performance profile (quạt nền ~2.400-3.000 RPM chống ám nhiệt)", flush=True)
 
             else:
                 # Battery Mode: Tiết kiệm pin tối đa
                 # Không poll NVML để GPU rơi vào D3cold (0.0W)
-                if cpu_temp >= 75.0 or vrm_temp >= 62.0:
+                if cpu_temp >= 75.0 or vrm_temp >= 65.0:
                     battery_high_ticks += 1
                     battery_cool_ticks = 0
                     if battery_high_ticks >= 3:
                         if cur != "Performance":
                             set_asus_profile("Performance")
-                            print(f"[AutoPower] ⚠️ Pin nhiệt cao liên tục (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Cứu nguy Performance", flush=True)
-                elif cpu_temp <= 55.0 and vrm_temp <= 50.0:
+                            print(f"[AutoPower] 🔥 Pin tải cao (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Tăng quạt Performance", flush=True)
+                elif cpu_temp < 60.0 and vrm_temp < 55.0:
                     battery_cool_ticks += 1
                     battery_high_ticks = 0
-                    if battery_cool_ticks >= 10:
+                    if battery_cool_ticks >= 4:
                         if cur != "Quiet":
                             set_asus_profile("Quiet")
-                            print(f"[AutoPower] ❄️ Pin máy mát (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Quiet (0 RPM)", flush=True)
+                            print(f"[AutoPower] 🤫 Pin đã nguội (CPU: {cpu_temp:.1f}°C, VRM: {vrm_temp:.1f}°C) → Quiet (Quạt 0 RPM tiết kiệm điện)", flush=True)
                 else:
                     battery_high_ticks = 0
                     battery_cool_ticks = 0

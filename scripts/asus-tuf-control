@@ -36,6 +36,11 @@ def get_gpu_temp():
             with open(ac_path, "r") as f:
                 if f.read().strip() == "0":
                     return None
+        # Kiểm tra xem có tiến trình nào đang dùng GPU không trước khi chạy nvidia-smi
+        # Tránh query liên tục 2s/lần làm GPU không thể ngủ sâu D3cold (0.0W)
+        pids = subprocess.run(["fuser", "/dev/nvidia0"], capture_output=True, text=True, timeout=1).stdout.strip()
+        if not pids:
+            return None
         res = subprocess.run(["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=1)
         return float(res.stdout.strip())
     except:
@@ -181,7 +186,7 @@ class AsusTufWindow(Adw.ApplicationWindow):
         self.switch_auto.connect("state-set", self.on_auto_switch_toggled)
 
         row_auto = Adw.ActionRow(title="Tự động chuyển chế độ theo nhiệt độ")
-        row_auto.set_subtitle("Bung xõa quạt Turbo/Performance (> 50°C) và giảm về Balanced khi CPU ≤ 50°C")
+        row_auto.set_subtitle("Tự động duy trì quạt nền chống ám nhiệt trên AC và tiết kiệm pin tối đa khi dùng pin")
         row_auto.add_suffix(self.switch_auto)
         auto_group.add(row_auto)
 
@@ -279,10 +284,18 @@ class AsusTufWindow(Adw.ApplicationWindow):
 
     def on_change_profile(self, prof):
         set_active_profile(prof)
+        try:
+            import json, time
+            with open("/tmp/asus-fan-override.json", "w") as f:
+                json.dump({"profile": prof, "timestamp": int(time.time())}, f)
+        except Exception:
+            pass
         self.refresh_profile_buttons(prof)
 
     def set_bat_limit(self, limit):
         subprocess.run(["asusctl", "battery", "limit", str(limit)], capture_output=True)
+        # Đồng bộ qua DBus để asusd lưu vĩnh viễn vào asusd.ron
+        subprocess.run(["busctl", "set-property", "xyz.ljones.Asusd", "/xyz/ljones", "xyz.ljones.Platform", "ChargeControlEndThreshold", "y", str(limit)], capture_output=True)
         self.refresh_bat_buttons(limit)
         subprocess.run(["notify-send", "-a", "ASUS Battery", f"Đã đặt giới hạn sạc pin ở {limit}%"])
 
@@ -336,7 +349,7 @@ class AsusTufWindow(Adw.ApplicationWindow):
 
         self.lbl_temp.set_text(f"{temp:.1f} °C")
         if gpu_temp is None:
-            self.lbl_gpu_temp.set_text("D3cold (0W)")
+            self.lbl_gpu_temp.set_text("D3cold (0.0W)")
         else:
             self.lbl_gpu_temp.set_text(f"{gpu_temp:.0f} °C")
         self.lbl_cpu_fan.set_text(f"{cpu_rpm} RPM")

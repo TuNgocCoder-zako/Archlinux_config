@@ -26,15 +26,10 @@ is_ac_online() {
 WIFI_IFACE=$(iw dev 2>/dev/null | awk '$1=="Interface"{print $2}' | head -n 1)
 [ -z "$WIFI_IFACE" ] && WIFI_IFACE="wlp45s0"
 
-# ─── GIỚI HẠN SẠC PIN MẶC ĐỊNH 80% (BẢO VỆ TUỔI THỌ PIN ASUS) ───
-for bat in /sys/class/power_supply/BAT*/charge_control_end_threshold; do
-    [ -f "$bat" ] && echo 80 > "$bat" 2>/dev/null || true
-done
-
 if is_ac_online; then
     # ─── ĐANG CẮM SẠC (AC POWER: BALANCED PERFORMANCE, CHỐNG ÁM NHIỆT KHUNG PHÍM) ───
     echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || true
-    powerprofilesctl set balanced >/dev/null 2>&1 || true
+    asusctl profile set Performance >/dev/null 2>&1 || true
     for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
         [ -f "$epp" ] && echo "balance_performance" > "$epp" 2>/dev/null || true
     done
@@ -70,8 +65,7 @@ else
     # ─── ĐANG DÙNG PIN (BATTERY: ENERGY SAVING & SMOOTH 60HZ) ───
     # 1. CPU sang balanced, khóa Turbo Boost (no_turbo=1) để ghim xung 2.7GHz chống sụt áp pin chai
     echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null || true
-    powerprofilesctl set balanced >/dev/null 2>&1 || true
-    sleep 0.1
+    asusctl profile set Quiet >/dev/null 2>&1 || true
     for epp in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do
         [ -f "$epp" ] && echo "balance_performance" > "$epp" 2>/dev/null || true
     done
