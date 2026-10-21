@@ -221,6 +221,7 @@ Item {
 
                     AiAssistant {
                         id: aiAssistant
+                        screenState: root.screenState
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         width: parent.width

@@ -27,6 +27,7 @@ Item {
     property string currentChatId: ""
     property var currentRequest: null
     property bool isStreaming: false
+    property var screenState: null
     
 
     Timer {
@@ -1203,6 +1204,36 @@ Item {
                      text: "travel_explore"
                      font: Tokens.font.icon.small
                      color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
+                 }
+             }
+
+             // Close Button (Đóng Sidebar)
+             StyledRect {
+                 id: closeBtn
+                 Layout.preferredWidth: 32
+                 Layout.preferredHeight: 32
+                 Layout.alignment: Qt.AlignVCenter
+                 radius: Tokens.rounding.full
+                 color: Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+
+                 Behavior on color { CAnim {} }
+
+                 StateLayer {
+                     anchors.fill: parent
+                     radius: parent.radius
+                     cursorShape: Qt.PointingHandCursor
+                     onClicked: {
+                         if (root.screenState) {
+                             root.screenState.sidebar = false;
+                         }
+                     }
+                 }
+
+                 MaterialIcon {
+                     anchors.centerIn: parent
+                     text: "close"
+                     font: Tokens.font.icon.small
+                     color: Colours.palette.m3onSurfaceVariant
                  }
              }
          }

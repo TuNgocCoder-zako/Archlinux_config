@@ -1,9 +1,9 @@
 {
     "ai": {
-        "defaultOllamaModel": "llama3",
+        "defaultOllamaModel": "gemma3:4b",
         "enableCelestialMode": true,
         "enableOllama": true,
-        "ollamaHistoryJson": "[{\"id\":\"chat_1792501803862\",\"title\":\"New Chat\",\"messages\":[{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'phi3' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'gemma' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'mistral' not found\",\"isFinished\":true,\"thoughtText\":\"\"}]}]"
+        "ollamaHistoryJson": "[{\"id\":\"chat_1792501803862\",\"title\":\"Screen Analysis Now\",\"messages\":[{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'phi3' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'gemma' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'mistral' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Xin chào.\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Chào bạn! Có gì tôi có thể giúp bạn không?\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"/home/tu/Documents/Kiem thu phan mem. Xem qua tài liệu Software Testing - Stage.pdf1 đi.\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"```tool_code\\nread_webpage(url=\\\"https://example.com/software-testing-stage.pdf1\\\")\\n```\",\"isFinished\":true,\"thoughtText\":\"\"}]}]"
     },
     "appearance": {
         "islands": false,
