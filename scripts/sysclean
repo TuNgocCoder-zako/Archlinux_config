@@ -1,0 +1,613 @@
+#!/usr/bin/env python3
+"""
+sysclean 2.0 - Trình dọn dẹp hệ thống & tệp dư thừa toàn diện cho Arch Linux / CachyOS.
+Hỗ trợ quét 3 cấp độ:
+  - [An toàn]: Thùng rác, Web cache, Thumbnail, GPU Shader cache, file log tạm.
+  - [Tùy chọn]: Spotify cache, HuggingFace AI models, Playwright, JetBrains IDE, NPM/Pip/Cargo.
+  - [Hệ thống]: Pacman cache (paccache), Gói mồ côi (orphans), Systemd Journal, Coredump, Docker.
+
+TUYỆT ĐỐI KHÔNG xóa mã nguồn dự án, dữ liệu cá nhân hay file cấu hình quan trọng.
+"""
+
+import os
+import sys
+import shutil
+import glob
+import subprocess
+import argparse
+import time
+
+# Mã màu ANSI
+RESET   = "\033[0m"
+BOLD    = "\033[1m"
+DIM     = "\033[2m"
+GREEN   = "\033[32m"
+YELLOW  = "\033[33m"
+CYAN    = "\033[36m"
+RED     = "\033[31m"
+MAGENTA = "\033[35m"
+BLUE    = "\033[34m"
+
+VERSION = "2.0.0"
+
+def format_size(bytes_size):
+    """Định dạng byte sang B, KB, MB, GB dễ đọc."""
+    if bytes_size <= 0:
+        return "0 B"
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
+        if bytes_size < 1024.0:
+            return f"{bytes_size:.1f} {unit}"
+        bytes_size /= 1024.0
+    return f"{bytes_size:.1f} PB"
+
+def get_disk_info(path="/"):
+    """Lấy thông tin dung lượng ổ đĩa gốc."""
+    try:
+        total, used, free = shutil.disk_usage(path)
+        return total, used, free
+    except Exception:
+        return 0, 0, 0
+
+def get_path_size(path):
+    """Tính dung lượng thực tế của một file hoặc thư mục."""
+    if not os.path.exists(path):
+        return 0
+    if os.path.islink(path):
+        return 0
+    if os.path.isfile(path):
+        try:
+            return os.path.getsize(path)
+        except OSError:
+            return 0
+    total = 0
+    try:
+        with os.scandir(path) as it:
+            for entry in it:
+                try:
+                    if entry.is_symlink():
+                        continue
+                    if entry.is_file():
+                        total += entry.stat().st_size
+                    elif entry.is_dir():
+                        total += get_path_size(entry.path)
+                except OSError:
+                    continue
+    except OSError:
+        pass
+    return total
+
+def clear_directory_contents(dir_path, dry_run=False):
+    """Xóa nội dung bên trong một thư mục (giữ lại thư mục gốc)."""
+    if not os.path.exists(dir_path):
+        return 0
+    freed = 0
+    try:
+        with os.scandir(dir_path) as it:
+            for entry in list(it):
+                try:
+                    size = get_path_size(entry.path)
+                    if not dry_run:
+                        if entry.is_dir() and not entry.is_symlink():
+                            shutil.rmtree(entry.path, ignore_errors=True)
+                        else:
+                            os.remove(entry.path)
+                    freed += size
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return freed
+
+class TargetCategory:
+    def __init__(self, key, name, description, paths, tier="safe"):
+        self.key = key
+        self.name = name
+        self.description = description
+        self.paths = paths
+        self.tier = tier  # "safe", "optional", "system"
+
+    def calculate_size(self):
+        total = 0
+        for p in self.paths:
+            expanded = os.path.expanduser(p)
+            for match in glob.glob(expanded):
+                total += get_path_size(match)
+        return total
+
+    def clean(self, dry_run=False):
+        freed = 0
+        for p in self.paths:
+            expanded = os.path.expanduser(p)
+            for match in glob.glob(expanded):
+                if os.path.isfile(match):
+                    try:
+                        s = os.path.getsize(match)
+                        if not dry_run:
+                            os.remove(match)
+                        freed += s
+                    except Exception:
+                        pass
+                elif os.path.isdir(match):
+                    freed += clear_directory_contents(match, dry_run=dry_run)
+        return freed
+
+def get_user_categories():
+    home = os.path.expanduser("~")
+    return [
+        # --- TIER 1: AN TOÀN (Safe) ---
+        TargetCategory(
+            "trash",
+            "Thùng rác cá nhân (User Trash)",
+            "Tệp đã xóa lưu tạm trong ~/.local/share/Trash",
+            [f"{home}/.local/share/Trash/files/*", f"{home}/.local/share/Trash/info/*"],
+            tier="safe"
+        ),
+        TargetCategory(
+            "thumbnails",
+            "Bộ nhớ đệm ảnh thu nhỏ (Thumbnails)",
+            "Ảnh preview thumbnail tự sinh lại khi duyệt tệp",
+            [f"{home}/.cache/thumbnails/*"],
+            tier="safe"
+        ),
+        TargetCategory(
+            "browser_caches",
+            "Bộ nhớ đệm trình duyệt (Web Caches)",
+            "Cache tạm HTTP của Firefox/Chrome/Brave (giữ nguyên mật khẩu, lịch sử, tab)",
+            [
+                f"{home}/.cache/mozilla/firefox/*/cache2/*",
+                f"{home}/.cache/mozilla/firefox/*/startupCache/*",
+                f"{home}/.cache/google-chrome/Default/Cache/*",
+                f"{home}/.cache/Google/Chrome/Default/Cache/*",
+                f"{home}/.cache/chromium/Default/Cache/*",
+                f"{home}/.cache/BraveSoftware/Brave-Browser/Default/Cache/*",
+            ],
+            tier="safe"
+        ),
+        TargetCategory(
+            "shader_caches",
+            "Bộ nhớ đệm đồ họa (Mesa / GPU Shaders)",
+            "Cache shader đồ họa Mesa / OpenGL / Vulkan",
+            [
+                f"{home}/.cache/mesa_shader_cache/*",
+                f"{home}/.nv/GLCache/*",
+            ],
+            tier="safe"
+        ),
+        TargetCategory(
+            "temp_logs",
+            "Tệp tạm & Nhật ký dư thừa (/tmp & app logs)",
+            "Log tạm gỡ lỗi và cache ứng dụng cũ (Caelestia logs, GStreamer...)",
+            [
+                "/tmp/mat-debug-*.log",
+                "/tmp/afc-*",
+                "/tmp/tuf-fan*",
+                f"{home}/.cache/gstreamer-1.0/*",
+                f"{home}/.cache/spotify-testwayland/*",
+                f"{home}/.cache/appstream/*",
+            ],
+            tier="safe"
+        ),
+
+        # --- TIER 2: TÙY CHỌN (Optional / Dev / Heavy) ---
+        TargetCategory(
+            "spotify",
+            "Bộ nhớ đệm Spotify (Offline Streams)",
+            "Nhạc & ảnh bìa tạm của Spotify (tải lại khi nghe trực tuyến)",
+            [f"{home}/.cache/spotify/Data/*", f"{home}/.cache/spotify/Storage/*"],
+            tier="optional"
+        ),
+        TargetCategory(
+            "huggingface",
+            "Bộ nhớ đệm HuggingFace AI Models",
+            "Các mô hình AI HuggingFace đã tải về máy",
+            [f"{home}/.cache/huggingface/hub/*"],
+            tier="optional"
+        ),
+        TargetCategory(
+            "playwright",
+            "Trình duyệt Playwright (Headless Browsers)",
+            "Bản tải về của Chromium/Firefox dùng cho Playwright automated testing",
+            [f"{home}/.cache/ms-playwright/*"],
+            tier="optional"
+        ),
+        TargetCategory(
+            "package_caches",
+            "Bộ nhớ đệm lập trình (NPM/Pip/Cargo/Composer)",
+            "Kho gói tải về lưu tạm của npm, pip, cargo, composer",
+            [
+                f"{home}/.npm/_cacache/*",
+                f"{home}/.cache/pip/*",
+                f"{home}/.cache/composer/files/*",
+                f"{home}/.cargo/registry/cache/*",
+                f"{home}/.local/share/pnpm/store/v3/tmp/*",
+            ],
+            tier="optional"
+        ),
+        TargetCategory(
+            "jetbrains",
+            "Bộ nhớ đệm JetBrains IDE",
+            "Chỉ mục index của IntelliJ/Android Studio (sẽ mất chút thời gian index lại)",
+            [f"{home}/.cache/JetBrains/*"],
+            tier="optional"
+        ),
+        TargetCategory(
+            "yay_cache",
+            "Bộ nhớ đệm biên dịch Yay (AUR Cache)",
+            "Tệp source và build package AUR trong ~/.cache/yay",
+            [f"{home}/.cache/yay/*"],
+            tier="optional"
+        ),
+        TargetCategory(
+            "cliphist",
+            "Lịch sử khay nhớ tạm (Clipboard History)",
+            "Lịch sử sao chép văn bản và ảnh chụp của cliphist",
+            [f"{home}/.cache/cliphist/db"],
+            tier="optional"
+        ),
+    ]
+
+# --- TIER 3: HỆ THỐNG (System Utilities) ---
+
+def get_system_pacman_cache_size():
+    """Lấy dung lượng cache gói cài đặt pacman."""
+    return get_path_size("/var/cache/pacman/pkg")
+
+def get_system_journal_size():
+    """Lấy dung lượng systemd journal logs."""
+    try:
+        out = subprocess.check_output(["journalctl", "--disk-usage"], stderr=subprocess.DEVNULL).decode()
+        for token in out.split():
+            if token.endswith("B") or token.endswith("M") or token.endswith("G") or token.endswith("K"):
+                return token
+    except Exception:
+        pass
+    return "0 B"
+
+def get_system_coredump_size():
+    """Lấy dung lượng crash coredumps."""
+    return get_path_size("/var/lib/systemd/coredump")
+
+def get_orphan_packages():
+    """Liệt kê các gói mồ côi (orphans)."""
+    try:
+        out = subprocess.check_output(["pacman", "-Qtdq"], stderr=subprocess.DEVNULL).decode().strip()
+        if out:
+            return out.splitlines()
+    except Exception:
+        pass
+    return []
+
+def get_docker_reclaimable():
+    """Lấy dung lượng có thể dọn của Docker nếu đang chạy."""
+    try:
+        out = subprocess.check_output(["docker", "system", "df"], stderr=subprocess.DEVNULL).decode()
+        lines = out.strip().splitlines()
+        reclaimable_tokens = []
+        for line in lines[1:]:
+            parts = line.split()
+            if len(parts) >= 5 and "%" in parts[-1]:
+                reclaimable_tokens.append(f"{parts[-2]} {parts[-1]}")
+        if reclaimable_tokens:
+            return ", ".join(reclaimable_tokens[:2])
+    except Exception:
+        pass
+    return None
+
+def clean_system_pacman(dry_run=False):
+    """Dọn kho gói pacman bằng paccache."""
+    if shutil.which("paccache") is None:
+        print(f"  {YELLOW}⚠{RESET} paccache chưa cài đặt, bỏ qua.")
+        return 0
+    if dry_run:
+        print(f"  {CYAN}ℹ [Dry-run]{RESET} Sẽ chạy: sudo paccache -rk1 && sudo paccache -ruk0")
+        return 0
+    print(f"  {CYAN}>>> Đang dọn dẹp kho gói Pacman (giữ lại 1 bản mới nhất)...{RESET}")
+    subprocess.run(["sudo", "paccache", "-rk1"])
+    subprocess.run(["sudo", "paccache", "-ruk0"])
+    return 0
+
+def clean_system_journal(dry_run=False):
+    """Dọn log systemd giữ lại 7 ngày gần nhất."""
+    if dry_run:
+        print(f"  {CYAN}ℹ [Dry-run]{RESET} Sẽ chạy: sudo journalctl --vacuum-time=7d --vacuum-size=100M")
+        return 0
+    print(f"  {CYAN}>>> Đang thu gọn log hệ thống (giữ 7 ngày / tối đa 100M)...{RESET}")
+    subprocess.run(["sudo", "journalctl", "--vacuum-time=7d", "--vacuum-size=100M"])
+    return 0
+
+def clean_system_coredump(dry_run=False):
+    """Xóa file crash dump."""
+    if dry_run:
+        print(f"  {CYAN}ℹ [Dry-run]{RESET} Sẽ xóa: /var/lib/systemd/coredump/*")
+        return 0
+    print(f"  {CYAN}>>> Đang xóa crash dump trong /var/lib/systemd/coredump/...{RESET}")
+    subprocess.run(["sudo", "rm", "-rf", "/var/lib/systemd/coredump/*"])
+    return 0
+
+def clean_system_orphans(dry_run=False):
+    """Xóa các gói mồ côi."""
+    orphans = get_orphan_packages()
+    if not orphans:
+        print(f"  {GREEN}✔{RESET} Không có gói mồ côi nào.")
+        return 0
+    print(f"  {YELLOW}ℹ Tìm thấy {len(orphans)} gói mồ côi:{RESET} {', '.join(orphans)}")
+    if dry_run:
+        print(f"  {CYAN}ℹ [Dry-run]{RESET} Sẽ gỡ bỏ: sudo pacman -Rns {' '.join(orphans)}")
+        return 0
+    print(f"  {CYAN}>>> Đang gỡ bỏ các gói mồ côi...{RESET}")
+    cmd = ["sudo", "pacman", "-Rns", "--noconfirm"] + orphans
+    subprocess.run(cmd)
+    return 0
+
+def clean_system_docker(dry_run=False):
+    """Dọn dẹp Docker container và dangling image."""
+    if dry_run:
+        print(f"  {CYAN}ℹ [Dry-run]{RESET} Sẽ chạy: docker image prune -f")
+        return 0
+    print(f"  {CYAN}>>> Đang dọn dẹp Docker dangling images...{RESET}")
+    subprocess.run(["docker", "image", "prune", "-f"])
+    return 0
+
+# --- CÁC HÀM XỬ LÝ CHÍNH ---
+
+def print_banner():
+    print(f"{BOLD}{CYAN}╔═══════════════════════════════════════════════════════════════╗{RESET}")
+    print(f"{BOLD}{CYAN}║     sysclean {VERSION} — TRÌNH DỌN DẸP HỆ THỐNG ARCH LINUX / CACHYOS     ║{RESET}")
+    print(f"{BOLD}{CYAN}╚═══════════════════════════════════════════════════════════════╝{RESET}")
+
+def scan_system():
+    print_banner()
+    categories = get_user_categories()
+    
+    total_safe = 0
+    total_opt = 0
+
+    print(f"\n{BOLD}{'MÃ':<15} {'MỤC DỌN DẸP':<35} {'CẤP ĐỘ':<14} {'DUNG LƯỢNG':<12} {'MÔ TẢ'}{RESET}")
+    print("─" * 105)
+
+    for cat in categories:
+        size = cat.calculate_size()
+        size_str = format_size(size)
+        
+        if cat.tier == "safe":
+            level_str = f"{GREEN}[An toàn]{RESET}"
+            total_safe += size
+        elif cat.tier == "optional":
+            level_str = f"{YELLOW}[Tùy chọn]{RESET}"
+            total_opt += size
+        else:
+            level_str = f"{MAGENTA}[Hệ thống]{RESET}"
+
+        color = GREEN if size > 0 and cat.tier == "safe" else (YELLOW if size > 0 else DIM)
+        print(f"{BOLD}{cat.key:<15}{RESET} {color}{cat.name:<35}{RESET} {level_str:<23} {BOLD}{size_str:<12}{RESET} {DIM}{cat.description}{RESET}")
+
+    # Phần thông tin hệ thống (System Tier)
+    print("─" * 105)
+    pacman_size = get_system_pacman_cache_size()
+    journal_str = get_system_journal_size()
+    coredump_size = get_system_coredump_size()
+    orphans = get_orphan_packages()
+    docker_rec = get_docker_reclaimable()
+
+    print(f"{BOLD}{'pacman':<15}{RESET} {MAGENTA}{'Kho gói cài đặt (Pacman Cache)':<35}{RESET} {MAGENTA}[Hệ thống]{RESET:<14} {BOLD}{format_size(pacman_size):<12}{RESET} {DIM}Cache các gói .pkg.tar.zst (/var/cache/pacman/pkg){RESET}")
+    print(f"{BOLD}{'journal':<15}{RESET} {MAGENTA}{'Nhật ký hệ thống (Systemd Journal)':<35}{RESET} {MAGENTA}[Hệ thống]{RESET:<14} {BOLD}{journal_str:<12}{RESET} {DIM}Log hoạt động hệ thống (thu gọn còn 100M){RESET}")
+    print(f"{BOLD}{'coredump':<15}{RESET} {MAGENTA}{'Bản ghi crash dump (Coredumps)':<35}{RESET} {MAGENTA}[Hệ thống]{RESET:<14} {BOLD}{format_size(coredump_size):<12}{RESET} {DIM}Bản dump bộ nhớ khi app bị crash (/var/lib/...){RESET}")
+    
+    orphan_str = f"{len(orphans)} gói" if orphans else "0 gói"
+    print(f"{BOLD}{'orphans':<15}{RESET} {MAGENTA}{'Gói phần mềm mồ côi (Orphans)':<35}{RESET} {MAGENTA}[Hệ thống]{RESET:<14} {BOLD}{orphan_str:<12}{RESET} {DIM}Gói phụ thuộc không còn ứng dụng nào dùng{RESET}")
+
+    if docker_rec:
+        print(f"{BOLD}{'docker':<15}{RESET} {MAGENTA}{'Docker Reclaimable Cache':<35}{RESET} {MAGENTA}[Hệ thống]{RESET:<14} {BOLD}{docker_rec:<12}{RESET} {DIM}Images và containers thừa của Docker{RESET}")
+
+    # Trạng thái ổ đĩa
+    _, used, free = get_disk_info("/")
+    print("\n" + "═" * 105)
+    print(f"📊 {BOLD}Ổ đĩa gốc (/):{RESET} {format_size(used)} đã dùng | {BOLD}{GREEN}{format_size(free)} còn trống{RESET}")
+    print(f"🟢 {BOLD}Dung lượng AN TOÀN có thể dọn ngay:{RESET} {GREEN}{BOLD}{format_size(total_safe)}{RESET}")
+    if total_opt > 0:
+        print(f"🟡 {BOLD}Dung lượng TÙY CHỌN (AI, Spotify, IDE...):{RESET} {YELLOW}{BOLD}{format_size(total_opt)}{RESET}")
+    print(f"🔴 {BOLD}Dung lượng HỆ THỐNG (Pacman + Log):{RESET} {MAGENTA}{BOLD}{format_size(pacman_size)} + {journal_str}{RESET}")
+    print("═" * 105)
+
+def clean_system(clean_optional=False, clean_sys=False, clean_all=False, 
+                 only_keys=None, exclude_keys=None, dry_run=False, interactive=False):
+    scan_system()
+    categories = get_user_categories()
+    cat_dict = {c.key: c for c in categories}
+    
+    to_clean_cats = []
+    run_pacman = False
+    run_journal = False
+    run_coredump = False
+    run_orphans = False
+    run_docker = False
+
+    if clean_all:
+        clean_optional = True
+        clean_sys = True
+
+    # Chế độ tương tác chọn mục (Interactive Mode)
+    if interactive:
+        print(f"\n{BOLD}{CYAN}🎯 CHẾ ĐỘ CHỌN MỤC DỌN DẸP (INTERACTIVE MODE):{RESET}")
+        print("Nhập danh sách mã cách nhau bởi dấu phẩy (vd: trash,browser,pacman)")
+        print("Hoặc gõ: 'safe' (chỉ mục an toàn), 'all' (tất cả mọi thứ), 'q' (thoát)")
+        choice = input(f"\n{BOLD}Lựa chọn của bạn [{GREEN}safe{RESET}]: ").strip().lower()
+        if not choice or choice == "safe":
+            clean_optional = False
+            clean_sys = False
+        elif choice == "all":
+            clean_optional = True
+            clean_sys = True
+        elif choice == "q":
+            print("Đã hủy thao tác.")
+            return
+        else:
+            only_keys = [k.strip() for k in choice.split(",") if k.strip()]
+
+    # Lọc danh mục cần dọn
+    if only_keys:
+        for k in only_keys:
+            if k in cat_dict:
+                to_clean_cats.append(cat_dict[k])
+            elif k in ["pacman", "pkg"]:
+                run_pacman = True
+            elif k in ["journal", "logs"]:
+                run_journal = True
+            elif k == "coredump":
+                run_coredump = True
+            elif k == "orphans":
+                run_orphans = True
+            elif k == "docker":
+                run_docker = True
+            else:
+                print(f"  {YELLOW}⚠{RESET} Mã không hợp lệ: '{k}'")
+    else:
+        # Lựa chọn mặc định theo cờ
+        for c in categories:
+            if c.tier == "safe":
+                to_clean_cats.append(c)
+            elif c.tier == "optional" and clean_optional:
+                to_clean_cats.append(c)
+        if clean_sys:
+            run_pacman = True
+            run_journal = True
+            run_coredump = True
+            run_orphans = True
+            run_docker = True
+
+    # Loại trừ nếu có cờ --exclude
+    if exclude_keys:
+        exclude_set = set(k.strip() for k in exclude_keys)
+        to_clean_cats = [c for c in to_clean_cats if c.key not in exclude_set]
+        if "pacman" in exclude_set: run_pacman = False
+        if "journal" in exclude_set: run_journal = False
+        if "coredump" in exclude_set: run_coredump = False
+        if "orphans" in exclude_set: run_orphans = False
+        if "docker" in exclude_set: run_docker = False
+
+    if dry_run:
+        print(f"\n{BOLD}{YELLOW}🔍 ĐANG CHẠY Ở CHẾ ĐỘ THỬ NGHIỆM (DRY-RUN) — KHÔNG CÓ FILE NÀO BỊ XÓA{RESET}\n")
+    else:
+        print(f"\n{BOLD}🚀 Bắt đầu quá trình dọn dẹp...{RESET}\n")
+
+    total_freed = 0
+    _, _, free_before = get_disk_info("/")
+
+    # 1. Dọn dẹp User Categories
+    for cat in to_clean_cats:
+        size_before = cat.calculate_size()
+        if size_before > 0:
+            freed = cat.clean(dry_run=dry_run)
+            action_tag = "[Dry-run] Sẽ giải phóng" if dry_run else "Đã giải phóng"
+            print(f"  {GREEN}✔{RESET} {BOLD}{cat.name}{RESET}: {action_tag} {GREEN}{format_size(freed or size_before)}{RESET}")
+            total_freed += (freed or size_before)
+        else:
+            print(f"  {DIM}○ {cat.name}: Trống (0 B){RESET}")
+
+    # 2. Dọn dẹp System Tier (nếu được chọn)
+    if run_pacman:
+        clean_system_pacman(dry_run=dry_run)
+    if run_journal:
+        clean_system_journal(dry_run=dry_run)
+    if run_coredump:
+        clean_system_coredump(dry_run=dry_run)
+    if run_orphans:
+        clean_system_orphans(dry_run=dry_run)
+    if run_docker:
+        clean_system_docker(dry_run=dry_run)
+
+    _, _, free_after = get_disk_info("/")
+    actual_freed = max(0, free_after - free_before)
+
+    print(f"\n{BOLD}{GREEN}═══════════════════════════════════════════════════════════════{RESET}")
+    if dry_run:
+        print(f"🎉 {BOLD}{YELLOW}KẾT QUẢ MÔ PHỎNG:{RESET}")
+        print(f"Dự kiến có thể giải phóng: {BOLD}{GREEN}{format_size(total_freed)}{RESET} dung lượng.")
+    else:
+        print(f"🎉 {BOLD}{GREEN}HOÀN TẤT DỌN DẸP THÀNH CÔNG!{RESET}")
+        print(f"Dung lượng tệp người dùng đã dọn: {BOLD}{GREEN}{format_size(total_freed)}{RESET}")
+        print(f"Ổ đĩa (/): {format_size(free_before)} trống ➔ {BOLD}{GREEN}{format_size(free_after)} còn trống{RESET} (+{format_size(actual_freed)})")
+    print(f"{BOLD}{GREEN}═══════════════════════════════════════════════════════════════{RESET}\n")
+
+def show_top_usage():
+    """Hiển thị các thư mục chiếm dung lượng lớn nhất trong ~/.cache."""
+    home = os.path.expanduser("~")
+    cache_dir = os.path.join(home, ".cache")
+    print(f"\n{BOLD}{CYAN}=== TOP 15 THƯ MỤC LỚN NHẤT TRONG ~/.cache ==={RESET}\n")
+    
+    entries = []
+    if os.path.exists(cache_dir):
+        with os.scandir(cache_dir) as it:
+            for entry in it:
+                try:
+                    s = get_path_size(entry.path)
+                    entries.append((entry.name, s))
+                except Exception:
+                    pass
+    
+    entries.sort(key=lambda x: x[1], reverse=True)
+    print(f"{BOLD}{'TÊN THƯ MỤC':<40} {'DUNG LƯỢNG'}{RESET}")
+    print("─" * 60)
+    for name, size in entries[:15]:
+        color = RED if size > 1024*1024*1024 else (YELLOW if size > 100*1024*1024 else GREEN)
+        print(f"{color}{name:<40}{RESET} {BOLD}{format_size(size)}{RESET}")
+    print("─" * 60 + "\n")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="sysclean 2.0 - Công cụ dọn dẹp hệ thống an toàn & chuyên sâu cho Arch Linux"
+    )
+    parser.add_argument("action", nargs="?", default="scan", 
+                        choices=["scan", "clean", "top", "system"], 
+                        help="Hành động: 'scan' (quét xem), 'clean' (dọn dẹp), 'top' (top dung lượng ~/.cache), 'system' (dọn pacman+log)")
+    
+    # Flags dọn dẹp
+    parser.add_argument("-o", "--optional", action="store_true", 
+                        help="Dọn cả các mục tùy chọn (HuggingFace models, Spotify offline, Playwright, IDE...)")
+    parser.add_argument("-s", "--system", action="store_true", 
+                        help="Dọn dẹp hệ thống (Pacman cache, Systemd logs, Coredumps, Gói mồ côi)")
+    parser.add_argument("-a", "--all", action="store_true", 
+                        help="Dọn sạch TẤT CẢ các mục (An toàn + Tùy chọn + Hệ thống)")
+    parser.add_argument("-n", "--dry-run", action="store_true", 
+                        help="Mô phỏng quét thử, hiển thị dung lượng sẽ giải phóng mà KHÔNG xóa tệp")
+    parser.add_argument("-i", "--interactive", action="store_true", 
+                        help="Bật menu tương tác để chọn từng mục muốn dọn")
+    parser.add_argument("--only", type=str, 
+                        help="Chỉ dọn các mã chỉ định, cách nhau bởi dấu phẩy (vd: --only trash,browser,spotify)")
+    parser.add_argument("--exclude", type=str, 
+                        help="Loại trừ các mã không muốn dọn (vd: --exclude spotify,huggingface)")
+    parser.add_argument("-v", "--version", action="version", version=f"sysclean {VERSION}")
+
+    args = parser.parse_args()
+
+    only_list = [k.strip() for k in args.only.split(",")] if args.only else None
+    exclude_list = [k.strip() for k in args.exclude.split(",")] if args.exclude else None
+
+    if args.action == "top":
+        show_top_usage()
+    elif args.action == "system":
+        clean_system(clean_sys=True, dry_run=args.dry_run, interactive=args.interactive)
+    elif args.action == "clean":
+        clean_system(
+            clean_optional=args.optional,
+            clean_sys=args.system,
+            clean_all=args.all,
+            only_keys=only_list,
+            exclude_keys=exclude_list,
+            dry_run=args.dry_run,
+            interactive=args.interactive
+        )
+    else:
+        scan_system()
+        print(f"\n{BOLD}{CYAN}💡 CÁC LỆNH DỌN DẸP HỮU ÍCH:{RESET}")
+        print(f"   {GREEN}sysclean clean{RESET}              : Dọn nhanh tất cả các mục an toàn (Trash, Web cache...)")
+        print(f"   {GREEN}sysclean clean -i{RESET}           : Chọn từng mục bằng menu tương tác (Interactive)")
+        print(f"   {YELLOW}sysclean clean -o{RESET}           : Dọn cả Spotify, HuggingFace, Playwright, IDE...")
+        print(f"   {MAGENTA}sysclean clean -s{RESET}           : Dọn kho gói Pacman, log hệ thống, gói mồ côi (System)")
+        print(f"   {BOLD}sysclean clean -a{RESET}           : Dọn toàn diện A-Z (An toàn + Tùy chọn + Hệ thống)")
+        print(f"   {CYAN}sysclean clean -n{RESET}           : Mô phỏng thử (Dry-run, không xóa file)")
+        print(f"   {BLUE}sysclean top{RESET}                : Xem top 15 thư mục nặng nhất trong ~/.cache")
+        print(f"   {GREEN}sysclean clean --only trash,browser{RESET} : Chỉ dọn các mục chỉ định\n")
+
+if __name__ == "__main__":
+    main()
