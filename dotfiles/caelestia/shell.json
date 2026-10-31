@@ -225,7 +225,7 @@
         "showPerformance": true,
         "showTerminal": false,
         "showWeather": true,
-        "syncMediaShapesToBeat": true,
+        "syncMediaShapesToBeat": false,
         "useMediaShapes": false
     },
     "general": {
@@ -285,13 +285,11 @@
         "profilePicShape": 1
     },
     "nexus": {
-        "networkRescanInterval": 5000
+        "networkRescanInterval": 60000
     },
     "services": {
         "audioIncrement": 0.05,
         "bluetoothAutoReconnectDevices": [
-            "A9:2B:1B:AA:5E:E4",
-            "CE:4C:E7:73:AB:40"
         ],
         "brightnessIncrement": 0.05,
         "gpuType": "NVIDIA",
@@ -314,7 +312,7 @@
     "sidebar": {
         "dragThreshold": 50,
         "enabled": true,
-        "showNews": true
+        "showNews": false
     },
     "utilities": {
         "enabled": true,

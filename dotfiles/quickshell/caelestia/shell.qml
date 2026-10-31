@@ -38,7 +38,6 @@ ShellRoot {
 
     Background {}
     DesktopLyricsOverlay {}
-    BadAppleOverlay {}
 
     Drawers {}
     AreaPicker {}
@@ -68,11 +67,9 @@ ShellRoot {
     IdleMonitors {
         lock: lock
     }
-    BluetoothReconnect {}
 
     // Force service initialization
     property var _arpcInit: DiscordRPC
-    property var _gameModeInit: GameMode
     property var _pipInit: PipManager
     property var _systemTrayInit: SystemTray
 }
