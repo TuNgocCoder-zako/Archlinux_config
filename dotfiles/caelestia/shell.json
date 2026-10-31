@@ -1,8 +1,8 @@
 {
     "ai": {
-        "defaultOllamaModel": "qwen3-vl:4b",
-        "enableCelestialMode": false,
-        "enableOllama": false,
+        "defaultOllamaModel": "qwen3:8b",
+        "enableCelestialMode": true,
+        "enableOllama": true,
         "ollamaHistoryJson": "[]"
     },
     "appearance": {
@@ -58,7 +58,7 @@
             }
         },
         "enabled": true,
-        "videoWallpaperPaused": false,
+        "videoWallpaperPaused": true,
         "visualiser": {
             "autoHide": true,
             "blur": false,
@@ -305,22 +305,22 @@
         "weatherLocation": "Nha Trang"
     },
     "shimeji": {
-        "autoHide": false,
-        "count": 1,
+        "autoHide": true,
+        "count": 0,
         "enabled": false,
-        "path": "root:/assets/shimeji/pusheen",
+        "path": "",
         "scale": 1
     },
     "sidebar": {
         "dragThreshold": 50,
-        "enabled": false,
-        "showNews": false
+        "enabled": true,
+        "showNews": true
     },
     "utilities": {
         "enabled": true,
         "gameMode": {
             "autoEnable": false,
-            "disableHyprlandAnimations": true
+            "disableHyprlandAnimations": false
         },
         "quickToggles": [
             {
@@ -332,10 +332,6 @@
                 "id": "bluetooth"
             },
             {
-                "enabled": false,
-                "id": "quickshare"
-            },
-            {
                 "enabled": true,
                 "id": "mic"
             },
@@ -344,32 +340,12 @@
                 "id": "settings"
             },
             {
-                "enabled": false,
-                "id": "gameMode"
-            },
-            {
                 "enabled": true,
                 "id": "dnd"
             },
             {
-                "enabled": false,
-                "id": "vpn"
-            },
-            {
                 "enabled": true,
                 "id": "wallpaper"
-            },
-            {
-                "enabled": true,
-                "id": "badapple"
-            },
-            {
-                "enabled": true,
-                "id": "pauseWallpaper"
-            },
-            {
-                "enabled": true,
-                "id": "pipPause"
             }
         ],
         "toasts": {
