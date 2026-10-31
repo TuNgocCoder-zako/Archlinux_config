@@ -1,9 +1,9 @@
 {
     "ai": {
-        "defaultOllamaModel": "gemma3:4b",
-        "enableCelestialMode": true,
-        "enableOllama": true,
-        "ollamaHistoryJson": "[{\"id\":\"chat_1792501803862\",\"title\":\"Screen Analysis Now\",\"messages\":[{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'phi3' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'gemma' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Hãy xem và phân tích màn hình hiện tại của tôi\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Ollama: model 'mistral' not found\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"Xin chào.\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Chào bạn! Có gì tôi có thể giúp bạn không?\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":true,\"text\":\"/home/tu/Documents/Kiem thu phan mem. Xem qua tài liệu Software Testing - Stage.pdf1 đi.\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"```tool_code\\nread_webpage(url=\\\"https://example.com/software-testing-stage.pdf1\\\")\\n```\",\"isFinished\":true,\"thoughtText\":\"\"}]}]"
+        "defaultOllamaModel": "qwen3-vl:4b",
+        "enableCelestialMode": false,
+        "enableOllama": false,
+        "ollamaHistoryJson": "[]"
     },
     "appearance": {
         "islands": false,
@@ -16,6 +16,7 @@
     },
     "audio": {
         "sounds": {
+            "enabled": true,
             "notificationVolume": 1,
             "sfxVolume": 1
         }
@@ -25,7 +26,7 @@
             "background": {
                 "blur": false,
                 "enabled": true,
-                "opacity": 1
+                "opacity": 0.8499999999999999
             },
             "enabled": true,
             "invertColors": true,
@@ -89,6 +90,10 @@
                 {
                     "enabled": true,
                     "id": "dock"
+                },
+                {
+                    "enabled": true,
+                    "id": "tray"
                 }
             ],
             "end": [
@@ -140,6 +145,11 @@
             "tray": true
         },
         "position": "bottom",
+        "scrollActions": {
+            "brightness": false,
+            "volume": false,
+            "workspaces": true
+        },
         "showOnHover": false,
         "spotify": {
             "autoHide": false,
@@ -245,14 +255,14 @@
         "favouriteApps": [
             "thunar",
             "kitty",
-            "spotify",
             "code",
             "firefox",
             "idea",
             "io.dbeaver.DBeaver",
             "postman",
             "onlyoffice-desktopeditors",
-            "zalo"
+            "zalo",
+            "spotify-adblock"
         ],
         "hiddenApps": [
             "org.pulseaudio.pavucontrol",
@@ -283,6 +293,7 @@
             "A9:2B:1B:AA:5E:E4",
             "CE:4C:E7:73:AB:40"
         ],
+        "brightnessIncrement": 0.05,
         "gpuType": "NVIDIA",
         "lyricsBackend": "Auto",
         "pipFollowFocus": false,
@@ -302,7 +313,7 @@
     },
     "sidebar": {
         "dragThreshold": 50,
-        "enabled": true,
+        "enabled": false,
         "showNews": false
     },
     "utilities": {

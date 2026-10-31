@@ -11,7 +11,7 @@ hl.config({
 
         touchpad           = {
             natural_scroll       = true,
-            disable_while_typing = vars.touchpadDisableTyping,
+            disable_while_typing = true,
             scroll_factor        = vars.touchpadScrollFactor or 0.6,
         },
     },
@@ -24,6 +24,7 @@ hl.config({
         hotspot_padding     = 1,
         no_hardware_cursors = false,
         enable_hyprcursor   = false,
+        hide_on_key_press   = true,
     },
 })
 

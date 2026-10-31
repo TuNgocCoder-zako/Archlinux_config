@@ -4,6 +4,8 @@
 *.backup
 *.swp
 *~
+dotfiles/fish/fish_variables*
+!dotfiles/fish/fish_variables
 
 # OS
 .DS_Store
