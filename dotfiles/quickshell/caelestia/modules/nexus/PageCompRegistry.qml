@@ -62,9 +62,6 @@ QtObject {
                 Component {
                     VisualiserPage {}
                 }
-                Component {
-                    ShimejiPage {}
-                }
             }
         },
         Component {

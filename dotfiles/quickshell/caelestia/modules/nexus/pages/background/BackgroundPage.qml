@@ -29,18 +29,11 @@ PageBase {
         }
 
         NavRow {
+            last: true
             icon: "equalizer"
             text: qsTr("Background visualiser")
             subtext: root.targetConfig.background.visualiser.enabled ? qsTr("Enabled") : qsTr("Disabled")
             onClicked: root.nState.openSubPage(3)
-        }
-
-        NavRow {
-            last: true
-            icon: "pets"
-            text: qsTr("Shimeji characters")
-            subtext: root.targetConfig.shimeji.enabled ? qsTr("Enabled") : qsTr("Disabled")
-            onClicked: root.nState.openSubPage(4)
         }
     }
 }

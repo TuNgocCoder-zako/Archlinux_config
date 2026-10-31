@@ -16,7 +16,7 @@ QtObject {
         {
             label: qsTr("Background elements"),
             icon: "wallpaper",
-            description: qsTr("Clock, lyrics, visualiser, shimeji"),
+            description: qsTr("Clock, lyrics, visualiser"),
             category: "appearance"
         },
         {

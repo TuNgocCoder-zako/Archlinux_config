@@ -402,7 +402,6 @@ def configure_caelestia(ac_online: bool, force_reload: bool = False):
     - Khi DÙNG PIN (Battery): Chế độ tiết kiệm cực đoan chống sụt áp pin chai:
       Tắt hoàn toàn Taskbar & Dashboard để khi lia chuột không bị kích hoạt render gây sụt áp,
       tắt Hình nền, tắt Cava/visualiser, tạm dừng video wallpaper.
-    - Shimeji con mèo: Luôn tắt vĩnh viễn (người dùng không dùng).
     """
     try:
         if not os.path.exists(SHELL_CONFIG_PATH):
@@ -439,13 +438,7 @@ def configure_caelestia(ac_online: bool, force_reload: bool = False):
             bg["videoWallpaperPaused"] = target_video_pause
             changed = True
 
-        # 2. Shimeji con mèo: LUÔN TẮT HOÀN TOÀN (Người dùng không dùng mèo Shimeji)
-        shimeji = data.setdefault("shimeji", {})
-        if shimeji.get("enabled") is not False:
-            shimeji["enabled"] = False
-            changed = True
-
-        # 3. Taskbar (Bar / Dock): BẬT KHI CẮM SẠC, TẮT HOÀN TOÀN KHI DÙNG PIN (tránh lia chuột sụt áp)
+        # 2. Taskbar (Bar / Dock): BẬT KHI CẮM SẠC, TẮT HOÀN TOÀN KHI DÙNG PIN (tránh lia chuột sụt áp)
         bar = data.setdefault("bar", {})
         target_bar_persistent = ac_online
         if bar.get("persistent") != target_bar_persistent:

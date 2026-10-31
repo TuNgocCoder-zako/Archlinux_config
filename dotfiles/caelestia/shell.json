@@ -58,7 +58,7 @@
             }
         },
         "enabled": true,
-        "videoWallpaperPaused": true,
+        "videoWallpaperPaused": false,
         "visualiser": {
             "autoHide": true,
             "blur": false,
@@ -301,13 +301,6 @@
         "useFahrenheit": false,
         "visualiserBars": 60,
         "weatherLocation": "Nha Trang"
-    },
-    "shimeji": {
-        "autoHide": true,
-        "count": 0,
-        "enabled": false,
-        "path": "",
-        "scale": 1
     },
     "sidebar": {
         "dragThreshold": 50,

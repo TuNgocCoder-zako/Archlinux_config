@@ -146,22 +146,12 @@ PageBase {
         }
         ToggleRow {
             text: qsTr("Disable visualizer")
+            last: true
             configNode: root.targetConfig.utilities.gameMode
             propertyName: "disableVisualizer"
             checked: root.targetConfig.utilities.gameMode.disableVisualizer
             onToggled: {
                 root.targetConfig.utilities.gameMode.disableVisualizer = checked;
-                root.targetConfig.save();
-            }
-        }
-        ToggleRow {
-            text: qsTr("Disable shimeji pets")
-            last: true
-            configNode: root.targetConfig.utilities.gameMode
-            propertyName: "disableShimeji"
-            checked: root.targetConfig.utilities.gameMode.disableShimeji
-            onToggled: {
-                root.targetConfig.utilities.gameMode.disableShimeji = checked;
                 root.targetConfig.save();
             }
         }

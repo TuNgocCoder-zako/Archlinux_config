@@ -15,7 +15,6 @@ import qs.services
 import "modules"
 import "modules/drawers"
 import "modules/background"
-import "modules/shimeji"
 import "modules/areapicker"
 import "modules/lock"
 import QtQuick
@@ -45,14 +44,6 @@ ShellRoot {
         id: lock
     }
     PolkitModule {}
-
-    Variants {
-        model: Quickshell.screens.filter(s => (GlobalConfig.shimeji?.enabled ?? false) && (GlobalConfig.shimeji?.path?.length ?? 0) > 0 && !Strings.testRegexList(GlobalConfig.shimeji?.excludedScreens ?? [], s.name))
-
-        Shimeji {
-            shimejiCount: GlobalConfig.shimeji?.count ?? 1
-        }
-    }
 
     ConfigToasts {}
     Shortcuts {}
