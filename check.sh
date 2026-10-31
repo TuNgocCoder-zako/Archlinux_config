@@ -74,7 +74,6 @@ done
 echo -e "\n${CYAN}── Audio ──${NC}"
 check_pkg "PipeWire"    "pipewire"
 check_pkg "WirePlumber" "wireplumber"
-check_cmd "pavucontrol" "pavucontrol"
 check_cmd "playerctl"   "playerctl"
 
 # 4. Networking

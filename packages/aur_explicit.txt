@@ -14,6 +14,5 @@ spotify
 spotify-adblock
 ttf-ms-fonts
 visual-studio-code-bin
-weylus-community-bin
 yay-bin
 zalo-for-linux-bin

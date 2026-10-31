@@ -23,17 +23,13 @@ hl.on("hyprland.start", function()
     -- Idle daemon & wallpaper
     hl.exec_cmd("hypridle")
     hl.exec_cmd(home .. "/.local/bin/restore-wallpaper")
-
-    -- Bluetooth applet (nguồn được quản lý tự động theo sạc AC)
-    hl.exec_cmd("blueman-applet")
 end)
 
 --------------------------------------------------------------------------------
 -- 3. Custom Keybindings (ASUS TUF Gaming & User Shortcuts)
 --------------------------------------------------------------------------------
--- Bluetooth Manager
-hl.bind("SUPER + B", hl.dsp.exec_cmd("blueman-manager"))
-hl.bind("ALT + B", hl.dsp.exec_cmd("blueman-manager"))
+-- Bluetooth Toggle (bật/tắt nhanh Bluetooth)
+hl.bind("SUPER + B", hl.dsp.exec_cmd("bluetoothctl power toggle"))
 
 -- ASUS TUF Keyboard — Function Keys F1-F12 (Khớp 100% biểu tượng in trên bàn phím)
 -- F1: Mute Audio
@@ -128,8 +124,6 @@ hl.bind("SUPER + Grave", hl.dsp.global("caelestia:windowSwitcher"))
 hl.window_rule({ match = { class = "com.asus.tuf.control" }, float = true, size = "620 780", center = true })
 hl.window_rule({ match = { class = "floating-term" }, float = true, size = "1050 640", center = true })
 hl.window_rule({ match = { class = "cava-term" }, float = true, size = "900 320", center = true, opacity = "0.90 0.80 override" })
-hl.window_rule({ match = { class = "pavucontrol" }, float = true, size = "850 540", center = true })
-hl.window_rule({ match = { class = "blueman-manager" }, float = true, size = "800 520", center = true })
 hl.window_rule({ match = { class = "nm-connection-editor" }, float = true, size = "750 560", center = true })
 hl.window_rule({ match = { class = "viewnior" }, float = true, size = "1100 700", center = true })
 hl.window_rule({ match = { class = "Viewnior" }, float = true, size = "1100 700", center = true })
