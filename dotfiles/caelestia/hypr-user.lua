@@ -49,11 +49,11 @@ hl.bind("XF86Launch4", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"), {
 hl.bind("SUPER + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("ALT + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 
--- F6 (Biểu tượng Snipping Tool / Kéo cắt ảnh): Chụp vùng màn hình & Chỉnh sửa (Swappy)
-hl.bind("XF86Launch1", hl.dsp.exec_cmd(home .. "/.local/bin/screenshot edit"), { locked = true })
-hl.bind("XF86SelectiveScreenshot", hl.dsp.exec_cmd(home .. "/.local/bin/screenshot edit"), { locked = true })
-hl.bind("SUPER + F6", hl.dsp.exec_cmd(home .. "/.local/bin/screenshot edit"))
-hl.bind("ALT + F6", hl.dsp.exec_cmd(home .. "/.local/bin/screenshot edit"))
+-- F6 (Biểu tượng Snipping Tool / Kéo cắt ảnh): Chụp vùng màn hình qua Caelestia AreaPicker
+hl.bind("XF86Launch1", hl.dsp.global("caelestia:screenshot"), { locked = true })
+hl.bind("XF86SelectiveScreenshot", hl.dsp.global("caelestia:screenshot"), { locked = true })
+hl.bind("SUPER + F6", hl.dsp.global("caelestia:screenshot"))
+hl.bind("ALT + F6", hl.dsp.global("caelestia:screenshot"))
 
 -- F7 (Biểu tượng Mặt trời nhỏ): Giảm độ sáng màn hình
 hl.bind("SUPER + F7", hl.dsp.exec_cmd("brightnessctl s 5%-"))

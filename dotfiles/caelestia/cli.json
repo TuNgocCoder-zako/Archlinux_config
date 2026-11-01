@@ -4,5 +4,11 @@
   },
   "theme": {
     "postHook": "~/.local/bin/sync-thunar-theme"
+  },
+  "screenshot": {
+    "directory": "~/Pictures/Screenshots",
+    "regionAction": "edit",
+    "fullscreenAction": "save",
+    "copyOnSave": true
   }
 }

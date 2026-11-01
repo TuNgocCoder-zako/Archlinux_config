@@ -89,6 +89,11 @@ Scope {
             root.activeAsync = true;
         }
 
+        function close(): void {
+            root.closing = true;
+            root.activeAsync = false;
+        }
+
         target: "picker"
     }
 
