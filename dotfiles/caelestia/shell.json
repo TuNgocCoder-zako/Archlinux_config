@@ -282,6 +282,7 @@
         }
     },
     "lock": {
+        "enabled": true,
         "profilePicShape": 1
     },
     "nexus": {
