@@ -19,6 +19,16 @@ PageBase {
     property bool failed: false
     property bool success: false
 
+    Component.onCompleted: {
+        if (root.nState.selectedNetworkSsid && root.nState.selectedNetworkSsid.length > 0) {
+            ssidField.text = root.nState.selectedNetworkSsid;
+            hiddenToggle.checked = false;
+            Qt.callLater(() => {
+                passwordField.forceActiveFocus();
+            });
+        }
+    }
+
     function submit(): void {
         const ssid = ssidField.text.trim();
         if (ssid.length === 0) {
@@ -35,22 +45,30 @@ PageBase {
         root.failed = false;
         root.connecting = true;
 
-        Nmcli.addHiddenNetwork(ssid, root.secured ? passwordField.text : "", root.secured ? "wpa" : "none", hiddenToggle.checked, result => {
+        const onResult = result => {
             root.connecting = false;
             if (result && result.success) {
                 root.success = true;
+                root.nState.selectedNetworkSsid = "";
                 root.nState.closeSubPage();
             } else {
                 root.failed = true;
                 if (root.secured)
                     passwordField.isError = true;
                 // Clean up the half-created profile so a retry starts fresh.
-                Nmcli.forgetNetwork(ssid);
+                if (hiddenToggle.checked)
+                    Nmcli.forgetNetwork(ssid);
             }
-        });
+        };
+
+        if (hiddenToggle.checked) {
+            Nmcli.addHiddenNetwork(ssid, root.secured ? passwordField.text : "", root.secured ? "wpa" : "none", true, onResult);
+        } else {
+            Nmcli.connectToNetwork(ssid, root.secured ? passwordField.text : "", "", onResult);
+        }
     }
 
-    title: qsTr("Add network")
+    title: (root.nState.selectedNetworkSsid && root.nState.selectedNetworkSsid.length > 0) ? qsTr("Connect to %1").arg(root.nState.selectedNetworkSsid) : qsTr("Add network")
     isSubPage: true
 
     ColumnLayout {
@@ -61,11 +79,13 @@ PageBase {
 
         Connections {
             function onSubPageClosed(): void {
+                const hadPresetSsid = root.nState.selectedNetworkSsid && root.nState.selectedNetworkSsid.length > 0;
+                root.nState.selectedNetworkSsid = "";
                 if (root.success)
                     return;
 
                 const ssid = ssidField.text.trim();
-                if (ssid)
+                if (ssid && hiddenToggle.checked && !hadPresetSsid)
                     Nmcli.forgetNetwork(ssid);
             }
 

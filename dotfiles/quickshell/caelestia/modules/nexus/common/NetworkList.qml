@@ -61,7 +61,11 @@ ItemList {
 
         onClicked: {
             if (!modelData.active) {
-                NetworkConnection.handleConnect(modelData);
+                NetworkConnection.handleConnect(modelData, null, ap => {
+                    network.currentSelected = false;
+                    root.nState.selectedNetworkSsid = ap.ssid;
+                    root.nState.openSubPage(2);
+                });
                 currentSelected = true;
                 root.networkSelected(modelData);
             } else {
