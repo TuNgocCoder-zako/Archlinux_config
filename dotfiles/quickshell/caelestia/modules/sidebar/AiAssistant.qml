@@ -989,6 +989,7 @@ Item {
             "model": ollamaModel,
             "messages": messages,
             "stream": true,
+            "think": GlobalConfig.ai.enableDeepThink === true,
             "options": {
                 "num_ctx": 4096
             }
@@ -1311,6 +1312,39 @@ Item {
                              return name;
                          }
                      }
+                 }
+             }
+
+             // DeepThink Toggle Button (Tắt / Bật suy nghĩ sâu)
+             StyledRect {
+                 id: deepThinkToggleBtn
+                 Layout.preferredWidth: 32
+                 Layout.preferredHeight: 32
+                 Layout.alignment: Qt.AlignVCenter
+                 radius: Tokens.rounding.full
+                 color: GlobalConfig.ai.enableDeepThink ? Colours.palette.m3primaryContainer : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+
+                 Behavior on color { CAnim {} }
+
+                 StateLayer {
+                     anchors.fill: parent
+                     radius: parent.radius
+                     cursorShape: Qt.PointingHandCursor
+                     onClicked: {
+                         GlobalConfig.ai.enableDeepThink = !GlobalConfig.ai.enableDeepThink;
+                         Toaster.toast(
+                             GlobalConfig.ai.enableDeepThink ? qsTr("DeepThink enabled (Suy nghĩ sâu)") : qsTr("DeepThink disabled (Trả lời tức thì)"),
+                             GlobalConfig.ai.enableDeepThink ? qsTr("Mô hình sẽ suy luận chi tiết trước khi trả lời") : qsTr("Mô hình sẽ trả lời nhanh trực tiếp"),
+                             "psychology"
+                         );
+                     }
+                 }
+
+                 MaterialIcon {
+                     anchors.centerIn: parent
+                     text: "psychology"
+                     font: Tokens.font.icon.small
+                     color: GlobalConfig.ai.enableDeepThink ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
                  }
              }
 

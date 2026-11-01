@@ -2,8 +2,9 @@
     "ai": {
         "defaultOllamaModel": "qwen3:8b",
         "enableCelestialMode": true,
+        "enableDeepThink": false,
         "enableOllama": true,
-        "ollamaHistoryJson": "[]"
+        "ollamaHistoryJson": "[{\"id\":\"chat_1793522089577\",\"title\":\"Welcome\",\"messages\":[{\"isUser\":true,\"text\":\"Xin chào\",\"isFinished\":true,\"thoughtText\":\"\"},{\"isUser\":false,\"text\":\"Xin chào! Tôi là Orion, trợ lý AI desktop của bạn trên Arch Linux với Hyprland và Caelestia shell. Tôi có thể giúp bạn với các vấn đề về lập trình, bài tập, cài đặt hệ thống, hoặc hỗ trợ màn hình. Bạn cần gì hôm nay? 😊\",\"isFinished\":true,\"thoughtText\":\"Okay, the user said \\\"Xin chào\\\" which means \\\"Hello\\\" in Vietnamese. I need to respond politely. Since there's no specific request, I'll just greet them back and offer help. No tools needed here.\"}]}]"
     },
     "appearance": {
         "islands": false,
