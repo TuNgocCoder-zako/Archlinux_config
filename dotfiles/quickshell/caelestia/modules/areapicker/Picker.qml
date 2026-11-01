@@ -73,23 +73,23 @@ MouseArea {
 
     function save(): void {
         const isSearch = root.loader.searchMode;
-        const tmpfile = isSearch
-            ? Qt.resolvedUrl("/tmp/caelestia-search.png")
-            : Qt.resolvedUrl(`/tmp/caelestia-picker-${Quickshell.processId}-${Date.now()}.png`);
-        CUtils.saveItem(screencopy, tmpfile, Qt.rect(Math.ceil(rsx), Math.ceil(rsy), Math.floor(sw), Math.floor(sh)), path => {
-            const cleanPath = path.toString().replace(/^file:\/\//, "");
-            if (isSearch) {
-                Quickshell.execDetached(["touch", "/tmp/caelestia-search.done"]);
-            } else if (root.loader.editMode) {
-                Quickshell.execDetached(["caelestia", "screenshot", "--edit", "--file", cleanPath]);
-            } else if (root.loader.clipboardOnly) {
-                Quickshell.execDetached(["caelestia", "screenshot", "--copy", "--file", cleanPath]);
-            } else {
-                Quickshell.execDetached(["caelestia", "screenshot", "--save", "--file", cleanPath]);
-            }
-            Audio.playCameraClick();
-            closeAnim.start();
-        });
+        const rx = Math.round(screen.x + (sw > 10 ? rsx : 0));
+        const ry = Math.round(screen.y + (sh > 10 ? rsy : 0));
+        const rw = Math.round(sw > 10 ? sw : screen.width);
+        const rh = Math.round(sh > 10 ? sh : screen.height);
+        const geom = `${rx},${ry} ${rw}x${rh}`;
+
+        if (isSearch) {
+            Quickshell.execDetached(["sh", "-c", `grim -g "${geom}" /tmp/caelestia-search.png && touch /tmp/caelestia-search.done`]);
+        } else if (root.loader.editMode) {
+            Quickshell.execDetached(["caelestia", "screenshot", "--edit", "-r", geom]);
+        } else if (root.loader.clipboardOnly) {
+            Quickshell.execDetached(["caelestia", "screenshot", "--copy", "-r", geom]);
+        } else {
+            Quickshell.execDetached(["caelestia", "screenshot", "--save", "-r", geom]);
+        }
+        Audio.playCameraClick();
+        closeAnim.start();
     }
 
     onClientsChanged: checkClientRects(mouseX, mouseY)
@@ -134,13 +134,7 @@ MouseArea {
         if (closeAnim.running)
             return;
 
-        if (root.loader.freeze) {
-            save();
-        } else {
-            overlay.visible = border.visible = false;
-            screencopy.visible = false;
-            screencopy.active = true;
-        }
+        save();
     }
 
     onPositionChanged: event => {
