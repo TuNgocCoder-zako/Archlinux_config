@@ -184,7 +184,7 @@ Item {
 
     Process {
         id: startOllamaProc
-        command: ["sh", "-c", "ollama serve >/dev/null 2>&1 &"]
+        command: ["sh", "-c", "docker --context default restart ollama 2>/dev/null || docker --context default start ollama 2>/dev/null || ollama serve >/dev/null 2>&1 &"]
         onExited: {
             retryOllamaTimer.restart();
         }
