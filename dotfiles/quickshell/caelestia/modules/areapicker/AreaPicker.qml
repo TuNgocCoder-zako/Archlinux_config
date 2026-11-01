@@ -51,7 +51,7 @@ Scope {
 
     IpcHandler {
         function open(): void {
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = false;
             root.searchMode = false;
@@ -60,7 +60,7 @@ Scope {
         }
 
         function openEdit(): void {
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = false;
             root.searchMode = false;
@@ -78,7 +78,7 @@ Scope {
         }
 
         function openClip(): void {
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = true;
             root.searchMode = false;
@@ -97,7 +97,7 @@ Scope {
 
         function openSearch(): void {
             root.searchMode = true;
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = false;
             root.editMode = false;
@@ -118,7 +118,7 @@ Scope {
         name: "screenshot"
         description: "Open screenshot tool"
         onPressed: {
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = false;
             root.searchMode = false;
@@ -133,7 +133,7 @@ Scope {
         name: "screenshotEdit"
         description: "Open screenshot tool in edit mode"
         onPressed: {
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = false;
             root.searchMode = false;
@@ -151,6 +151,7 @@ Scope {
             root.freeze = true;
             root.closing = false;
             root.clipboardOnly = false;
+            root.searchMode = false;
             root.activeAsync = true;
         }
     }
@@ -161,9 +162,10 @@ Scope {
         name: "screenshotClip"
         description: "Open screenshot tool (clipboard)"
         onPressed: {
-            root.freeze = false;
+            root.freeze = true;
             root.closing = false;
             root.clipboardOnly = true;
+            root.searchMode = false;
             root.activeAsync = true;
         }
     }
@@ -177,6 +179,7 @@ Scope {
             root.freeze = true;
             root.closing = false;
             root.clipboardOnly = true;
+            root.searchMode = false;
             root.activeAsync = true;
         }
     }
