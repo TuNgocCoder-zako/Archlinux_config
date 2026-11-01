@@ -31,6 +31,7 @@ Item {
     property var screenState: null
     property string attachedFilePath: ""
     property string attachedFileName: ""
+    property bool enableDeepThink: false
 
     function attachFile(path) {
         if (!path) return;
@@ -148,7 +149,33 @@ Item {
     property string accumulatedToolImage: ""
 
     function handleAgentProcessResult(type, stdout, stderr, cmd) {
-        if (type === "screenshot_take") {
+        if (type.startsWith("direct_image_stream:")) {
+            var userPrompt = "";
+            try {
+                userPrompt = JSON.parse(type.substring(20));
+            } catch (e) {
+                userPrompt = "Phân tích và giải quyết nội dung trong hình ảnh này.";
+            }
+            var b64Data = stdout.trim();
+            sendPrompt(userPrompt, false, b64Data, "", false, true);
+            return;
+        } else if (type === "region_snip_capture") {
+            var lines = stdout.trim().split("\n");
+            var targetPath = lines[lines.length - 1].trim();
+            if (!targetPath || targetPath === "CANCELLED" || targetPath.startsWith("ERROR")) {
+                Toaster.toast(qsTr("Chụp vùng màn hình"), qsTr("Đã hủy chọn vùng"), "close");
+                return;
+            }
+            root.attachFile(targetPath);
+            var currentQuery = inputArea.text.trim();
+            if (currentQuery.length > 0) {
+                root.sendPrompt(currentQuery);
+                inputArea.clear();
+            } else {
+                Toaster.toast(qsTr("Đã chụp vùng màn hình"), qsTr("Nhập câu hỏi hoặc nhấn Gửi để AI phân tích"), "crop");
+            }
+            return;
+        } else if (type === "screenshot_take") {
             var convertCmd = "magick /tmp/orion_screenshot.png -resize '1024x1024>' -quality 85 /tmp/orion_screenshot.jpg && base64 /tmp/orion_screenshot.jpg";
             runAgentCommand(convertCmd, "screenshot_encode");
         } else if (type === "screenshot_encode") {
@@ -168,6 +195,12 @@ Item {
             runningToolsCount--;
             checkToolsFinished();
         }
+    }
+
+    function startRegionSnip() {
+        Toaster.toast(qsTr("Chụp vùng màn hình"), qsTr("Kéo chuột để chọn vùng cần chụp (nhấn Esc để hủy)..."), "screenshot_region");
+        var snipCmd = 'bash "' + Quickshell.shellDir + '/assets/scripts/orion_snip.sh"';
+        runAgentCommand(snipCmd, "region_snip_capture");
     }
 
     function checkToolsFinished() {
@@ -425,35 +458,18 @@ Item {
     }
 
     function generateChatTitleAsync(chatId, firstMessage) {
-        if (!firstMessage) return;
-        
-        var xhr = new XMLHttpRequest();
-        var url = (GlobalConfig.ai.ollamaUrl || "http://localhost:11434") + "/api/generate";
-        xhr.open("POST", url, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        xhr.onreadystatechange = () => {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                try {
-                    var parsed = JSON.parse(xhr.responseText);
-                    if (parsed.response) {
-                        var title = parsed.response.trim().replace(/^"|"$/g, '').replace(/\n/g, ' ');
-                        if (title.length > 40) title = title.substring(0, 40) + "...";
-                        if (title.length > 0) {
-                            updateChatTitle(chatId, title);
-                        }
-                        return;
-                    }
-                } catch (e) {}
-            }
-        };
-        
-        var safeMsg = firstMessage.substring(0, 200);
-        xhr.send(JSON.stringify({
-            model: GlobalConfig.ai.defaultOllamaModel || "llama3",
-            system: "You are a title generator. Output ONLY a 2-4 word title representing the user's message. NO quotes, NO explanation.",
-            prompt: "Message: " + safeMsg + "\nTitle:",
-            stream: false
-        }));
+        if (!firstMessage || !chatId) return;
+        var clean = firstMessage.trim().replace(/\n/g, ' ');
+        if (clean.startsWith("📎 ")) {
+            var parts = clean.split("\n");
+            clean = parts[0].substring(2).trim();
+        }
+        if (clean.length > 28) {
+            clean = clean.substring(0, 25) + "...";
+        }
+        if (clean.length > 0) {
+            updateChatTitle(chatId, clean);
+        }
     }
 
     function updateChatTitle(chatId, title) {
@@ -496,10 +512,296 @@ Item {
         saveHistory();
     }
 
-    function sendPrompt(promptText, isSystemToolResult = false, base64Image = null, toolName = "") {
+    function extractJsonToolCalls(text) {
+        if (!text) return [];
+        var results = [];
+        var depth = 0;
+        var inString = false;
+        var escape = false;
+        var startIdx = -1;
+        for (var i = 0; i < text.length; i++) {
+            var ch = text[i];
+            if (escape) { escape = false; continue; }
+            if (ch === '\\') { escape = true; continue; }
+            if (ch === '"') { inString = !inString; continue; }
+            if (!inString) {
+                if (ch === '{') {
+                    if (depth === 0) startIdx = i;
+                    depth++;
+                } else if (ch === '}') {
+                    depth--;
+                    if (depth === 0 && startIdx !== -1) {
+                        var jsonStr = text.substring(startIdx, i + 1);
+                        startIdx = -1;
+                        try {
+                            var obj = JSON.parse(jsonStr);
+                            if (obj) {
+                                var name = obj.name || obj.tool || (obj.function && obj.function.name);
+                                if (name) {
+                                    var args = obj.arguments || obj.parameters || (obj.function && (obj.function.arguments || obj.function.parameters)) || {};
+                                    if (typeof args === "string") {
+                                        try { args = JSON.parse(args); } catch (e) {}
+                                    }
+                                    results.push({ "name": name, "arguments": args });
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+            }
+        }
+        return results;
+    }
+
+    function cleanToolCallsFromText(text) {
+        if (!text) return "";
+        var res = text;
+        res = res.replace(/<tool_call>[\s\S]*?(?:<\/tool_call>|$)/gi, "");
+        res = res.replace(/<\/?tool_call>/gi, "");
+
+        var depth = 0;
+        var inString = false;
+        var escape = false;
+        var startIdx = -1;
+        var rangesToRemove = [];
+
+        for (var i = 0; i < res.length; i++) {
+            var ch = res[i];
+            if (escape) { escape = false; continue; }
+            if (ch === '\\') { escape = true; continue; }
+            if (ch === '"') { inString = !inString; continue; }
+            if (!inString) {
+                if (ch === '{') {
+                    if (depth === 0) startIdx = i;
+                    depth++;
+                } else if (ch === '}') {
+                    depth--;
+                    if (depth === 0 && startIdx !== -1) {
+                        var jsonStr = res.substring(startIdx, i + 1);
+                        try {
+                            var obj = JSON.parse(jsonStr);
+                            if (obj && (obj.name || obj.tool || obj.function)) {
+                                var end = i + 1;
+                                var after = res.substring(end);
+                                var trailingTag = after.match(/^\s*<\/tool_call>/i);
+                                if (trailingTag) {
+                                    end += trailingTag[0].length;
+                                }
+                                rangesToRemove.push({ "start": startIdx, "end": end });
+                            }
+                        } catch (e) {}
+                        startIdx = -1;
+                    }
+                }
+            }
+        }
+
+        if (depth > 0 && startIdx !== -1) {
+            var uncompleted = res.substring(startIdx);
+            if (/^\{\s*(?:"(?:name|tool|function|parameters|arguments)?|"|\n|\s|$)/i.test(uncompleted)) {
+                rangesToRemove.push({ "start": startIdx, "end": res.length });
+            }
+        }
+
+        for (var r = rangesToRemove.length - 1; r >= 0; r--) {
+            res = res.substring(0, rangesToRemove[r].start) + res.substring(rangesToRemove[r].end);
+        }
+
+        return res.trim();
+    }
+
+    function formatMathAndLogic(raw) {
+        if (!raw) return "";
+
+        // Separate code blocks (fenced ``` and inline `) so code is preserved verbatim
+        var parts = raw.split(/(```[\s\S]*?```|`[^`\n]+`)/g);
+
+        function replaceBalanced(text, prefix, transform) {
+            var idx = text.indexOf(prefix);
+            var count = 0;
+            while (idx !== -1 && count++ < 50) {
+                var start = idx + prefix.length;
+                while (start < text.length && /\s/.test(text[start])) start++;
+                if (text[start] !== "{") {
+                    idx = text.indexOf(prefix, start + 1);
+                    continue;
+                }
+                var depth = 1;
+                var end = start + 1;
+                while (end < text.length && depth > 0) {
+                    if (text[end] === "{") depth++;
+                    else if (text[end] === "}") depth--;
+                    end++;
+                }
+                if (depth === 0) {
+                    var inner = text.substring(start + 1, end - 1);
+                    var repl = transform(inner);
+                    text = text.substring(0, idx) + repl + text.substring(end);
+                    idx = text.indexOf(prefix, idx + repl.length);
+                } else {
+                    break;
+                }
+            }
+            return text;
+        }
+
+        function replaceFrac(text) {
+            var prefix = "\\frac";
+            var idx = text.indexOf(prefix);
+            var count = 0;
+            while (idx !== -1 && count++ < 50) {
+                var p1 = idx + prefix.length;
+                while (p1 < text.length && /\s/.test(text[p1])) p1++;
+                if (text[p1] !== "{") {
+                    idx = text.indexOf(prefix, p1 + 1);
+                    continue;
+                }
+                var depth = 1, end1 = p1 + 1;
+                while (end1 < text.length && depth > 0) {
+                    if (text[end1] === "{") depth++;
+                    else if (text[end1] === "}") depth--;
+                    end1++;
+                }
+                if (depth !== 0) break;
+                var num = text.substring(p1 + 1, end1 - 1);
+
+                var p2 = end1;
+                while (p2 < text.length && /\s/.test(text[p2])) p2++;
+                if (text[p2] !== "{") {
+                    idx = text.indexOf(prefix, p2 + 1);
+                    continue;
+                }
+                depth = 1;
+                var end2 = p2 + 1;
+                while (end2 < text.length && depth > 0) {
+                    if (text[end2] === "{") depth++;
+                    else if (text[end2] === "}") depth--;
+                    end2++;
+                }
+                if (depth !== 0) break;
+                var den = text.substring(p2 + 1, end2 - 1);
+
+                var repl = "(" + num.trim() + " / " + den.trim() + ")";
+                text = text.substring(0, idx) + repl + text.substring(end2);
+                idx = text.indexOf(prefix, idx + repl.length);
+            }
+            return text;
+        }
+
+        var supMap = {"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","+":"⁺","-":"⁻","=":"⁼","(":"⁽",")":"⁾","n":"ⁿ","i":"ⁱ"};
+        var subMap = {"0":"₀","1":"₁","2":"₂","3":"₃","4":"₄","5":"₅","6":"₆","7":"₇","8":"₈","9":"₉","+":"₊","-":"₋","=":"₌","(":"₍",")":"₎","a":"ₐ","e":"ₑ","h":"ₕ","i":"ᵢ","j":"ⱼ","k":"ₖ","l":"ₗ","m":"ₘ","n":"ₙ","o":"ₒ","p":"ₚ","r":"ᵣ","s":"ₛ","t":"ₜ","u":"ᵤ","v":"ᵥ","x":"ₓ"};
+
+        for (var i = 0; i < parts.length; i++) {
+            if (i % 2 === 0) {
+                var text = parts[i];
+
+                text = replaceBalanced(text, "\\boxed", function(inner) { return "**【 " + inner.trim() + " 】**"; });
+                text = replaceFrac(text);
+                text = replaceBalanced(text, "\\sqrt", function(inner) { return "√(" + inner.trim() + ")"; });
+                text = replaceBalanced(text, "\\text", function(inner) { return inner; });
+                text = replaceBalanced(text, "\\mathrm", function(inner) { return inner; });
+                text = replaceBalanced(text, "\\mathbf", function(inner) { return inner; });
+                text = replaceBalanced(text, "\\mathit", function(inner) { return inner; });
+
+                // Propositional Logic
+                text = text.replace(/\\(?:iff|Leftrightarrow|longleftrightarrow)\b/g, "⇔");
+                text = text.replace(/\\(?:leftrightarrow)\b/g, "↔");
+                text = text.replace(/\\(?:implies|Rightarrow)\b/g, "⇒");
+                text = text.replace(/\\(?:to|rightarrow|longrightarrow)\b/g, "→");
+                text = text.replace(/\\(?:leftarrow|longleftarrow)\b/g, "←");
+                text = text.replace(/\\equiv\b/g, "≡");
+                text = text.replace(/\\(?:land|wedge)\b/g, "∧");
+                text = text.replace(/\\(?:lor|vee)\b/g, "∨");
+                text = text.replace(/\\(?:neg|sim)\b/g, "¬");
+                text = text.replace(/\\(?:oplus|veebar)\b/g, "⊕");
+                text = text.replace(/\\top\b/g, "⊤");
+                text = text.replace(/\\bot\b/g, "⊥");
+                text = text.replace(/\\forall\b/g, "∀");
+                text = text.replace(/\\exists\b/g, "∃");
+                text = text.replace(/\\nexists\b/g, "∄");
+                text = text.replace(/\\therefore\b/g, "∴");
+                text = text.replace(/\\because\b/g, "∵");
+                text = text.replace(/\\vdash\b/g, "⊢");
+                text = text.replace(/\\models\b/g, "⊨");
+
+                // Set Theory & Relations
+                text = text.replace(/\\in\b/g, "∈");
+                text = text.replace(/\\notin\b/g, "∉");
+                text = text.replace(/\\subseteq\b/g, "⊆");
+                text = text.replace(/\\subset\b/g, "⊂");
+                text = text.replace(/\\supseteq\b/g, "⊇");
+                text = text.replace(/\\supset\b/g, "⊃");
+                text = text.replace(/\\cup\b/g, "∪");
+                text = text.replace(/\\cap\b/g, "∩");
+                text = text.replace(/\\(?:emptyset|varnothing)\b/g, "∅");
+                text = text.replace(/\\setminus\b/g, "\\");
+
+                // Comparisons & Math
+                text = text.replace(/\\(?:le|leq|leqslant)\b/g, "≤");
+                text = text.replace(/\\(?:ge|geq|geqslant)\b/g, "≥");
+                text = text.replace(/\\(?:ne|neq)\b/g, "≠");
+                text = text.replace(/\\approx\b/g, "≈");
+                text = text.replace(/\\cong\b/g, "≅");
+                text = text.replace(/\\times\b/g, "×");
+                text = text.replace(/\\div\b/g, "÷");
+                text = text.replace(/\\pm\b/g, "±");
+                text = text.replace(/\\mp\b/g, "∓");
+                text = text.replace(/\\cdot\b/g, "·");
+                text = text.replace(/\\circ\b/g, "∘");
+                text = text.replace(/\\infty\b/g, "∞");
+                text = text.replace(/\\sum\b/g, "∑");
+                text = text.replace(/\\prod\b/g, "∏");
+                text = text.replace(/\\int\b/g, "∫");
+                text = text.replace(/\\partial\b/g, "∂");
+
+                // Greek Letters
+                text = text.replace(/\\alpha\b/g, "α");
+                text = text.replace(/\\beta\b/g, "β");
+                text = text.replace(/\\gamma\b/g, "γ");
+                text = text.replace(/\\Gamma\b/g, "Γ");
+                text = text.replace(/\\delta\b/g, "δ");
+                text = text.replace(/\\Delta\b/g, "Δ");
+                text = text.replace(/\\epsilon\b/g, "ε");
+                text = text.replace(/\\theta\b/g, "θ");
+                text = text.replace(/\\lambda\b/g, "λ");
+                text = text.replace(/\\mu\b/g, "μ");
+                text = text.replace(/\\pi\b/g, "π");
+                text = text.replace(/\\sigma\b/g, "σ");
+                text = text.replace(/\\Sigma\b/g, "Σ");
+                text = text.replace(/\\omega\b/g, "ω");
+                text = text.replace(/\\Omega\b/g, "Ω");
+
+                // Superscripts and Subscripts
+                text = text.replace(/\^\{([0-9\+\-n]+)\}/g, function(_, m) {
+                    return m.split("").map(function(c) { return supMap[c] || c; }).join("");
+                });
+                text = text.replace(/\^([0-9ni])/g, function(_, m) {
+                    return supMap[m] || ("^" + m);
+                });
+                text = text.replace(/_\{([0-9a-z\+\-]+)\}/g, function(_, m) {
+                    return m.split("").map(function(c) { return subMap[c] || c; }).join("");
+                });
+                text = text.replace(/_([0-9aijknm])/g, function(_, m) {
+                    return subMap[m] || ("_" + m);
+                });
+
+                // Strip outer $$ ... $$ and $ ... $
+                text = text.replace(/\$\$([\s\S]*?)\$\$/g, "\n$1\n");
+                text = text.replace(/\$([^\$\n]+?)\$/g, function(match, inner) {
+                    if (/^\s*\d+(?:\.\d+)?\s*$/.test(inner)) return match;
+                    return inner.trim();
+                });
+
+                parts[i] = text;
+            }
+        }
+        return parts.join("");
+    }
+
+    function sendPrompt(promptText, isSystemToolResult = false, base64Image = null, toolName = "", isRegion = false, skipHistoryAppend = false) {
         if (!promptText.trim() && !base64Image && root.attachedFilePath === "") return;
 
-        if (!isSystemToolResult) {
+        if (!isSystemToolResult && !skipHistoryAppend) {
             var userText = promptText || "";
             var hasAttachedFile = root.attachedFilePath !== "";
             var targetFile = root.attachedFilePath;
@@ -535,12 +837,20 @@ Item {
                 isTyping = true;
                 isThinking = true;
                 inAgentLoop = true;
-                currentActionText = "Reading document...";
                 currentThoughtText = "";
                 accumulatedToolResults = "";
                 accumulatedToolImage = "";
                 runningToolsCount = 1;
 
+                var isImage = /\.(?:png|jpe?g|webp|bmp)$/i.test(targetFile);
+                if (isImage) {
+                    currentActionText = "Reading image...";
+                    var encodeCmd = 'magick "' + targetFile + '" -resize "1600x1600>" -quality 90 /tmp/orion_direct_opt.jpg 2>/dev/null && base64 -w 0 /tmp/orion_direct_opt.jpg || base64 -w 0 "' + targetFile + '"';
+                    runAgentCommand(encodeCmd, "direct_image_stream:" + JSON.stringify(promptText || "Phân tích và giải quyết nội dung trong hình ảnh này."));
+                    return;
+                }
+
+                currentActionText = "Reading document...";
                 var fileCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_file.py" --path ' + JSON.stringify(targetFile);
                 runAgentCommand(fileCmd, "exec_read_file");
                 return;
@@ -585,12 +895,15 @@ Item {
                 return;
             }
 
+            var regionPhrases = /(?:chụp\s*vùng|chọn\s*vùng|khoanh\s*vùng|vùng\s*màn|cắt\s*vùng|snip|crop|khu\s*vực|bài\s*ở\s*đây)/i;
+            var isRegionReq = enableTools && (isRegion || regionPhrases.test(lower));
+
             var screenWords = /(?:màn\s*hình|man\s*hinh|màn\s*này|desktop|screen|screenshot)/i;
             var actionWords = /(?:xem|đọc|dọc|nhìn|coi|chụp|kiểm\s*tra|quét|check|look|read|view|inspect|capture|thấy|giúp|bài)/i;
             var directPhrases = /(?:xem\s*màn|đọc\s*màn|dọc\s*màn|nhìn\s*màn|chụp\s*màn|coi\s*màn|màn\s*hình\s*đi|màn\s*hình\s*có|trên\s*màn|xem\s*ảnh|đọc\s*ảnh)/i;
             var isScreenReq = enableTools && (directPhrases.test(lower) || (screenWords.test(lower) && actionWords.test(lower)));
 
-            if (isScreenReq) {
+            if (isRegionReq || isScreenReq) {
                 for (var i = chatHistory.count - 1; i >= 0; i--) {
                     var m = chatHistory.get(i);
                     if (!m.isUser && !m.isFinished && m.text === "") {
@@ -608,25 +921,29 @@ Item {
                 isTyping = true;
                 isThinking = true;
                 inAgentLoop = true;
-                currentActionText = "Analyzing screen...";
+                currentActionText = isRegionReq ? "Selecting region (Kéo chuột chọn vùng)..." : "Analyzing screen...";
                 currentThoughtText = "";
                 accumulatedToolResults = "";
                 accumulatedToolImage = "";
                 runningToolsCount = 1;
 
-                var screenCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_screen.py" --query ' + JSON.stringify(promptText);
+                var screenCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_screen.py"';
+                if (isRegionReq) screenCmd += ' --region';
+                screenCmd += ' --query ' + JSON.stringify(promptText);
                 runAgentCommand(screenCmd, "exec_take_screenshot");
                 return;
             }
         }
 
         isTyping = true;
-        isThinking = true;
+        isThinking = root.enableDeepThink;
         inAgentLoop = true;
         currentThoughtText = "";
         isThoughtExpanded = false;
         
-        if (isSystemToolResult) {
+        if (base64Image) {
+            currentActionText = "Analyzing image...";
+        } else if (isSystemToolResult) {
             if (toolName === "web_search" || toolName === "read_webpage" || toolName === "read_file") {
                 currentActionText = "Reading document / results...";
             } else if (toolName === "take_screenshot") {
@@ -634,10 +951,10 @@ Item {
             } else if (toolName === "get_weather") {
                 currentActionText = "Analyzing weather...";
             } else {
-                currentActionText = "Thinking...";
+                currentActionText = root.enableDeepThink ? "Thinking..." : "Replying...";
             }
         } else {
-            currentActionText = "Thinking...";
+            currentActionText = root.enableDeepThink ? "Thinking..." : "Replying...";
         }
         var xhr = new XMLHttpRequest();
         root.currentRequest = xhr;
@@ -719,14 +1036,21 @@ Item {
                                     }
                                 }
                                 
+                                var cleanDisplay = displayContent;
+                                if (GlobalConfig.ai.enableCelestialMode) {
+                                    cleanDisplay = cleanToolCallsFromText(displayContent);
+                                }
+                                
                                 root.currentThoughtText = displayThought.trim();
                                 
-                                if (displayContent.trim() !== "") {
+                                if (cleanDisplay.trim() !== "") {
                                     if (isThinking) isThinking = false;
+                                } else if (rawAccumulatedContentText.indexOf("\"name\":") !== -1 || rawAccumulatedContentText.indexOf("<tool_call>") !== -1 || rawAccumulatedContentText.trim().startsWith("{")) {
+                                    currentActionText = "Calling tools...";
                                 }
                                 
                                 chatHistory.setProperty(chatHistory.count - 1, "thoughtText", displayThought.trim());
-                                chatHistory.setProperty(chatHistory.count - 1, "text", displayContent.trim());
+                                chatHistory.setProperty(chatHistory.count - 1, "text", cleanDisplay.trim());
                                 listView.positionViewAtEnd();
                                 
                                 if (parsed.message.tool_calls) {
@@ -744,7 +1068,7 @@ Item {
                         var enableTools = GlobalConfig.ai.enableCelestialMode;
                         var finalResponseText = chatHistory.get(chatHistory.count - 1).text;
                         var refusalRegex = /(?:không thể xem|không có khả năng xem|không xem được|không thể nhìn|không có mắt|cannot see (?:your )?screen|unable to (?:view|see) (?:your )?screen)/i;
-                        var screenKeywords = /(?:màn\s*hình|man\s*hinh|screen|screenshot|desktop|màn)/i;
+                        var screenKeywords = /(?:màn\s*hình|man\s*hinh|screen|screenshot|desktop)/i;
                         
                         var lastUserMsg = "";
                         for (var u = chatHistory.count - 2; u >= 0; u--) {
@@ -754,7 +1078,7 @@ Item {
                             }
                         }
                         
-                        if (enableTools && !isSystemToolResult && refusalRegex.test(finalResponseText) && (screenKeywords.test(lastUserMsg) || screenKeywords.test(finalResponseText))) {
+                        if (enableTools && !isSystemToolResult && refusalRegex.test(finalResponseText) && screenKeywords.test(lastUserMsg)) {
                             console.log("Refusal intercepted! Triggering screen analysis fallback...");
                             chatHistory.setProperty(chatHistory.count - 1, "text", "");
                             currentActionText = "Analyzing screen...";
@@ -769,39 +1093,33 @@ Item {
                             return;
                         }
 
-                        chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
-                        saveHistory();
-                        
-                        var enableTools = GlobalConfig.ai.enableCelestialMode;
                         if (enableTools && (!finalToolCalls || finalToolCalls.length === 0)) {
-                            var trimmedContent = rawAccumulatedContentText ? rawAccumulatedContentText.trim() : "";
-                            var jsonCandidate = trimmedContent;
-                            var jsonBlockMatch = trimmedContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-                            if (jsonBlockMatch) {
-                                jsonCandidate = jsonBlockMatch[1].trim();
-                            }
-                            if (jsonCandidate.startsWith("{") && jsonCandidate.endsWith("}")) {
-                                try {
-                                    var parsedCandidate = JSON.parse(jsonCandidate);
-                                    if (parsedCandidate && parsedCandidate.name) {
-                                        var candArgs = parsedCandidate.arguments || parsedCandidate.parameters || {};
-                                        if (typeof candArgs === "string") {
-                                            try { candArgs = JSON.parse(candArgs); } catch (e) {}
+                            var extracted = extractJsonToolCalls(rawAccumulatedContentText);
+                            if (extracted && extracted.length > 0) {
+                                finalToolCalls = [];
+                                for (var k = 0; k < extracted.length; k++) {
+                                    var candArgs = extracted[k].arguments || {};
+                                    finalToolCalls.push({
+                                        "function": {
+                                            "name": extracted[k].name,
+                                            "arguments": candArgs
                                         }
-                                        finalToolCalls = [{
-                                            "function": {
-                                                "name": parsedCandidate.name,
-                                                "arguments": candArgs
-                                            }
-                                        }];
-                                    }
-                                } catch (e) {}
+                                    });
+                                }
                             }
                         }
 
                         if (finalToolCalls && finalToolCalls.length > 0) {
                             if (enableTools) {
-                                chatHistory.setProperty(chatHistory.count - 1, "text", "");
+                                var remainingClean = cleanToolCallsFromText(rawAccumulatedContentText);
+                                if (remainingClean !== "") {
+                                    chatHistory.setProperty(chatHistory.count - 1, "text", remainingClean);
+                                    chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
+                                } else {
+                                    chatHistory.setProperty(chatHistory.count - 1, "text", "");
+                                }
+                                saveHistory();
+
                                 currentActionText = "Using tools...";
                                 accumulatedToolResults = "";
                                 accumulatedToolImage = "";
@@ -820,27 +1138,31 @@ Item {
                                     }
                                     
                                     if (toolName === "take_screenshot") {
-                                        currentActionText = "Analyzing screen...";
                                         var query = args.query || args.focus || "";
                                         if (typeof query === "object" && query !== null) {
                                             query = query.value || query.description || query.query || "";
                                         }
                                         query = String(query || "").trim();
+                                        var isReg = args.region === true;
+                                        currentActionText = isReg ? "Selecting region (Kéo chuột chọn vùng)..." : "Analyzing screen...";
                                         var screenCmd = 'PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_screen.py"';
+                                        if (isReg) {
+                                            screenCmd += ' --region';
+                                        }
                                         if (query) {
-                                            screenCmd += ' --query "' + query.replace(new RegExp("\"", "g"), '\\"') + '"';
+                                            screenCmd += ' --query ' + JSON.stringify(query);
                                         }
                                         runAgentCommand(screenCmd, "exec_" + toolName);
                                     } else if (toolName === "web_search") {
                                         currentActionText = "Searching the web...";
-                                        var query = args.query;
+                                        var query = args.query || args.keyword || args.q || args.search || "";
                                         if (typeof query === "object" && query !== null) {
                                             query = query.value || query.description || query.query || "";
                                         }
                                         if (!query && typeof args === "string") query = args;
                                         query = String(query || "").trim();
                                         var page = args.page || 1;
-                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode search --query "' + query.replace(new RegExp("\"", "g"), '\\"') + '" --page ' + page, "exec_" + toolName);
+                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode search --query ' + JSON.stringify(query) + ' --page ' + page, "exec_" + toolName);
                                     } else if (toolName === "read_webpage") {
                                         currentActionText = "Reading webpage...";
                                         var url = args.url;
@@ -848,7 +1170,7 @@ Item {
                                             url = url.value || url.description || url.url || "";
                                         }
                                         url = String(url || "").trim();
-                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode read --url "' + url.replace(new RegExp("\"", "g"), '\\"') + '"', "exec_" + toolName);
+                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_search.py" --mode read --url ' + JSON.stringify(url), "exec_" + toolName);
                                     } else if (toolName === "read_file") {
                                         currentActionText = "Reading file...";
                                         var path = args.path || args.file_path || args.filepath || args.file || "";
@@ -856,7 +1178,7 @@ Item {
                                             path = path.value || path.description || path.path || "";
                                         }
                                         path = String(path || "").trim();
-                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_file.py" --path "' + path.replace(new RegExp("\"", "g"), '\\"') + '"', "exec_" + toolName);
+                                        runAgentCommand('PYTHONIOENCODING=utf8 python3 "' + Quickshell.shellDir + '/assets/scripts/orion_file.py" --path ' + JSON.stringify(path), "exec_" + toolName);
                                     } else if (toolName === "open_app") {
                                         currentActionText = "Opening app...";
                                         var app = args.app_name || args.app;
@@ -952,7 +1274,13 @@ Item {
         var enableTools = GlobalConfig.ai.enableCelestialMode;
         var sysPrompt = "You are Orion, an intelligent and helpful AI desktop assistant integrated into Arch Linux with Hyprland and Caelestia shell. You assist the user with programming, homework, desktop questions, and screen inspection. Answer accurately and directly in Vietnamese if asked in Vietnamese.";
         if (enableTools) {
-            sysPrompt += "\nCRITICAL INSTRUCTIONS:\n1. You HAVE FULL ACCESS to the user's screen through integrated tools. When the user asks you to look at, read, view, or check their screen (e.g. 'xem màn hình', 'đọc màn hình', 'dọc màn hình', 'giúp giải bài trên màn hình'), ALWAYS call the take_screenshot tool immediately.\n2. NEVER say 'Tôi không thể xem màn hình', 'Tôi không có khả năng xem', 'I cannot view your screen', or ask the user to provide an image if you haven't called take_screenshot first.\n3. You can read local files and documents on the user's system (including PDFs, text files, code, documents) using the read_file tool when the user mentions a file path or asks about a file.\n4. You can browse the web using web_search or read_webpage.\n5. When using tools, do not explain that you are calling a tool, execute it directly and provide the solution to the user smoothly.";
+            sysPrompt += "\n\nCRITICAL INSTRUCTIONS FOR TOOL USAGE:" +
+                "\n1. WHEN NOT TO USE TOOLS (VERY IMPORTANT): For general knowledge questions, definitions, formulas (such as 'Công thức định lý Pytago', 'Công thức tính tích phân', 'Diện tích hình thang'), math/logic explanations, coding assistance, or casual conversation, DO NOT CALL ANY TOOLS! Answer directly using your own internal knowledge." +
+                "\n2. SCREEN ACCESS: ONLY call the take_screenshot tool when the user EXPLICITLY asks to view, check, look at, or solve a problem on their screen (e.g. 'xem màn hình', 'đọc màn hình', 'giúp giải bài trên màn hình', 'chụp vùng này'). NEVER say 'Tôi không thể xem màn hình' when asked about the screen — call take_screenshot instead." +
+                "\n3. LOCAL FILES: ONLY call read_file when the user mentions a specific file path, document, or asks to read/inspect a file." +
+                "\n4. WEB SEARCH: ONLY call web_search or read_webpage when the user asks for real-time information, current events, recent news, or queries outside your training data." +
+                "\n5. DESKTOP SYSTEM CONTROL: ONLY call caelestia_command when the user wants to adjust Caelestia system settings (like wallpaper, color scheme, reload shell). NEVER use caelestia_command for search." +
+                "\n6. Be concise, direct, and never execute tools unless the user's prompt actually requires them.";
         }
         
         messages.push({
@@ -967,17 +1295,28 @@ Item {
         for (var i = startIdx; i < endIdx; i++) {
             var msg = chatHistory.get(i);
             if (msg && msg.text && msg.text.trim().length > 0) {
-                messages.push({
-                    "role": msg.isUser ? "user" : "assistant",
-                    "content": msg.text
-                });
+                if (msg.text === "Generation cancelled" || msg.text.indexOf("Ollama request failed") !== -1) {
+                    continue;
+                }
+                var cleanHistoryText = msg.isUser ? msg.text : cleanToolCallsFromText(msg.text);
+                if (cleanHistoryText.length > 0) {
+                    var msgObj = {
+                        "role": msg.isUser ? "user" : "assistant",
+                        "content": cleanHistoryText
+                    };
+                    if (msg.isUser && i === (endIdx - 1) && base64Image) {
+                        msgObj["images"] = [base64Image];
+                    }
+                    messages.push(msgObj);
+                }
             }
         }
 
         if (isSystemToolResult) {
+            var toolPrompt = "Dưới đây là kết quả tra cứu/thực thi công cụ cho yêu cầu của người dùng:\n\n" + promptText + "\n\nHãy tổng hợp các thông tin trên và trả lời người dùng một cách rõ ràng, đầy đủ và tự nhiên bằng tiếng Việt. KHÔNG xuất mã JSON hay cú pháp công cụ.";
             var toolMsg = {
                 "role": "user",
-                "content": promptText
+                "content": toolPrompt
             };
             if (base64Image) {
                 toolMsg["images"] = [base64Image];
@@ -985,33 +1324,59 @@ Item {
             messages.push(toolMsg);
         }
 
+        var isVision = (base64Image !== null && base64Image !== "");
+        var targetModel = ollamaModel;
+        if (isVision) {
+            var lowerM = targetModel.toLowerCase();
+            if (lowerM.indexOf("vl") === -1 && lowerM.indexOf("vision") === -1 && lowerM.indexOf("moondream") === -1 && lowerM.indexOf("llava") === -1) {
+                var foundVision = (root.ollamaModelsList || []).find(n => {
+                    var ln = n.toLowerCase();
+                    return ln.indexOf("vl") !== -1 || ln.indexOf("vision") !== -1 || ln.indexOf("moondream") !== -1 || ln.indexOf("llava") !== -1;
+                });
+                if (foundVision) targetModel = foundVision;
+            }
+        }
+
+        var isThinkingModel = targetModel.indexOf("thinking") !== -1 || targetModel.indexOf("qwen3") !== -1 || targetModel.indexOf("r1") !== -1;
+        if (!root.enableDeepThink && isThinkingModel) {
+            messages.push({
+                "role": "assistant",
+                "content": "<think>\n</think>"
+            });
+        }
+
         var requestBody = {
-            "model": ollamaModel,
+            "model": targetModel,
             "messages": messages,
             "stream": true,
-            "think": GlobalConfig.ai.enableDeepThink === true,
+            "think": root.enableDeepThink === true,
             "options": {
-                "num_ctx": 4096
+                "num_ctx": 2048,
+                "num_gpu": 24
             }
         };
         
-        var isKnownNonTool = ollamaModel.indexOf("moondream") !== -1 || ollamaModel.indexOf("llava") !== -1 || ollamaModel.indexOf("bakllava") !== -1;
-        var caps = root.ollamaModelsCaps[ollamaModel] || [];
+        var isKnownNonTool = targetModel.indexOf("moondream") !== -1 || targetModel.indexOf("llava") !== -1 || targetModel.indexOf("bakllava") !== -1;
+        var caps = root.ollamaModelsCaps[targetModel] || [];
         var modelSupportsTools = !isKnownNonTool && ((caps.length === 0) || (caps.indexOf("tools") !== -1));
         
-        if (enableTools && modelSupportsTools) {
+        if (enableTools && modelSupportsTools && !isSystemToolResult && !isVision) {
             requestBody["tools"] = [
                 {
                     "type": "function",
                     "function": {
                         "name": "take_screenshot",
-                        "description": "Takes a screenshot of the user's active desktop and performs visual analysis. Provide a query if you want to inspect something specific.",
+                        "description": "Takes a screenshot of the user's active desktop or selected region and performs visual analysis. ONLY call this when the user specifically asks you to inspect, view, check, or solve something currently displayed on their screen.",
                         "parameters": {
                             "type": "object",
                             "properties": {
                                 "query": {
                                     "type": "string",
                                     "description": "Optional specific question or detail to look for on the screen"
+                                },
+                                "region": {
+                                    "type": "boolean",
+                                    "description": "Set to true if user asked to snip, crop, select, or khoanh vùng a rectangular area on screen"
                                 }
                             }
                         }
@@ -1107,11 +1472,15 @@ Item {
                     "type": "function",
                     "function": {
                         "name": "caelestia_command",
-                        "description": "Execute a caelestia CLI command to manage the system. Valid subcommands: shell, toggle, scheme, search, screenshot, record, clipboard, emoji, wallpaper, resizer, install, update.",
+                        "description": "Execute a Caelestia desktop shell management command (e.g. change color scheme, reload shell, set wallpaper). DO NOT use this for searching the web; use web_search instead.",
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "subcommand": { "type": "string", "description": "The subcommand to run (e.g., scheme, wallpaper, toggle, record)" },
+                                "subcommand": {
+                                    "type": "string",
+                                    "description": "The subcommand to run",
+                                    "enum": ["shell", "toggle", "scheme", "wallpaper", "record", "clipboard", "emoji", "resizer"]
+                                },
                                 "args": { "type": "string", "description": "Additional arguments to pass to the subcommand" }
                             },
                             "required": ["subcommand"]
@@ -1154,15 +1523,52 @@ Item {
             }
         }
 
-         // Mode Switcher Row (Chat / History)
+         // Close Button (Đóng Sidebar - Cố định ở góc trên bên phải không bao giờ bị khuất)
+         StyledRect {
+             id: closeBtn
+             anchors.top: parent.top
+             anchors.right: parent.right
+             width: 32
+             height: 32
+             z: 12
+             radius: Tokens.rounding.full
+             color: closeStateLayer.containsMouse ? Colours.palette.m3errorContainer : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+             border.color: closeStateLayer.containsMouse ? Colours.palette.m3error : Colours.palette.m3outlineVariant
+             border.width: 1
+
+             Behavior on color { CAnim {} }
+             Behavior on border.color { CAnim {} }
+
+             StateLayer {
+                 id: closeStateLayer
+                 anchors.fill: parent
+                 radius: parent.radius
+                 cursorShape: Qt.PointingHandCursor
+                 onClicked: {
+                     if (root.screenState) {
+                         root.screenState.sidebar = false;
+                     }
+                 }
+             }
+
+             MaterialIcon {
+                 anchors.centerIn: parent
+                 text: "close"
+                 font: Tokens.font.icon.small
+                 color: closeStateLayer.containsMouse ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSurfaceVariant
+             }
+         }
+
+         // Mode Switcher Row (Chat / History / Model Selector / Toggles)
          RowLayout {
              id: modeSwitcherRow
              anchors.top: parent.top
              anchors.left: parent.left
-             anchors.right: parent.right
-             anchors.rightMargin: 0
+             anchors.right: closeBtn.left
+             anchors.rightMargin: Tokens.spacing.small
+             height: 32
              z: 10
-             spacing: Tokens.spacing.small
+             spacing: Tokens.spacing.extraSmall
 
              StyledRect {
                  id: modeSwitcherBg
@@ -1209,7 +1615,7 @@ Item {
                      Item {
                          id: chatTab
                          height: parent.height
-                         width: !isHistoryTab ? chatContent.implicitWidth + Tokens.padding.medium * 2 : 36
+                         width: !isHistoryTab ? chatContent.implicitWidth + Tokens.padding.small * 2 + 8 : 32
 
                          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
@@ -1241,7 +1647,7 @@ Item {
                      Item {
                          id: historyTab
                          height: parent.height
-                         width: isHistoryTab ? historyContent.implicitWidth + Tokens.padding.medium * 2 : 36
+                         width: isHistoryTab ? historyContent.implicitWidth + Tokens.padding.small * 2 + 8 : 32
 
                          Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
@@ -1278,8 +1684,8 @@ Item {
              SplitButton {
                  id: modelSelector
                  type: SplitButton.Tonal
-                 verticalPadding: 4
-                 horizontalPadding: Tokens.padding.small
+                 verticalPadding: 2
+                 horizontalPadding: Tokens.padding.extraSmall
                  Layout.preferredWidth: implicitWidth
 
                  active: menuItems.find(m => m.modelData === GlobalConfig.ai.defaultOllamaModel) ?? menuItems[0] ?? null
@@ -1306,8 +1712,8 @@ Item {
                          activeText: {
                              var name = modelData;
                              if (name.endsWith(":latest")) name = name.slice(0, -7);
-                             if (name.length > 14) {
-                                 return name.slice(0, 12) + "…";
+                             if (name.length > 8) {
+                                 return name.slice(0, 7) + "…";
                              }
                              return name;
                          }
@@ -1315,26 +1721,29 @@ Item {
                  }
              }
 
-             // DeepThink Toggle Button (Tắt / Bật suy nghĩ sâu)
+             // DeepThink Toggle Button (Tắt / Bật suy nghĩ sâu: Sáng khi BẬT, Tối khi TẮT)
              StyledRect {
                  id: deepThinkToggleBtn
                  Layout.preferredWidth: 32
                  Layout.preferredHeight: 32
                  Layout.alignment: Qt.AlignVCenter
                  radius: Tokens.rounding.full
-                 color: GlobalConfig.ai.enableDeepThink ? Colours.palette.m3primaryContainer : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+                 color: root.enableDeepThink ? Colours.palette.m3primary : Colours.layer(Colours.tPalette.m3surfaceContainerLow, 1)
+                 border.color: root.enableDeepThink ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                 border.width: root.enableDeepThink ? 1.5 : 1
 
                  Behavior on color { CAnim {} }
+                 Behavior on border.color { CAnim {} }
 
                  StateLayer {
                      anchors.fill: parent
                      radius: parent.radius
                      cursorShape: Qt.PointingHandCursor
                      onClicked: {
-                         GlobalConfig.ai.enableDeepThink = !GlobalConfig.ai.enableDeepThink;
+                         root.enableDeepThink = !root.enableDeepThink;
                          Toaster.toast(
-                             GlobalConfig.ai.enableDeepThink ? qsTr("DeepThink enabled (Suy nghĩ sâu)") : qsTr("DeepThink disabled (Trả lời tức thì)"),
-                             GlobalConfig.ai.enableDeepThink ? qsTr("Mô hình sẽ suy luận chi tiết trước khi trả lời") : qsTr("Mô hình sẽ trả lời nhanh trực tiếp"),
+                             root.enableDeepThink ? qsTr("DeepThink BẬT (Suy nghĩ sâu)") : qsTr("DeepThink TẮT (Trả lời nhanh)"),
+                             root.enableDeepThink ? qsTr("Mô hình sẽ suy luận chi tiết trước khi trả lời") : qsTr("Mô hình sẽ trả lời tức thì sau 1-2 giây"),
                              "psychology"
                          );
                      }
@@ -1344,20 +1753,26 @@ Item {
                      anchors.centerIn: parent
                      text: "psychology"
                      font: Tokens.font.icon.small
-                     color: GlobalConfig.ai.enableDeepThink ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
+                     color: root.enableDeepThink ? Colours.palette.m3onPrimary : Colours.palette.m3outline
+                     opacity: root.enableDeepThink ? 1.0 : 0.6
+                     Behavior on color { CAnim {} }
+                     Behavior on opacity { CAnim {} }
                  }
              }
 
-             // Web Search & Tools (Celestial Mode) Toggle Button
+             // Web Search & Tools (Celestial Mode) Toggle Button (Sáng khi BẬT, Tối khi TẮT)
              StyledRect {
                  id: toolsToggleBtn
                  Layout.preferredWidth: 32
                  Layout.preferredHeight: 32
                  Layout.alignment: Qt.AlignVCenter
                  radius: Tokens.rounding.full
-                 color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3primaryContainer : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+                 color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3primary : Colours.layer(Colours.tPalette.m3surfaceContainerLow, 1)
+                 border.color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                 border.width: GlobalConfig.ai.enableCelestialMode ? 1.5 : 1
                  
                  Behavior on color { CAnim {} }
+                 Behavior on border.color { CAnim {} }
 
                  StateLayer {
                      anchors.fill: parent
@@ -1366,7 +1781,7 @@ Item {
                      onClicked: {
                          GlobalConfig.ai.enableCelestialMode = !GlobalConfig.ai.enableCelestialMode;
                          Toaster.toast(
-                             GlobalConfig.ai.enableCelestialMode ? qsTr("Celestial Mode enabled (Web & Tools)") : qsTr("Celestial Mode disabled"),
+                             GlobalConfig.ai.enableCelestialMode ? qsTr("Celestial Mode BẬT (Web & Tools)") : qsTr("Celestial Mode TẮT"),
                              "",
                              "travel_explore"
                          );
@@ -1377,37 +1792,10 @@ Item {
                      anchors.centerIn: parent
                      text: "travel_explore"
                      font: Tokens.font.icon.small
-                     color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
-                 }
-             }
-
-             // Close Button (Đóng Sidebar)
-             StyledRect {
-                 id: closeBtn
-                 Layout.preferredWidth: 32
-                 Layout.preferredHeight: 32
-                 Layout.alignment: Qt.AlignVCenter
-                 radius: Tokens.rounding.full
-                 color: Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
-
-                 Behavior on color { CAnim {} }
-
-                 StateLayer {
-                     anchors.fill: parent
-                     radius: parent.radius
-                     cursorShape: Qt.PointingHandCursor
-                     onClicked: {
-                         if (root.screenState) {
-                             root.screenState.sidebar = false;
-                         }
-                     }
-                 }
-
-                 MaterialIcon {
-                     anchors.centerIn: parent
-                     text: "close"
-                     font: Tokens.font.icon.small
-                     color: Colours.palette.m3onSurfaceVariant
+                     color: GlobalConfig.ai.enableCelestialMode ? Colours.palette.m3onPrimary : Colours.palette.m3outline
+                     opacity: GlobalConfig.ai.enableCelestialMode ? 1.0 : 0.6
+                     Behavior on color { CAnim {} }
+                     Behavior on opacity { CAnim {} }
                  }
              }
          }
@@ -1544,9 +1932,11 @@ Item {
 
                      footer: Item {
                          width: listView.width
-                         height: isThinking ? bubbleBg.height + Tokens.spacing.medium : 0
+                         readonly property bool isPendingFirstToken: isStreaming && (chatHistory.count === 0 || !(chatHistory.get(chatHistory.count - 1)?.text || "").trim())
+                         readonly property bool shouldShowFooter: isThinking || isPendingFirstToken
+                         height: shouldShowFooter ? bubbleBg.height + Tokens.spacing.medium : 0
                          visible: opacity > 0
-                         opacity: isThinking ? 1 : 0
+                         opacity: shouldShowFooter ? 1 : 0
                          
                          Behavior on height { Anim { type: Anim.DefaultSpatial } }
                          Behavior on opacity { Anim { type: Anim.DefaultSpatial } }
@@ -1673,7 +2063,7 @@ Item {
                                          id: footerThoughtContent
                                          width: Math.min(implicitWidth, listView.width * 0.85 - Tokens.padding.medium * 2)
                                          textFormat: Text.MarkdownText
-                                         text: root.currentThoughtText
+                                         text: root.formatMathAndLogic(root.currentThoughtText)
                                          color: Colours.palette.m3onSurfaceVariant
                                          font: Tokens.font.body.small
                                          wrapMode: Text.Wrap
@@ -1801,7 +2191,7 @@ Item {
                                          width: Math.min(implicitWidth, bubbleRect.maxBubbleWidth - Tokens.padding.medium * 2)
                                          textFormat: Text.MarkdownText
                                          
-                                         property string fullThought: bubbleLayout.delegateThought
+                                         property string fullThought: root.formatMathAndLogic(bubbleLayout.delegateThought)
                                          
                                          property bool cursorVisible: true
                                          Timer {
@@ -1840,7 +2230,8 @@ Item {
                                          var raw = delegateItem.text !== undefined ? delegateItem.text : "";
                                          // Convert reference-style links [Label]: https://... to inline [Label](https://...)
                                          // In CommonMark / Qt MarkdownText, [Label]: url is treated as an invisible reference definition, causing links to disappear.
-                                         return raw.replace(/\[([^\]]+)\]:\s*(https?:\/\/[^\s\)\<\>]+)/g, "[$1]($2)");
+                                         var fixedLinks = raw.replace(/\[([^\]]+)\]:\s*(https?:\/\/[^\s\)\<\>]+)/g, "[$1]($2)");
+                                         return root.formatMathAndLogic(fixedLinks);
                                      }
                                      
                                      property bool cursorVisible: true
@@ -1921,7 +2312,7 @@ Item {
                                                  cursorShape: Qt.PointingHandCursor
                                                  hoverEnabled: true
                                                  onClicked: {
-                                                     Quickshell.clipboardText = delegateItem.text;
+                                                     Quickshell.clipboardText = root.formatMathAndLogic(delegateItem.text);
                                                      bubbleActionRow.copied = true;
                                                      copyResetTimer.restart();
                                                      Toaster.toast(qsTr("Copied to clipboard"), delegateItem.text.slice(0, 40).replace(/\n/g, " ") + (delegateItem.text.length > 40 ? "..." : ""), "content_copy");
@@ -2080,6 +2471,39 @@ Item {
                                  anchors.centerIn: parent
                                  text: "attach_file"
                                  color: attachBtnMouse.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                                 font: Tokens.font.icon.small
+                             }
+                         }
+
+                         Item {
+                             Layout.preferredWidth: 36
+                             Layout.preferredHeight: 36
+                             visible: !root.isTyping && GlobalConfig.ai.enableCelestialMode
+
+                             MaterialShape {
+                                 anchors.fill: parent
+                                 color: regionBtnMouse.containsMouse ? Colours.layer(Colours.tPalette.m3surfaceContainerHighest, 2) : Colours.layer(Colours.tPalette.m3surfaceContainerHigh, 1)
+                                 shape: MaterialShape.Circle
+                                 scale: regionBtnMouse.pressed ? 0.6 : regionBtnMouse.containsMouse ? 0.85 : 0.75
+
+                                 Behavior on scale { Anim { type: Anim.FastSpatial } }
+                                 Behavior on color { CAnim {} }
+
+                                 MouseArea {
+                                     id: regionBtnMouse
+                                     anchors.fill: parent
+                                     hoverEnabled: true
+                                     cursorShape: Qt.PointingHandCursor
+                                     onClicked: {
+                                         root.startRegionSnip();
+                                     }
+                                 }
+                             }
+
+                             MaterialIcon {
+                                 anchors.centerIn: parent
+                                 text: "screenshot_region"
+                                 color: regionBtnMouse.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
                                  font: Tokens.font.icon.small
                              }
                          }

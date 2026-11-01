@@ -157,7 +157,7 @@ def analyze_with_vision(image_path, query=None, ollama_url="http://localhost:114
             headers={'Content-Type': 'application/json'}
         )
 
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=180) as resp:
             res_data = json.loads(resp.read().decode('utf-8'))
             visual_desc = res_data.get("response", "").strip()
 
