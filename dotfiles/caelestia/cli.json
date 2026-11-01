@@ -7,7 +7,7 @@
   },
   "screenshot": {
     "directory": "~/Pictures/Screenshots",
-    "regionAction": "edit",
+    "regionAction": "save",
     "fullscreenAction": "save",
     "copyOnSave": true
   }

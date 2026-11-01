@@ -79,11 +79,14 @@ MouseArea {
         CUtils.saveItem(screencopy, tmpfile, Qt.rect(Math.ceil(rsx), Math.ceil(rsy), Math.floor(sw), Math.floor(sh)), path => {
             if (isSearch) {
                 Quickshell.execDetached(["touch", "/tmp/caelestia-search.done"]);
+            } else if (root.loader.editMode) {
+                Quickshell.execDetached(["sh", "-c", "wl-copy -t image/png < '" + path + "'"]);
+                Quickshell.execDetached(["caelestia", "screenshot", "--edit", "--file", path]);
             } else if (root.loader.clipboardOnly) {
                 Quickshell.execDetached(["caelestia", "screenshot", "--copy", "--file", path]);
             } else {
-                Quickshell.execDetached(["sh", "-c", "wl-copy < '" + path + "'"]);
-                Quickshell.execDetached(["caelestia", "screenshot", "--file", path]);
+                Quickshell.execDetached(["sh", "-c", "wl-copy -t image/png < '" + path + "'"]);
+                Quickshell.execDetached(["caelestia", "screenshot", "--save", "--file", path]);
             }
             Audio.playCameraClick();
             closeAnim.start();

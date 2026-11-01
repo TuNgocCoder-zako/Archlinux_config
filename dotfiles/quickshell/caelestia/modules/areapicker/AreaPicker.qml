@@ -15,6 +15,7 @@ Scope {
         property bool closing
         property bool clipboardOnly
         property bool searchMode
+        property bool editMode
 
         Variants {
             model: Screens.screens
@@ -54,6 +55,16 @@ Scope {
             root.closing = false;
             root.clipboardOnly = false;
             root.searchMode = false;
+            root.editMode = false;
+            root.activeAsync = true;
+        }
+
+        function openEdit(): void {
+            root.freeze = false;
+            root.closing = false;
+            root.clipboardOnly = false;
+            root.searchMode = false;
+            root.editMode = true;
             root.activeAsync = true;
         }
 
@@ -62,6 +73,7 @@ Scope {
             root.closing = false;
             root.clipboardOnly = false;
             root.searchMode = false;
+            root.editMode = false;
             root.activeAsync = true;
         }
 
@@ -70,6 +82,7 @@ Scope {
             root.closing = false;
             root.clipboardOnly = true;
             root.searchMode = false;
+            root.editMode = false;
             root.activeAsync = true;
         }
 
@@ -78,6 +91,7 @@ Scope {
             root.closing = false;
             root.clipboardOnly = true;
             root.searchMode = false;
+            root.editMode = false;
             root.activeAsync = true;
         }
 
@@ -86,6 +100,7 @@ Scope {
             root.freeze = false;
             root.closing = false;
             root.clipboardOnly = false;
+            root.editMode = false;
             root.activeAsync = true;
         }
 
@@ -106,6 +121,23 @@ Scope {
             root.freeze = false;
             root.closing = false;
             root.clipboardOnly = false;
+            root.searchMode = false;
+            root.editMode = false;
+            root.activeAsync = true;
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "screenshotEdit"
+        description: "Open screenshot tool in edit mode"
+        onPressed: {
+            root.freeze = false;
+            root.closing = false;
+            root.clipboardOnly = false;
+            root.searchMode = false;
+            root.editMode = true;
             root.activeAsync = true;
         }
     }
