@@ -217,6 +217,7 @@ Item {
     Dashboard.Wrapper {
         id: dashboard
 
+        z: 10
         screenState: root.screenState
 
         anchors.horizontalCenter: parent.horizontalCenter

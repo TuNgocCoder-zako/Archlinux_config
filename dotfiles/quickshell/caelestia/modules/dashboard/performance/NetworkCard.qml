@@ -12,7 +12,7 @@ StyledRect {
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.extraLarge
 
-    implicitWidth: Tokens.sizes.dashboard.perfNetworkCardWidth
+    implicitWidth: Math.min(280, Tokens.sizes.dashboard.perfNetworkCardWidth)
     implicitHeight: Tokens.sizes.dashboard.perfNetworkCardHeight
 
     Ref {

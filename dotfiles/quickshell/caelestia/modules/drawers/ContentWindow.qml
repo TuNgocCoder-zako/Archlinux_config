@@ -223,6 +223,7 @@ StyledWindow {
         PanelBg {
             id: dashBg
 
+            z: 10
             panel: panels.dashboard
             deformAmount: 0.1
         }

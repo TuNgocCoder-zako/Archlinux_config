@@ -29,7 +29,7 @@ StyledRect {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        anchors.margins: Tokens.padding.extraLarge
+        anchors.margins: Tokens.padding.large
         spacing: 0
 
         RowLayout {
@@ -79,7 +79,7 @@ StyledRect {
             }
 
             ColumnLayout {
-                Layout.minimumWidth: Tokens.sizes.dashboard.perfStorageTextWidth
+                Layout.minimumWidth: Math.min(120, Tokens.sizes.dashboard.perfStorageTextWidth)
                 spacing: Tokens.spacing.extraSmall
 
                 StyledText {

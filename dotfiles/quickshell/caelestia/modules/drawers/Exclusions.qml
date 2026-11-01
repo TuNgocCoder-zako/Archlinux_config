@@ -20,7 +20,6 @@ Scope {
 
     readonly property ScreenState screenState: contentWindow ? contentWindow.screenState : ShellState.forScreen(root.screen)
     readonly property bool isSidebarOpen: (screenState && screenState.sidebar && Config.sidebar.enabled) || (contentWindow?.panels?.sidebar?.shouldBeActive ?? false)
-    readonly property bool hasNotifs: (contentWindow?.panels?.notifications?.visible ?? false) && (contentWindow?.panels?.notifications?.height ?? 0) > 0
 
     readonly property int sidebarExclusiveWidth: Tokens.sizes.sidebar.width + Config.border.thickness + (GlobalConfig.appearance.islands ? Tokens.spacing.extraLarge : 0)
 
@@ -40,9 +39,9 @@ Scope {
         anchors.right: true
         exclusiveZone: {
             if (Config.bar.position === "right") {
-                return root.bar.exclusiveZone + (root.isSidebarOpen || root.hasNotifs ? root.sidebarExclusiveWidth : 0);
+                return root.bar.exclusiveZone + (root.isSidebarOpen ? root.sidebarExclusiveWidth : 0);
             }
-            if (root.isSidebarOpen || root.hasNotifs) {
+            if (root.isSidebarOpen) {
                 return root.sidebarExclusiveWidth;
             }
             return contentItem.Config.border.thickness;

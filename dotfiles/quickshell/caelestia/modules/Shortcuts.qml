@@ -248,6 +248,19 @@ Scope {
                     }
                     return;
                 }
+                if (drawer === "dashboard") {
+                    if (tab !== "") {
+                        const tabNames = ["dashboard", "media", "performance", "weather", "terminal"];
+                        const idx = tabNames.indexOf(tab.toLowerCase());
+                        if (idx !== -1) {
+                            visibilities.dashboardTab = idx;
+                        } else if (!isNaN(parseInt(tab))) {
+                            visibilities.dashboardTab = parseInt(tab);
+                        }
+                    }
+                    visibilities.dashboard = true;
+                    return;
+                }
                 visibilities[drawer] = !visibilities[drawer];
             } else {
                 console.warn(lc, `Drawer "${drawer}" does not exist`);
