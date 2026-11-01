@@ -49,10 +49,19 @@ hl.bind("XF86Launch4", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"), {
 hl.bind("SUPER + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 hl.bind("ALT + F5", hl.dsp.exec_cmd(home .. "/.local/bin/asus-fan-toggle"))
 
--- F6 (Biểu tượng Snipping Tool / Kéo cắt ảnh): Chụp vùng màn hình (Lưu & Copy clipboard siêu tốc)
+-- Phím chụp màn hình (Print / F6 / Snipping Tool): Lưu & Copy clipboard siêu tốc
+-- PrtSc: Chụp toàn màn hình ngay lập tức
+hl.bind("Print", hl.dsp.exec_cmd(home .. "/.local/bin/screenshot full"))
+hl.bind("SUPER + Print", hl.dsp.exec_cmd(home .. "/.local/bin/screenshot full"))
+
+-- F6 / Shift+Print / Super+Shift+S / Alt+S: Chụp vùng màn hình qua Caelestia AreaPicker
 hl.bind("XF86Launch1", hl.dsp.global("caelestia:screenshot"), { locked = true })
 hl.bind("XF86SelectiveScreenshot", hl.dsp.global("caelestia:screenshot"), { locked = true })
 hl.bind("SUPER + F6", hl.dsp.global("caelestia:screenshot"))
+hl.bind("SHIFT + Print", hl.dsp.global("caelestia:screenshot"))
+hl.bind("SUPER + SHIFT + S", hl.dsp.global("caelestia:screenshot"))
+hl.bind("ALT + S", hl.dsp.global("caelestia:screenshot"))
+
 -- ALT + F6: Chụp và mở trình chỉnh sửa chú thích (Swappy)
 hl.bind("ALT + F6", hl.dsp.global("caelestia:screenshotEdit"))
 
