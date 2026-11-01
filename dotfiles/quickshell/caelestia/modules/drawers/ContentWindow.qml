@@ -20,6 +20,7 @@ StyledWindow {
 
     readonly property alias bar: bar
     readonly property alias interactionWrapper: interactions
+    readonly property alias panels: panels
 
     readonly property ScreenState screenState: ShellState.forScreen(screen)
 
