@@ -111,10 +111,6 @@ hl.bind("SUPER + CTRL + W", hl.dsp.exec_cmd("caelestia wallpaper -r"))
 hl.bind("SUPER + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))
 hl.bind("ALT + A", hl.dsp.exec_cmd("caelestia shell drawers toggleTab sidebar ai"))
 
--- Voice AI Alexa Assistant (Trigger & Stop)
-hl.bind("SUPER + ALT + A", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-trigger"))
-hl.bind("SUPER + SHIFT + A", hl.dsp.exec_cmd(home .. "/.local/bin/alexa-stop"))
-
 -- Multitasking (Workspace Overview & Window Switcher)
 hl.bind("SUPER + Tab", hl.dsp.global("caelestia:workspaceOverview"))
 hl.bind("SUPER + Grave", hl.dsp.global("caelestia:windowSwitcher"))
