@@ -82,6 +82,7 @@ MouseArea {
             } else if (root.loader.clipboardOnly) {
                 Quickshell.execDetached(["caelestia", "screenshot", "--copy", "--file", path]);
             } else {
+                Quickshell.execDetached(["sh", "-c", "wl-copy < '" + path + "'"]);
                 Quickshell.execDetached(["caelestia", "screenshot", "--file", path]);
             }
             Audio.playCameraClick();
